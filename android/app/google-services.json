@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "408769815760",
+    "project_id": "smart-check-8bd33",
+    "storage_bucket": "smart-check-8bd33.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:408769815760:android:fc0ef85424d0e4be4daad5",
+        "android_client_info": {
+          "package_name": "com.example.smart_check"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBoOCe09WXej9I7RGpty7d-OwI3lG0QMd0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
