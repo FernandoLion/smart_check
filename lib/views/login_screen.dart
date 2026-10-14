@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'teacher/teacher_home_screen.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
 import 'recover_password_screen.dart';
@@ -682,11 +683,15 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (role == 'Estudiante') {
         Navigator.pushReplacement(
-          context, 
+          context,
           MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
-          
         );
-      }        
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const TeacherHomeScreen()),
+        );
+      }
       // Aquí navegaremos al Home correspondiente según el rol elegido
     }
   }

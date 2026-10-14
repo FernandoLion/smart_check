@@ -4,7 +4,7 @@ import '../models/verificacion_result_model.dart';
 import '../utils/app_theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import 'login_screen.dart';
-
+import 'teacher/teacher_home_screen.dart';
 class FaceSetupScreen extends StatefulWidget {
   const FaceSetupScreen({super.key});
 
@@ -88,6 +88,7 @@ class _FaceSetupScreenState extends State<FaceSetupScreen>
   }
 
   void _handleSkip() {
+    
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
