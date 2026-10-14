@@ -5,6 +5,7 @@ import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/student_viewmodel.dart';
 import 'biometric_validation_screen.dart';
+import 'attendance_detail_screen.dart';
 
 class StudentHomeScreen extends StatelessWidget {
   const StudentHomeScreen({super.key});
@@ -614,14 +615,13 @@ void _onRegisterAttendanceTap(BuildContext context) {
 }
 
   void _onSubjectTap(BuildContext context, StudentSubjectModel subject) {
-    // Aquí conectaremos la Pantalla 7 (attendance_detail_screen.dart) cuando me la pases
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Ir a Pantalla 7: Detalle de ${subject.name}'),
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => AttendanceDetailScreen(subject: subject),
+    ),
+  );
+}
 
   void _onSettingsTap(BuildContext context) {
     // Aquí conectaremos la Pantalla 8 (student_settings_screen.dart) cuando me la pases
