@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:smart_check/main.dart';
-import 'package:smart_check/screens/smart_register_screen.dart';
+import 'package:smart_check/views/smart_register_screen.dart';
 
 void main() {
   testWidgets('SmartCheck app renders login screen', (

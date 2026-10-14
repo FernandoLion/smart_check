@@ -3,8 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'dart:typed_data';
 import 'dart:ui';
 
-import '../../services/chaira_service.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../services/chaira_service.dart';
+import '../utils/app_theme.dart';
 import 'login_screen.dart';
 
 class SmartRegisterScreen extends StatefulWidget {
