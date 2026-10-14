@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // Se resuelve al usarse, no al construir el servicio (Firebase puede no
+  // estar inicializado todavía, p. ej. en los tests).
+  FirebaseAuth get _auth => FirebaseAuth.instance;
 
   User? get currentUser => _auth.currentUser;
 

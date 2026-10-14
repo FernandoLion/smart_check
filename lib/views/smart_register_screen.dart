@@ -196,7 +196,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
               const SizedBox(height: 16),
               _buildDigitalIDCard(result),
               const SizedBox(height: 16),
-              if (result.tipoUsuario == 'Docente') _buildTeacherToggle(),
+              if (result.esDocente) _buildTeacherToggle(),
             ],
             const SizedBox(height: 24),
             // PASO 2

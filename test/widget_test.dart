@@ -5,11 +5,32 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:provider/provider.dart';
 
 import 'package:smart_check/main.dart';
+import 'package:smart_check/services/chaira_service.dart';
+import 'package:smart_check/viewmodels/auth_viewmodel.dart';
 import 'package:smart_check/views/smart_register_screen.dart';
+
+import 'chaira_fixtures.dart';
+
+/// Chairá simulado: responde a cualquier documento con la persona de prueba.
+ChairaService _chairaFalso() => ChairaService(
+      client: MockClient((request) async {
+        if (request.method == 'GET') return http.Response('', 404);
+        return http.Response.bytes(
+          utf8.encode(respuestaExito()),
+          200,
+          headers: {'content-type': 'text/html; charset=utf-8'},
+        );
+      }),
+    );
 
 void main() {
   testWidgets('SmartCheck app renders login screen', (
@@ -31,7 +52,12 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const MaterialApp(home: SmartRegisterScreen()));
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => AuthViewModel(chairaService: _chairaFalso()),
+        child: const MaterialApp(home: SmartRegisterScreen()),
+      ),
+    );
 
     expect(tester.takeException(), isNull);
     expect(find.byType(ListView), findsOneWidget);
@@ -46,6 +72,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('VERIFICADO EN SISTEMA'), findsOneWidget);
+    expect(find.text('ANA MARÍA PÉREZ GÓMEZ'), findsOneWidget);
+    expect(find.text('INGENIERÍA DE SISTEMAS'), findsOneWidget);
+    expect(find.text('an.perez'), findsOneWidget); // usuario de correo sugerido
     expect(tester.takeException(), isNull);
 
     await tester.drag(find.byType(ListView), const Offset(0, -800));

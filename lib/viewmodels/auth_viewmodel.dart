@@ -5,8 +5,12 @@ import '../services/auth_service.dart';
 import '../services/chaira_service.dart';
 
 class AuthViewModel extends ChangeNotifier {
-  final AuthService _authService = AuthService();
-  final ChairaService _chairaService = ChairaService();
+  final AuthService _authService;
+  final ChairaService _chairaService;
+
+  AuthViewModel({AuthService? authService, ChairaService? chairaService})
+      : _authService = authService ?? AuthService(),
+        _chairaService = chairaService ?? ChairaService();
 
   bool _isLoading = false;
   bool _isVerifyingChaira = false;
@@ -110,5 +114,11 @@ class AuthViewModel extends ChangeNotifier {
   Future<void> signOut() async {
     await _authService.signOut();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _chairaService.dispose();
+    super.dispose();
   }
 }
