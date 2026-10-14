@@ -682,10 +682,11 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (role == 'Estudiante') {
         Navigator.pushReplacement(
-          context,
+          context, 
           MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+          
         );
-      }
+      }        
       // Aquí navegaremos al Home correspondiente según el rol elegido
     }
   }
