@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 
 import 'dart:ui';
 
-import '../services/auth_service.dart';
-import '../utils/app_theme.dart';
+import '../../services/auth_service.dart';
+import '../../../../core/theme/app_theme.dart';
 import 'recover_password_screen.dart';
 import 'smart_register_screen.dart';
 
