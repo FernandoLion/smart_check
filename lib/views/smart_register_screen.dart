@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'dart:typed_data';
-import 'dart:ui';
-
-import '../services/chaira_service.dart';
+import 'package:provider/provider.dart';
+import '../models/verificacion_result_model.dart';
+import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
 import 'login_screen.dart';
+import 'face_setup_screen.dart';
 
 class SmartRegisterScreen extends StatefulWidget {
   const SmartRegisterScreen({super.key});
@@ -19,17 +19,18 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  final ChairaService _chairaService = ChairaService();
-
   bool _obscurePassword = true;
-  bool _isVerifying = false;
-  bool _isVerified = false;
   bool _alsoStudent = true;
   int _passwordStrength = 0;
-  String? _verificationError;
 
-  Map<String, dynamic>? _scrapedData;
-  Uint8List? _imagenBytes;
+  @override
+  void initState() {
+    super.initState();
+    // Limpiamos cualquier verificación previa al entrar a la pantalla
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthViewModel>().clearState();
+    });
+  }
 
   @override
   void dispose() {
@@ -54,49 +55,54 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
       return;
     }
 
-    setState(() {
-      _isVerifying = true;
-      _isVerified = false;
-      _verificationError = null;
-      _scrapedData = null;
-      _imagenBytes = null;
-    });
+    final authViewModel = context.read<AuthViewModel>();
+    final success = await authViewModel.verificarEnChaira(documento);
 
-    try {
-      final result = await _chairaService.verificarDocumento(documento);
+    if (!mounted) return;
 
-      if (!mounted) return;
+    if (success && authViewModel.verificacionResult != null) {
+      final result = authViewModel.verificacionResult!;
+      _emailController.text = result.username ?? documento;
+    } else {
+      _showError(
+        authViewModel.errorMessage ??
+            'No se encontraron datos para este documento.',
+      );
+    }
+  }
 
-      if (result.success) {
-        setState(() {
-          _isVerifying = false;
-          _isVerified = true;
-          _imagenBytes = result.imagenBytes;
-          _scrapedData = {
-            'nombre': result.nombre ?? 'Sin nombre',
-            'programa': result.programa ?? 'Sin programa',
-            'tipo': result.tipoUsuario ?? 'Estudiante',
-            'id': result.cedula ?? documento,
-            'username': result.username ?? documento,
-          };
-          _emailController.text = _scrapedData!['username'];
-        });
-      } else {
-        setState(() {
-          _isVerifying = false;
-          _isVerified = false;
-          _verificationError = result.error;
-        });
-        _showError(result.error ?? 'No se encontraron datos para este documento.');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isVerifying = false;
-        _isVerified = false;
-        _verificationError = e.toString();
-      });
-      _showError('Error de conexión. Asegúrate de que el servidor esté corriendo.');
+  Future<void> _handleRegister() async {
+    final authViewModel = context.read<AuthViewModel>();
+    final result = authViewModel.verificacionResult;
+
+    if (result == null || !result.success) {
+      _showError('Primero debes verificar tu documento en el Paso 1.');
+      return;
+    }
+
+    final usernameInput = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (usernameInput.isEmpty || password.isEmpty) {
+      _showError('Completa tu correo institucional y contraseña.');
+      return;
+    }
+
+    final fullEmail = usernameInput.contains('@')
+        ? usernameInput
+        : '$usernameInput@udla.edu.co';
+
+    final success = await authViewModel.register(fullEmail, password);
+
+    if (!mounted) return;
+
+    if (success) {
+   Navigator.push(
+     context,
+     MaterialPageRoute(builder: (_) => const FaceSetupScreen()),
+   );
+ } else {
+      _showError(authViewModel.errorMessage ?? 'Error al registrar la cuenta.');
     }
   }
 
@@ -124,6 +130,13 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Escuchamos los estados del ViewModel (MVVM)
+    final authViewModel = context.watch<AuthViewModel>();
+    final result = authViewModel.verificacionResult;
+    final isVerified = result != null && result.success;
+    final verificationError =
+        (result != null && !result.success) ? result.error : null;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -135,32 +148,39 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
             const SizedBox(height: 24),
             _buildSegmentedControl(),
             const SizedBox(height: 24),
-
             // PASO 1
             _buildStepTitle(
               'PASO 1: VALIDACIÓN DE IDENTIDAD',
-              trailing: _isVerified ? _buildSyncBadge() : null,
+              trailing: isVerified ? _buildSyncBadge() : null,
             ),
             const SizedBox(height: 8),
-            _buildSearchBox(),
-
+            _buildSearchBox(authViewModel.isVerifyingChaira),
             // Mensaje de error de verificación
-            if (_verificationError != null && !_isVerified) ...[
+            if (verificationError != null && !isVerified) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.1),
+                  color: Colors.redAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                  border: Border.all(
+                    color: Colors.redAccent.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.redAccent, size: 16),
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.redAccent,
+                      size: 16,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        _verificationError!,
+                        verificationError,
                         style: const TextStyle(
                           color: Colors.redAccent,
                           fontSize: 12,
@@ -171,34 +191,27 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                 ),
               ),
             ],
-
-            // Tarjeta de Identidad (Aparece al verificar)
-            if (_isVerified && _scrapedData != null) ...[
+            // Tarjeta de Identidad (Aparece al verificar usando el Model VerificacionResult)
+            if (isVerified) ...[
               const SizedBox(height: 16),
-              _buildDigitalIDCard(),
+              _buildDigitalIDCard(result),
               const SizedBox(height: 16),
-              if (_scrapedData!['tipo'] == 'Docente') _buildTeacherToggle(),
+              if (result.tipoUsuario == 'Docente') _buildTeacherToggle(),
             ],
-
             const SizedBox(height: 24),
-
             // PASO 2
             _buildStepTitle('PASO 2: CREACIÓN DE CREDENCIALES'),
             const SizedBox(height: 16),
             _buildEmailField(),
             const SizedBox(height: 16),
             _buildPasswordField(),
-
             const SizedBox(height: 32),
-            _buildRegisterButton(),
+            _buildRegisterButton(authViewModel.isLoading),
             const SizedBox(height: 16),
             const Text(
               'Al registrarte aceptas las políticas de seguridad biométrica y acceso físico del campus universitario.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppTheme.textTertiary,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
             ),
             const SizedBox(height: 24),
           ],
@@ -228,8 +241,8 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
                     colors: [
-                      AppTheme.primary.withOpacity(0.3),
-                      AppTheme.success.withOpacity(0.2),
+                      AppTheme.primary.withValues(alpha: 0.3),
+                      AppTheme.success.withValues(alpha: 0.2),
                     ],
                   ),
                 ),
@@ -245,8 +258,9 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
         const SizedBox(height: 8),
         Text(
           'SmartCheck',
-          style: Theme.of(context).textTheme.headlineMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         const Text(
           'Registro Inteligente Institucional',
@@ -354,7 +368,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
     );
   }
 
-  Widget _buildSearchBox() {
+  Widget _buildSearchBox(bool isVerifying) {
     return Container(
       height: 50,
       decoration: BoxDecoration(
@@ -387,7 +401,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: _isVerifying ? null : _verificarDocumento,
+            onPressed: isVerifying ? null : _verificarDocumento,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,
@@ -397,7 +411,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: _isVerifying
+            child: isVerifying
                 ? const SizedBox(
                     width: 18,
                     height: 18,
@@ -426,7 +440,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
     );
   }
 
-  Widget _buildDigitalIDCard() {
+  Widget _buildDigitalIDCard(VerificacionResult data) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -434,14 +448,11 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppTheme.surfaceElevated,
-            Color(0xFF1f1f21),
-          ], // elevated to container
+          colors: [AppTheme.surfaceElevated, Color(0xFF1f1f21)],
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.success.withOpacity(0.25),
+            color: AppTheme.success.withValues(alpha: 0.25),
             blurRadius: 30,
             offset: const Offset(0, 10),
             spreadRadius: -8,
@@ -463,7 +474,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppTheme.success.withOpacity(0.15),
+                  color: AppTheme.success.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(
@@ -484,7 +495,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceControl.withOpacity(0.8),
+                  color: AppTheme.surfaceControl.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Row(
@@ -518,14 +529,14 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                 decoration: BoxDecoration(
                   color: AppTheme.surfaceControl,
                   borderRadius: BorderRadius.circular(12),
-                  image: _imagenBytes != null
+                  image: data.imagenBytes != null
                       ? DecorationImage(
-                          image: MemoryImage(_imagenBytes!),
+                          image: MemoryImage(data.imagenBytes!),
                           fit: BoxFit.cover,
                         )
                       : null,
                 ),
-                child: _imagenBytes == null
+                child: data.imagenBytes == null
                     ? const Icon(
                         Icons.person,
                         color: AppTheme.textSecondary,
@@ -560,7 +571,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                _scrapedData!['tipo'],
+                                data.tipoUsuario ?? 'Estudiante',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
@@ -571,7 +582,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                           ),
                         ),
                         Text(
-                          'ID: ${_scrapedData!['id']}',
+                          'ID: ${data.cedula ?? data.documentoConsultado}',
                           style: const TextStyle(
                             color: AppTheme.textTertiary,
                             fontSize: 11,
@@ -581,7 +592,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _scrapedData!['nombre'],
+                      data.nombre ?? 'Sin nombre',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 17,
@@ -591,7 +602,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      _scrapedData!['programa'],
+                      data.programa ?? 'Sin programa',
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 13,
@@ -624,7 +635,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                     ),
                   ),
                   Text(
-                    'Habilitado 2025-1',
+                    'Habilitado 2026',
                     style: TextStyle(
                       color: AppTheme.success,
                       fontSize: 13,
@@ -701,7 +712,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
           ),
           CupertinoSwitch(
             value: _alsoStudent,
-            activeColor: AppTheme.success,
+            activeTrackColor: AppTheme.success,
             onChanged: (val) => setState(() => _alsoStudent = val),
           ),
         ],
@@ -911,37 +922,46 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
     );
   }
 
-  Widget _buildRegisterButton() {
+  Widget _buildRegisterButton(bool isLoading) {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: isLoading ? null : _handleRegister,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(50),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 8,
-        shadowColor: AppTheme.primary.withOpacity(0.25),
+        shadowColor: AppTheme.primary.withValues(alpha: 0.25),
       ),
-      child: const FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.face, size: 22),
-            SizedBox(width: 8),
-            Text(
-              'REGISTRAR ROSTRO',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
+      child: isLoading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
+          : const FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.face, size: 22),
+                  SizedBox(width: 8),
+                  Text(
+                    'REGISTRAR ROSTRO',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.arrow_forward, size: 20),
+                ],
               ),
             ),
-            SizedBox(width: 8),
-            Icon(Icons.arrow_forward, size: 20),
-          ],
-        ),
-      ),
     );
   }
 }

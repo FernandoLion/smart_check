@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; 
-
+import 'firebase_options.dart';
 import 'utils/app_theme.dart';
-import 'services/auth_service.dart';
+import 'viewmodels/auth_viewmodel.dart';
 import 'views/login_screen.dart';
 
 void main() async {
@@ -22,7 +21,7 @@ class SmartCheckApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => AuthViewModel()),
       ],
       child: MaterialApp(
         title: 'SmartCheck',

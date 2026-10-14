@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import 'dart:ui';
-
-import '../services/auth_service.dart';
+import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
 import 'recover_password_screen.dart';
 import 'smart_register_screen.dart';
@@ -18,12 +15,22 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _obscurePassword = true;
-  bool _isLoading = false;
   int _segmentedControlGroupValue = 0; // 0 para Login, 1 para Registro
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Escuchamos el ViewModel (MVVM)
+    final authViewModel = context.watch<AuthViewModel>();
+
     return Scaffold(
       backgroundColor: Colors.black, // bg-surface-oled
       body: Stack(
@@ -46,34 +53,27 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
                 children: [
                   const SizedBox(height: 24),
-
                   // Header Branding
                   _buildHeaderBranding(),
                   const SizedBox(height: 24),
-
                   // Segmented Control
                   _buildSegmentedControl(),
                   const SizedBox(height: 24),
-
-                  // Form
-                  _buildLoginForm(),
+                  // Form conectado al ViewModel
+                  _buildLoginForm(authViewModel.isLoading),
                   const SizedBox(height: 12),
-
                   // Divider
                   _buildDivider(),
                   const SizedBox(height: 12),
-
                   // Magic Link Button
                   _buildMagicLinkButton(),
                   const SizedBox(height: 24),
-
                   // Quick Biometric Hint
                   _buildBiometricHint(),
                   const SizedBox(height: 24),
@@ -96,11 +96,11 @@ class _LoginScreenState extends State<LoginScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.surfaceElevated, // surface-container-high
+                color: AppTheme.surfaceElevated,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.25),
+                    color: AppTheme.primary.withValues(alpha: 0.25),
                     blurRadius: 30,
                     spreadRadius: 0,
                   ),
@@ -113,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      AppTheme.primary.withOpacity(0.3),
+                      AppTheme.primary.withValues(alpha: 0.3),
                       Colors.transparent,
                     ],
                   ),
@@ -122,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Icons.security,
                   size: 40,
                   color: AppTheme.primary,
-                ), // shield_lock
+                ),
               ),
             ),
             Positioned(
@@ -132,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 24,
                 height: 24,
                 decoration: const BoxDecoration(
-                  color: AppTheme.success, // tertiary-container
+                  color: AppTheme.success,
                   shape: BoxShape.circle,
                   boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
                 ),
@@ -177,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
                   color: _segmentedControlGroupValue == 0
-                      ? const Color(0xFF39393b) // surface-bright
+                      ? const Color(0xFF39393b)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: _segmentedControlGroupValue == 0
@@ -209,7 +209,6 @@ class _LoginScreenState extends State<LoginScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                // Navegar directo a la pantalla de registro
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -238,7 +237,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildLoginForm() {
+  Widget _buildLoginForm(bool isLoading) {
     return Column(
       children: [
         // Input Documento/Email
@@ -269,14 +268,13 @@ class _LoginScreenState extends State<LoginScreen> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: AppTheme.primary.withOpacity(0.4),
+                color: AppTheme.primary.withValues(alpha: 0.4),
                 width: 2,
               ),
             ),
           ),
         ),
         const SizedBox(height: 14),
-
         // Input Contraseña
         TextFormField(
           controller: _passwordController,
@@ -315,14 +313,13 @@ class _LoginScreenState extends State<LoginScreen> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: AppTheme.primary.withOpacity(0.4),
+                color: AppTheme.primary.withValues(alpha: 0.4),
                 width: 2,
               ),
             ),
           ),
         ),
         const SizedBox(height: 4),
-
         // Olvidé contraseña
         Align(
           alignment: Alignment.centerRight,
@@ -342,10 +339,9 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         const SizedBox(height: 12),
-
         // Botón Iniciar Sesión Principal
         ElevatedButton(
-          onPressed: _isLoading ? null : _handleLoginSubmit,
+          onPressed: isLoading ? null : _handleLoginSubmit,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.primary,
             foregroundColor: Colors.white,
@@ -354,9 +350,9 @@ class _LoginScreenState extends State<LoginScreen> {
               borderRadius: BorderRadius.circular(14),
             ),
             elevation: 8,
-            shadowColor: AppTheme.primary.withOpacity(0.5),
+            shadowColor: AppTheme.primary.withValues(alpha: 0.5),
           ),
-          child: _isLoading
+          child: isLoading
               ? const SizedBox(
                   width: 24,
                   height: 24,
@@ -389,7 +385,7 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         Expanded(
           child: Divider(color: Color(0xFF353437), thickness: 1),
-        ), // surface-variant
+        ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 12.0),
           child: Text(
@@ -462,8 +458,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       return;
     }
-
-    // Según el diseño de Stitch, aquí se abre el BottomSheet para seleccionar el Rol (Docente o Estudiante)
     _showRoleSelectionSheet();
   }
 
@@ -481,7 +475,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildRoleBottomSheet() {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated.withOpacity(0.95),
+        color: AppTheme.surfaceElevated.withValues(alpha: 0.95),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.only(top: 12, left: 16, right: 16, bottom: 32),
@@ -512,7 +506,6 @@ class _LoginScreenState extends State<LoginScreen> {
             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 20),
-
           // Opción Docente
           GestureDetector(
             onTap: () => _performFirebaseLogin('Docente'),
@@ -528,7 +521,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.2),
+                      color: AppTheme.primary.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -575,7 +568,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           const SizedBox(height: 10),
-
           // Opción Estudiante
           GestureDetector(
             onTap: () => _performFirebaseLogin('Estudiante'),
@@ -591,7 +583,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: AppTheme.secondary.withOpacity(0.2),
+                      color: AppTheme.secondary.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -638,11 +630,10 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
           TextButton(
             onPressed: () => Navigator.pop(context),
             style: TextButton.styleFrom(
-              backgroundColor: AppTheme.surfaceControl.withOpacity(0.6),
+              backgroundColor: AppTheme.surfaceControl.withValues(alpha: 0.6),
               minimumSize: const Size.fromHeight(48),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -664,23 +655,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _performFirebaseLogin(String role) async {
     Navigator.pop(context); // Cierra el BottomSheet
-    setState(() => _isLoading = true);
 
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final error = await authService.signInWithEmailPassword(
+    final authViewModel = context.read<AuthViewModel>();
+    final success = await authViewModel.signIn(
       _emailController.text.trim(),
       _passwordController.text.trim(),
     );
 
-    setState(() => _isLoading = false);
+    if (!mounted) return;
 
-    if (error != null) {
-      if (!mounted) return;
+    if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: AppTheme.error),
+        SnackBar(
+          content: Text(authViewModel.errorMessage ?? 'Error al iniciar sesión'),
+          backgroundColor: AppTheme.error,
+        ),
       );
     } else {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Sesión Iniciada como $role'),

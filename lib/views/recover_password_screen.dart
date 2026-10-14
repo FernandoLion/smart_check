@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../utils/app_theme.dart';
-import '../services/auth_service.dart';
 import 'package:provider/provider.dart';
+import '../utils/app_theme.dart';
+import '../viewmodels/auth_viewmodel.dart';
 
 class RecoverPasswordScreen extends StatefulWidget {
   const RecoverPasswordScreen({super.key});
@@ -12,7 +12,6 @@ class RecoverPasswordScreen extends StatefulWidget {
 
 class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
   final _emailController = TextEditingController();
-  bool _isLoading = false;
   bool _isSubmitted = false;
 
   @override
@@ -25,23 +24,26 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, ingresa tu correo institucional')),
+        const SnackBar(
+          content: Text('Por favor, ingresa tu correo institucional'),
+        ),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
-    
-    // Ejecuta la recuperación con Firebase Auth
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final error = await authService.recoverPassword(email);
+    final authViewModel = context.read<AuthViewModel>();
+    final success = await authViewModel.recoverPassword(email);
 
-    setState(() => _isLoading = false);
+    if (!mounted) return;
 
-    if (error != null) {
-      if (!mounted) return;
+    if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: AppTheme.error),
+        SnackBar(
+          content: Text(
+            authViewModel.errorMessage ?? 'Error al recuperar contraseña',
+          ),
+          backgroundColor: AppTheme.error,
+        ),
       );
     } else {
       setState(() => _isSubmitted = true);
@@ -50,7 +52,8 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Se implementa como una pantalla completa (Scaffold) adaptando el diseño del BottomSheet de Stitch
+    final isLoading = context.watch<AuthViewModel>().isLoading;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -64,13 +67,15 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
       body: SafeArea(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 500),
-          child: _isSubmitted ? _buildSuccessState() : _buildRecoveryForm(),
+          child: _isSubmitted
+              ? _buildSuccessState()
+              : _buildRecoveryForm(isLoading),
         ),
       ),
     );
   }
 
-  Widget _buildRecoveryForm() {
+  Widget _buildRecoveryForm(bool isLoading) {
     return SingleChildScrollView(
       key: const ValueKey('recovery_form'),
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
@@ -78,22 +83,26 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
         children: [
           // Ambient Spotlight Security Icon
           Container(
-            width: 56, height: 56,
+            width: 56,
+            height: 56,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: AppTheme.secondary.withValues(alpha: 0.15), // secondary-container/15
+              color: AppTheme.secondary.withValues(alpha: 0.15),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.secondary.withValues(alpha: 0.2), // secondary-container/20
+                  color: AppTheme.secondary.withValues(alpha: 0.2),
                   blurRadius: 20,
                   spreadRadius: 5,
-                )
+                ),
               ],
             ),
-            child: const Icon(Icons.vpn_key, color: AppTheme.secondary, size: 26),
+            child: const Icon(
+              Icons.vpn_key,
+              color: AppTheme.secondary,
+              size: 26,
+            ),
           ),
-          
           Text(
             'Recuperar Contraseña',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -106,7 +115,11 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
           const Text(
             'Ingresa tu documento o correo institucional y te enviaremos un enlace seguro de restablecimiento.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 15, height: 1.4),
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 15,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 32),
 
@@ -126,17 +139,25 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
                   child: TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    onChanged: (_) => setState(() {}),
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: const InputDecoration(
                       hintText: 'Documento o correo @udla.edu.co',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+                      hintStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 15,
+                      ),
                       border: InputBorder.none,
                     ),
                   ),
                 ),
                 if (_emailController.text.isNotEmpty)
                   IconButton(
-                    icon: const Icon(Icons.cancel, color: AppTheme.textTertiary, size: 18),
+                    icon: const Icon(
+                      Icons.cancel,
+                      color: AppTheme.textTertiary,
+                      size: 18,
+                    ),
                     onPressed: () => setState(() => _emailController.clear()),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -146,11 +167,11 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Security Badge Callout (iOS Inset Banner)
+          // Security Badge Callout
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF1f1f21).withValues(alpha: 0.7), // surface-container/70
+              color: const Color(0xFF1f1f21).withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -158,17 +179,30 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               children: [
                 const Padding(
                   padding: EdgeInsets.only(top: 2),
-                  child: Icon(Icons.info, color: Colors.orange, size: 18), // system-amber
+                  child: Icon(Icons.info, color: Colors.orange, size: 18),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: RichText(
                     text: const TextSpan(
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
                       children: [
                         TextSpan(text: 'El enlace de un solo uso expirará en '),
-                        TextSpan(text: '15 minutos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        TextSpan(text: ' por estricta política de seguridad universitaria UDLA.'),
+                        TextSpan(
+                          text: '15 minutos',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextSpan(
+                          text:
+                              ' por estricta política de seguridad universitaria UDLA.',
+                        ),
                       ],
                     ),
                   ),
@@ -180,20 +214,35 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
 
           // Action Buttons
           ElevatedButton(
-            onPressed: _isLoading ? null : _handleRecovery,
+            onPressed: isLoading ? null : _handleRecovery,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.secondary, // System Blue
+              backgroundColor: AppTheme.secondary,
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
               elevation: 4,
             ),
-            child: _isLoading
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            child: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                 : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Enviar enlace de recuperación', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      Text(
+                        'Enviar enlace de recuperación',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       SizedBox(width: 8),
                       Icon(Icons.arrow_forward, size: 18),
                     ],
@@ -206,7 +255,10 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               foregroundColor: AppTheme.textSecondary,
               minimumSize: const Size.fromHeight(44),
             ),
-            child: const Text('Volver al inicio de sesión', style: TextStyle(fontSize: 14)),
+            child: const Text(
+              'Volver al inicio de sesión',
+              style: TextStyle(fontSize: 14),
+            ),
           ),
         ],
       ),
@@ -222,28 +274,46 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 64, height: 64,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: AppTheme.success.withValues(alpha: 0.2), // tertiary/20
+                color: AppTheme.success.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.mark_email_read, color: AppTheme.success, size: 32),
+              child: const Icon(
+                Icons.mark_email_read,
+                color: AppTheme.success,
+                size: 32,
+              ),
             ),
             const SizedBox(height: 24),
             const Text(
               '¡Enlace enviado!',
-              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             RichText(
               textAlign: TextAlign.center,
               text: TextSpan(
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15, height: 1.4),
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 15,
+                  height: 1.4,
+                ),
                 children: [
                   const TextSpan(text: 'Revisa tu bandeja institucional en '),
                   TextSpan(
-                    text: _emailController.text.isNotEmpty ? _emailController.text : 'tu correo',
-                    style: const TextStyle(color: AppTheme.secondary, fontWeight: FontWeight.w500),
+                    text: _emailController.text.isNotEmpty
+                        ? _emailController.text
+                        : 'tu correo',
+                    style: const TextStyle(
+                      color: AppTheme.secondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -254,8 +324,13 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.surfaceControl,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
               ),
               child: const Text('Cerrar', style: TextStyle(fontSize: 14)),
             ),
