@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
 import 'recover_password_screen.dart';
 import 'smart_register_screen.dart';
+import 'student/student_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -383,9 +385,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildDivider() {
     return const Row(
       children: [
-        Expanded(
-          child: Divider(color: Color(0xFF353437), thickness: 1),
-        ),
+        Expanded(child: Divider(color: Color(0xFF353437), thickness: 1)),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 12.0),
           child: Text(
@@ -667,7 +667,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authViewModel.errorMessage ?? 'Error al iniciar sesión'),
+          content: Text(
+            authViewModel.errorMessage ?? 'Error al iniciar sesión',
+          ),
           backgroundColor: AppTheme.error,
         ),
       );
@@ -678,6 +680,12 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: AppTheme.success,
         ),
       );
+      if (role == 'Estudiante') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+        );
+      }
       // Aquí navegaremos al Home correspondiente según el rol elegido
     }
   }

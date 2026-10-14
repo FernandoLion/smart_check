@@ -5,7 +5,7 @@ import 'firebase_options.dart';
 import 'utils/app_theme.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'views/login_screen.dart';
-
+import 'viewmodels/student_viewmodel.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -22,6 +22,7 @@ class SmartCheckApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        ChangeNotifierProvider(create: (_) => StudentViewModel()),
       ],
       child: MaterialApp(
         title: 'SmartCheck',
