@@ -6,6 +6,7 @@ import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/student_viewmodel.dart';
 import 'biometric_validation_screen.dart';
 import 'attendance_detail_screen.dart';
+import 'student_settings_screen.dart';
 
 class StudentHomeScreen extends StatelessWidget {
   const StudentHomeScreen({super.key});
@@ -623,15 +624,14 @@ void _onRegisterAttendanceTap(BuildContext context) {
   );
 }
 
-  void _onSettingsTap(BuildContext context) {
-    // Aquí conectaremos la Pantalla 8 (student_settings_screen.dart) cuando me la pases
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ir a Pantalla 8: Configuración Estudiante'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
+void _onSettingsTap(BuildContext context) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const StudentSettingsScreen(),
+    ),
+  );
+}
 }
 
 /// Widget de Tarjeta de Asignatura (Semáforo Ámbar / Verde / Rojo)
