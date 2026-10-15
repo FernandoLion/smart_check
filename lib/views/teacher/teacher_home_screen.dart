@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'course_detail_screen.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../student/student_home_screen.dart';
@@ -157,12 +158,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                           child: _TeacherCourseCard(
                             course: course,
                             onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Ir a Pantalla 14: Detalle de ${course.code}',
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CourseDetailScreen(
+                                    courseName: course.name,
+                                    courseCode: course.code,
+                                    groupName: course.group
+                                        .split('•')
+                                        .first
+                                        .trim(),
                                   ),
-                                  duration: const Duration(seconds: 1),
                                 ),
                               );
                             },
@@ -588,9 +594,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => const CreateCourseScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const CreateCourseScreen()),
         );
       },
       child: Container(
