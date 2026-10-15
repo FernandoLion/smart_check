@@ -92,7 +92,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
   @override
   Widget build(BuildContext context) {
     final authVM = context.watch<AuthViewModel>();
-    final VerificacionResult? chairaData = authVM.verificacionResult;
+    final VerificacionResult? chairaData = authVM.usuarioActual;
 
     return Scaffold(
       backgroundColor: Colors.black, // bg-surface-oled

@@ -72,7 +72,7 @@ class ChairaService {
         utf8.decode(response.bodyBytes, allowMalformed: true),
       );
       if (!result.success || result.fotoUrl == null) return result;
-      return result.copyWith(imagenBytes: await _descargarFoto(result.fotoUrl!));
+      return result.copyWith(imagenBytes: await descargarFoto(result.fotoUrl!));
     } on TimeoutException {
       return VerificacionResult.fallido(
         doc,
@@ -89,7 +89,7 @@ class ChairaService {
   }
 
   /// La foto es opcional: si no llega a tiempo se muestra el avatar genérico.
-  Future<Uint8List?> _descargarFoto(String url) async {
+  Future<Uint8List?> descargarFoto(String url) async {
     try {
       final response = await _client
           .get(Uri.parse(url))

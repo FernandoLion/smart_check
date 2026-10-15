@@ -22,7 +22,7 @@ class StudentHomeScreen extends StatelessWidget {
     final authVM = context.watch<AuthViewModel>();
     final studentVM = context.watch<StudentViewModel>();
 
-    final chairaData = authVM.verificacionResult;
+    final chairaData = authVM.usuarioActual;
     final nombre = chairaData?.nombre ?? 'Jhojan Fernando Leon';
     final programa = chairaData?.programa ?? 'Ingeniería de Sistemas';
     final fotoBytes = chairaData?.imagenBytes;

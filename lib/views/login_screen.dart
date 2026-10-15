@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'teacher/teacher_home_screen.dart';
+import '../models/usuario_perfil_model.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
 import 'recover_password_screen.dart';
@@ -248,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
           controller: _emailController,
           style: const TextStyle(color: Colors.white, fontSize: 16),
           decoration: InputDecoration(
-            hintText: 'Número de Documento o usuario@udla.edu.co',
+            hintText: 'usuario o usuario@udla.edu.co',
             hintStyle: const TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 16,
@@ -448,18 +449,63 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _handleLoginSubmit() {
+  Future<void> _handleLoginSubmit() async {
     if (_emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor, ingresa tus datos de acceso.'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
+      _showError('Por favor, ingresa tus datos de acceso.');
       return;
     }
-    _showRoleSelectionSheet();
+
+    final authViewModel = context.read<AuthViewModel>();
+    final success = await authViewModel.signIn(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
+    if (!mounted) return;
+
+    if (!success) {
+      _showError(authViewModel.errorMessage ?? 'Error al iniciar sesión');
+      return;
+    }
+
+    // Cuenta creada antes de que se guardaran los perfiles: hay que
+    // vincularla con su documento para conocer su rol.
+    if (authViewModel.perfil == null) {
+      final vinculado = await showModalBottomSheet<bool>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (_) => const _VincularDocumentoSheet(),
+      );
+      if (!mounted) return;
+      if (vinculado != true) {
+        await authViewModel.signOut();
+        return;
+      }
+    }
+
+    _entrarSegunRol(authViewModel.perfil!);
+  }
+
+  /// El rol sale del perfil guardado al registrarse, no de lo que elija el
+  /// usuario. Solo se pregunta a los docentes que también cursan materias.
+  void _entrarSegunRol(UsuarioPerfil perfil) {
+    if (perfil.esDual) {
+      _showRoleSelectionSheet();
+    } else if (perfil.esDocente) {
+      _navegarComo('Docente');
+    } else if (perfil.esEstudiante) {
+      _navegarComo('Estudiante');
+    } else {
+      context.read<AuthViewModel>().signOut();
+      _showError('Tu cuenta no tiene un rol asignado. Contacta a soporte.');
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppTheme.error),
+    );
   }
 
   void _showRoleSelectionSheet() {
@@ -509,7 +555,10 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 20),
           // Opción Docente
           GestureDetector(
-            onTap: () => _performFirebaseLogin('Docente'),
+            onTap: () {
+              Navigator.pop(context);
+              _navegarComo('Docente');
+            },
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -571,7 +620,10 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 10),
           // Opción Estudiante
           GestureDetector(
-            onTap: () => _performFirebaseLogin('Estudiante'),
+            onTap: () {
+              Navigator.pop(context);
+              _navegarComo('Estudiante');
+            },
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -632,7 +684,10 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 16),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+              context.read<AuthViewModel>().signOut();
+            },
             style: TextButton.styleFrom(
               backgroundColor: AppTheme.surfaceControl.withValues(alpha: 0.6),
               minimumSize: const Size.fromHeight(48),
@@ -654,45 +709,135 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _performFirebaseLogin(String role) async {
-    Navigator.pop(context); // Cierra el BottomSheet
-
-    final authViewModel = context.read<AuthViewModel>();
-    final success = await authViewModel.signIn(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
+  void _navegarComo(String role) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Sesión Iniciada como $role'),
+        backgroundColor: AppTheme.success,
+      ),
     );
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => role == 'Estudiante'
+            ? const StudentHomeScreen()
+            : const TeacherHomeScreen(),
+      ),
+    );
+  }
+}
 
+/// Pide el documento a una cuenta sin perfil y la vincula con Chairá.
+class _VincularDocumentoSheet extends StatefulWidget {
+  const _VincularDocumentoSheet();
+
+  @override
+  State<_VincularDocumentoSheet> createState() =>
+      _VincularDocumentoSheetState();
+}
+
+class _VincularDocumentoSheetState extends State<_VincularDocumentoSheet> {
+  final _docController = TextEditingController();
+
+  @override
+  void dispose() {
+    _docController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _vincular() async {
+    final documento = _docController.text.trim();
+    if (documento.isEmpty) return;
+    final authViewModel = context.read<AuthViewModel>();
+    final ok = await authViewModel.vincularDocumento(documento);
     if (!mounted) return;
+    if (ok) Navigator.pop(context, true);
+  }
 
-    if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            authViewModel.errorMessage ?? 'Error al iniciar sesión',
-          ),
-          backgroundColor: AppTheme.error,
+  @override
+  Widget build(BuildContext context) {
+    final authViewModel = context.watch<AuthViewModel>();
+    final verificando = authViewModel.isVerifyingChaira;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceElevated.withValues(alpha: 0.95),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sesión Iniciada como $role'),
-          backgroundColor: AppTheme.success,
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Verifica tu identidad',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Tu cuenta aún no tiene un perfil. Ingresa tu documento para '
+              'consultarlo en Chairá y asignar tu rol.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _docController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+              decoration: InputDecoration(
+                hintText: 'Nº de Documento',
+                hintStyle: const TextStyle(color: AppTheme.textSecondary),
+                prefixIcon: const Icon(Icons.badge, color: AppTheme.textSecondary),
+                filled: true,
+                fillColor: AppTheme.surfaceControl,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            if (!verificando && authViewModel.errorMessage != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                authViewModel.errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppTheme.error, fontSize: 12),
+              ),
+            ],
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: verificando ? null : _vincular,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: verificando
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      'Verificar y continuar',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+            ),
+          ],
         ),
-      );
-      if (role == 'Estudiante') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const TeacherHomeScreen()),
-        );
-      }
-      // Aquí navegaremos al Home correspondiente según el rol elegido
-    }
+      ),
+    );
   }
 }
