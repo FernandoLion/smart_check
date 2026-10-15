@@ -4,7 +4,7 @@ import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../widgets/add_students_modal.dart';
-
+import 'import_csv_screen.dart';
 class AddStudentScreen extends StatefulWidget {
   final String courseTitle;
 
@@ -102,16 +102,16 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     // Según el Roadmap: 11 -> Botón Modal rápido -> 12 (Modal Agregar Estudiantes)
     AddStudentsModal.show(
       context,
-      onImportCsvTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ir a Pantalla 13: Importar CSV Chairá'),
-            duration: Duration(seconds: 1),
-          ),
+      onImportCsvTap: () async {
+        // Al tocar "Importar CSV", abrimos la pantalla 13
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ImportCsvScreen()),
         );
+        // Opcional: si success es true, actualizas la lista de alumnos
       },
     );
-  }
+  } 
 
   @override
   Widget build(BuildContext context) {

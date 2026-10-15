@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_theme.dart';
 import 'add_student_screen.dart';
+import 'import_csv_screen.dart';
 class CreateCourseScreen extends StatefulWidget {
   const CreateCourseScreen({super.key});
 
@@ -84,10 +85,10 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
   void _onImportCsvTap() {
     // Según el Roadmap: Conectará con Pantalla 13 (import_csv_screen.dart)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ir a Pantalla 13: Importar CSV Chairá'),
-        duration: Duration(seconds: 1),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ImportCsvScreen(),
       ),
     );
   }
