@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'teacher_settings_screen.dart';
 import 'course_detail_screen.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -223,8 +224,18 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
             ],
           ),
           IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.more_horiz, color: AppTheme.textSecondary),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const TeacherSettingsScreen(),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.settings_outlined,
+              color: AppTheme.textSecondary,
+            ),
           ),
         ],
       ),
@@ -410,7 +421,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   if (perfil == null || !perfil.esEstudiante) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Tu cuenta no tiene perfil de estudiante.'),
+                        content: Text(
+                          'Tu cuenta no tiene perfil de estudiante.',
+                        ),
                       ),
                     );
                     return;
