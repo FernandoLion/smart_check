@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/app_theme.dart';
-
+import 'add_student_screen.dart';
 class CreateCourseScreen extends StatefulWidget {
   const CreateCourseScreen({super.key});
 
@@ -93,14 +93,13 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   }
 
   void _onAddStudentTap() {
-    // Según el Roadmap: 10 -> "+ Añadir Estudiante" -> Pantalla 11 (add_student_screen.dart)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ir a Pantalla 11: Añadir Estudiante'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const AddStudentScreen(),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
