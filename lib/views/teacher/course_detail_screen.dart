@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../../utils/app_theme.dart';
+import 'session_detail_screen.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final String courseName;
@@ -150,10 +152,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     Icon(Icons.arrow_back_ios, color: _primaryLight, size: 18),
                     Text(
                       'Mis Clases',
-                      style: TextStyle(
-                        color: _primaryLight,
-                        fontSize: 15,
-                      ),
+                      style: TextStyle(color: _primaryLight, fontSize: 15),
                     ),
                   ],
                 ),
@@ -256,10 +255,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         ),
                         child: const Text(
                           '24',
-                          style: TextStyle(
-                            color: _primaryLight,
-                            fontSize: 10,
-                          ),
+                          style: TextStyle(color: _primaryLight, fontSize: 10),
                         ),
                       ),
                     ],
@@ -572,10 +568,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 SizedBox(width: 6),
                 Text(
                   '(14 registradas)',
-                  style: TextStyle(
-                    color: AppTheme.textTertiary,
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: AppTheme.textTertiary, fontSize: 11),
                 ),
               ],
             ),
@@ -609,13 +602,44 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
-              _buildSessionTile('Mar', '18', 'Martes 18 de Marzo', 'Cerrada', '92% (22/24)', '08:05 - 09:55 AM', isFirst: true),
+              _buildSessionTile(
+                'Mar',
+                '18',
+                'Martes 18 de Marzo',
+                'Cerrada',
+                '92% (22/24)',
+                '08:05 - 09:55 AM',
+                isFirst: true,
+              ),
               _buildDivider(),
-              _buildSessionTile('Jue', '13', 'Jueves 13 de Marzo', 'Reporte generado', '88% (21/24)', '08:00 - 10:00 AM'),
+              _buildSessionTile(
+                'Jue',
+                '13',
+                'Jueves 13 de Marzo',
+                'Reporte generado',
+                '88% (21/24)',
+                '08:00 - 10:00 AM',
+              ),
               _buildDivider(),
-              _buildSessionTile('Mar', '11', 'Martes 11 de Marzo', 'Cerrada', '96% (23/24)', '08:02 - 10:01 AM'),
+              _buildSessionTile(
+                'Mar',
+                '11',
+                'Martes 11 de Marzo',
+                'Cerrada',
+                '96% (23/24)',
+                '08:02 - 10:01 AM',
+              ),
               _buildDivider(),
-              _buildSessionTile('Jue', '06', 'Jueves 6 de Marzo', 'Baja asistencia', '75% (18/24)', '08:00 - 10:00 AM', isWarning: true, isLast: true),
+              _buildSessionTile(
+                'Jue',
+                '06',
+                'Jueves 6 de Marzo',
+                'Baja asistencia',
+                '75% (18/24)',
+                '08:00 - 10:00 AM',
+                isWarning: true,
+                isLast: true,
+              ),
             ],
           ),
         ),
@@ -634,11 +658,27 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     bool isLast = false,
     bool isWarning = false,
   }) {
-    return Padding(
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SessionDetailScreen(
+              courseName: widget.courseName,
+              courseCodeAndGroup: '${widget.courseCode} • ${widget.groupName}',
+              sessionDateTitle: '$title, 2025',
+              sessionTimeRange: time,
+              presentCount: isWarning ? 18 : 22,
+              totalCount: 24,
+            ),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
           Expanded(
             child: Row(
               children: [
@@ -649,7 +689,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   decoration: BoxDecoration(
                     color: _surfaceControl,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
+                    ),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -695,18 +737,27 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: isWarning ? _systemAmber.withValues(alpha: 0.2) : _surfaceControl,
+                              color: isWarning
+                                  ? _systemAmber.withValues(alpha: 0.2)
+                                  : _surfaceControl,
                               borderRadius: BorderRadius.circular(5),
                               border: Border.all(
-                                color: isWarning ? _systemAmber.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.08),
+                                color: isWarning
+                                    ? _systemAmber.withValues(alpha: 0.3)
+                                    : Colors.white.withValues(alpha: 0.08),
                               ),
                             ),
                             child: Text(
                               badgeText,
                               style: TextStyle(
-                                color: isWarning ? _systemAmber : AppTheme.textSecondary,
+                                color: isWarning
+                                    ? _systemAmber
+                                    : AppTheme.textSecondary,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -749,8 +800,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             ),
           ),
           const SizedBox(width: 8),
-          const Icon(Icons.chevron_right, color: AppTheme.textTertiary, size: 20),
-        ],
+          const Icon(
+            Icons.chevron_right,
+            color: AppTheme.textTertiary,
+            size: 20,
+          ),
+          ],
+        ),
       ),
     );
   }
@@ -780,7 +836,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   style: TextStyle(color: Colors.white, fontSize: 15),
                   decoration: InputDecoration(
                     hintText: 'Buscar por nombre o ID de estudiante...',
-                    hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+                    hintStyle: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 15,
+                    ),
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
@@ -813,7 +872,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       color: _surfaceControl,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.school, color: _primaryLight, size: 20),
+                    child: const Icon(
+                      Icons.school,
+                      color: _primaryLight,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Column(
@@ -823,21 +886,35 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         children: [
                           Text(
                             '24 Inscritos',
-                            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           SizedBox(width: 6),
-                          CircleAvatar(radius: 2.5, backgroundColor: AppTheme.textTertiary),
+                          CircleAvatar(
+                            radius: 2.5,
+                            backgroundColor: AppTheme.textTertiary,
+                          ),
                           SizedBox(width: 6),
                           Text(
                             '3 en Riesgo',
-                            style: TextStyle(color: _systemRed, fontSize: 13, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: _systemRed,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
                       SizedBox(height: 2),
                       Text(
                         'Regla Institucional: Máx. 6 faltas (20%)',
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
                   ),
@@ -848,11 +925,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 children: [
                   Text(
                     '91.4%',
-                    style: TextStyle(color: _tertiaryGreen, fontSize: 17, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: _tertiaryGreen,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     'Promedio',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
@@ -1030,7 +1114,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           color: Colors.white.withValues(alpha: 0.08),
                         ),
                       ),
-                      child: const Icon(Icons.person, color: AppTheme.textSecondary, size: 24),
+                      child: const Icon(
+                        Icons.person,
+                        color: AppTheme.textSecondary,
+                        size: 24,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1066,13 +1154,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                   color: isRiskCritical
                                       ? _systemRed
                                       : isWarning
-                                          ? _systemAmber
-                                          : _tertiaryGreen,
+                                      ? _systemAmber
+                                      : _tertiaryGreen,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const Text(' • ', style: TextStyle(color: AppTheme.textTertiary)),
+                              const Text(
+                                ' • ',
+                                style: TextStyle(color: AppTheme.textTertiary),
+                              ),
                               Text(
                                 attendanceText,
                                 style: const TextStyle(
@@ -1090,7 +1181,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
                   color: badgeColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -1119,17 +1213,27 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   Text(
                     riskTitle,
                     style: TextStyle(
-                      color: isRiskCritical ? _systemRed : isWarning ? _systemAmber : AppTheme.textTertiary,
+                      color: isRiskCritical
+                          ? _systemRed
+                          : isWarning
+                          ? _systemAmber
+                          : AppTheme.textTertiary,
                       fontSize: 11,
-                      fontWeight: isRiskCritical ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: isRiskCritical
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                   Text(
                     riskSubtitle,
                     style: TextStyle(
-                      color: isRiskCritical ? _systemRed : AppTheme.textSecondary,
+                      color: isRiskCritical
+                          ? _systemRed
+                          : AppTheme.textSecondary,
                       fontSize: 11,
-                      fontWeight: isRiskCritical ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isRiskCritical
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
                 ],
@@ -1151,8 +1255,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       color: isRiskCritical
                           ? _systemRed
                           : isWarning
-                              ? _systemAmber
-                              : _tertiaryGreen,
+                          ? _systemAmber
+                          : _tertiaryGreen,
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
@@ -1166,9 +1270,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   }
 
   Widget _buildDivider() {
-    return Container(
-      height: 1,
-      color: Colors.white.withValues(alpha: 0.08),
-    );
+    return Container(height: 1, color: Colors.white.withValues(alpha: 0.08));
   }
 }
