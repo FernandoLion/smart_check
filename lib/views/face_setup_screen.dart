@@ -100,7 +100,8 @@ class _FaceSetupScreenState extends State<FaceSetupScreen>
   Widget build(BuildContext context) {
     // Leemos los datos verificados de Chairá desde el ViewModel (MVVM)
     final authViewModel = context.watch<AuthViewModel>();
-    final VerificacionResult? chairaData = authViewModel.verificacionResult;
+    final VerificacionResult? chairaData =
+        authViewModel.usuarioActual ?? authViewModel.verificacionResult;
 
     return Scaffold(
       backgroundColor: Colors.black, // bg-surface-oled

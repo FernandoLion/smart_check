@@ -108,7 +108,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authVM = context.watch<AuthViewModel>();
-    final chairaData = authVM.verificacionResult;
+    final chairaData = authVM.usuarioActual;
     final nombre = chairaData?.nombre ?? 'Jhojan Fernando Leon';
     final fotoBytes = chairaData?.imagenBytes;
 
@@ -405,6 +405,16 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
             Expanded(
               child: GestureDetector(
                 onTap: () {
+                  // Solo los docentes que también cursan materias.
+                  final perfil = context.read<AuthViewModel>().perfil;
+                  if (perfil == null || !perfil.esEstudiante) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Tu cuenta no tiene perfil de estudiante.'),
+                      ),
+                    );
+                    return;
+                  }
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(

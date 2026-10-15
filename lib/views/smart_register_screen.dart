@@ -92,7 +92,11 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
         ? usernameInput
         : '$usernameInput@udla.edu.co';
 
-    final success = await authViewModel.register(fullEmail, password);
+    final success = await authViewModel.register(
+      fullEmail,
+      password,
+      tambienEstudiante: result.esDocente && _alsoStudent,
+    );
 
     if (!mounted) return;
 
