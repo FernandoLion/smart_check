@@ -1,9 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../student/student_home_screen.dart';
+import 'create_course_screen.dart';
 
 enum CourseStatus { active, today, archived }
 
@@ -53,7 +55,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   static const Color _systemRed = Color(0xFFFF453A);
 
   int _selectedFilter = 0; // 0: Todos, 1: Activos, 2: Hoy, 3: Archivados
-  
+
   final List<TeacherCourseModel> _courses = const [
     TeacherCourseModel(
       code: 'SIS-402',
@@ -111,11 +113,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
 
     List<TeacherCourseModel> filteredCourses = _courses;
     if (_selectedFilter == 1) {
-      filteredCourses = _courses.where((c) => c.status != CourseStatus.archived).toList();
+      filteredCourses = _courses
+          .where((c) => c.status != CourseStatus.archived)
+          .toList();
     } else if (_selectedFilter == 2) {
-      filteredCourses = _courses.where((c) => c.isSpecialToday || c.status == CourseStatus.today).toList();
+      filteredCourses = _courses
+          .where((c) => c.isSpecialToday || c.status == CourseStatus.today)
+          .toList();
     } else if (_selectedFilter == 3) {
-      filteredCourses = _courses.where((c) => c.status == CourseStatus.archived).toList();
+      filteredCourses = _courses
+          .where((c) => c.status == CourseStatus.archived)
+          .toList();
     }
 
     return Scaffold(
@@ -143,20 +151,24 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                     children: [
-                      ...filteredCourses.map((course) => Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: _TeacherCourseCard(
-                              course: course,
-                              onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Ir a Pantalla 14: Detalle de ${course.code}'),
-                                    duration: const Duration(seconds: 1),
+                      ...filteredCourses.map(
+                        (course) => Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: _TeacherCourseCard(
+                            course: course,
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Ir a Pantalla 14: Detalle de ${course.code}',
                                   ),
-                                );
-                              },
-                            ),
-                          )),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -168,9 +180,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               bottom: 24,
               left: 0,
               right: 0,
-              child: Center(
-                child: _buildFloatingActionButton(context),
-              ),
+              child: Center(child: _buildFloatingActionButton(context)),
             ),
           ],
         ),
@@ -215,7 +225,10 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     );
   }
 
-  Widget _buildPrimaryHeader({required String nombre, required dynamic fotoBytes}) {
+  Widget _buildPrimaryHeader({
+    required String nombre,
+    required dynamic fotoBytes,
+  }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
@@ -239,11 +252,16 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: _primaryIndigo.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _primaryIndigo.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: _primaryIndigo.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: const Text(
                         '2025-1',
@@ -278,12 +296,18 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 decoration: BoxDecoration(
                   color: _surfaceControl,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
                 ),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    const Icon(Icons.notifications_outlined, color: Colors.white, size: 20),
+                    const Icon(
+                      Icons.notifications_outlined,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                     Positioned(
                       top: 10,
                       right: 10,
@@ -308,11 +332,18 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   shape: BoxShape.circle,
                   border: Border.all(color: _tertiaryGreen, width: 2),
                   image: fotoBytes != null
-                      ? DecorationImage(image: MemoryImage(fotoBytes), fit: BoxFit.cover)
+                      ? DecorationImage(
+                          image: MemoryImage(fotoBytes),
+                          fit: BoxFit.cover,
+                        )
                       : null,
                 ),
                 child: fotoBytes == null
-                    ? const Icon(Icons.person, color: AppTheme.textSecondary, size: 22)
+                    ? const Icon(
+                        Icons.person,
+                        color: AppTheme.textSecondary,
+                        size: 22,
+                      )
                     : null,
               ),
             ],
@@ -342,7 +373,10 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   color: _surfaceElevated,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 6),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 6,
+                    ),
                   ],
                 ),
                 child: const Row(
@@ -367,7 +401,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 onTap: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const StudentHomeScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const StudentHomeScreen(),
+                    ),
                   );
                 },
                 child: Container(
@@ -379,7 +415,11 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.person_outline, color: AppTheme.textSecondary, size: 16),
+                      Icon(
+                        Icons.person_outline,
+                        color: AppTheme.textSecondary,
+                        size: 16,
+                      ),
                       SizedBox(width: 6),
                       Text(
                         'Estudiante',
@@ -415,20 +455,31 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.search, color: AppTheme.textSecondary, size: 20),
+                const Icon(
+                  Icons.search,
+                  color: AppTheme.textSecondary,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: TextField(
                     style: TextStyle(color: Colors.white, fontSize: 15),
                     decoration: InputDecoration(
                       hintText: 'Buscar asignatura, grupo o código...',
-                      hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+                      hintStyle: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 15,
+                      ),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
                 ),
-                const Icon(Icons.cancel, color: AppTheme.textTertiary, size: 18),
+                const Icon(
+                  Icons.cancel,
+                  color: AppTheme.textTertiary,
+                  size: 18,
+                ),
               ],
             ),
           ),
@@ -443,9 +494,20 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 const SizedBox(width: 8),
                 _buildFilterChip(1, 'Activos', '3', dotColor: _tertiaryGreen),
                 const SizedBox(width: 8),
-                _buildFilterChip(2, 'Hoy', '2', icon: Icons.schedule, iconColor: _systemAmber),
+                _buildFilterChip(
+                  2,
+                  'Hoy',
+                  '2',
+                  icon: Icons.schedule,
+                  iconColor: _systemAmber,
+                ),
                 const SizedBox(width: 8),
-                _buildFilterChip(3, 'Archivados', null, icon: Icons.archive_outlined),
+                _buildFilterChip(
+                  3,
+                  'Archivados',
+                  null,
+                  icon: Icons.archive_outlined,
+                ),
               ],
             ),
           ),
@@ -454,7 +516,14 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     );
   }
 
-  Widget _buildFilterChip(int index, String label, String? count, {Color? dotColor, IconData? icon, Color? iconColor}) {
+  Widget _buildFilterChip(
+    int index,
+    String label,
+    String? count, {
+    Color? dotColor,
+    IconData? icon,
+    Color? iconColor,
+  }) {
     final isSelected = _selectedFilter == index;
     return GestureDetector(
       onTap: () => setState(() => _selectedFilter = index),
@@ -464,7 +533,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           color: isSelected ? _primaryIndigo : _surfaceControl,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? Colors.transparent : Colors.white.withValues(alpha: 0.08),
+            color: isSelected
+                ? Colors.transparent
+                : Colors.white.withValues(alpha: 0.08),
           ),
         ),
         child: Row(
@@ -491,7 +562,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.white.withValues(alpha: 0.2) : _surfaceBright,
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : _surfaceBright,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -513,10 +586,10 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   Widget _buildFloatingActionButton(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ir a Pantalla 10 (Crear Curso) o Pantalla 13 (Importar CSV)'),
-            duration: Duration(seconds: 1),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const CreateCourseScreen(),
           ),
         );
       },
@@ -560,10 +633,7 @@ class _TeacherCourseCard extends StatelessWidget {
   final TeacherCourseModel course;
   final VoidCallback onTap;
 
-  const _TeacherCourseCard({
-    required this.course,
-    required this.onTap,
-  });
+  const _TeacherCourseCard({required this.course, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -574,7 +644,9 @@ class _TeacherCourseCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isArchived ? const Color(0xFF1C1C1E).withValues(alpha: 0.6) : const Color(0xFF1C1C1E),
+          color: isArchived
+              ? const Color(0xFF1C1C1E).withValues(alpha: 0.6)
+              : const Color(0xFF1C1C1E),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         ),
@@ -592,17 +664,23 @@ class _TeacherCourseCard extends StatelessWidget {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: isArchived
                                   ? const Color(0xFF2C2C2E)
-                                  : const Color(0xFF5E5CE6).withValues(alpha: 0.25),
+                                  : const Color(0xFF5E5CE6)
+                                        .withValues(alpha: 0.25),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               course.code,
                               style: TextStyle(
-                                color: isArchived ? AppTheme.textSecondary : const Color(0xFFC2C1FF),
+                                color: isArchived
+                                    ? AppTheme.textSecondary
+                                    : const Color(0xFFC2C1FF),
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -622,7 +700,9 @@ class _TeacherCourseCard extends StatelessWidget {
                       Text(
                         course.name,
                         style: TextStyle(
-                          color: isArchived ? AppTheme.textSecondary : Colors.white,
+                          color: isArchived
+                              ? AppTheme.textSecondary
+                              : Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
                           letterSpacing: -0.4,
@@ -683,7 +763,9 @@ class _TeacherCourseCard extends StatelessWidget {
                             child: CircularProgressIndicator(
                               value: course.attendancePercent / 100,
                               backgroundColor: const Color(0xFF39393B),
-                              color: course.attendancePercent < 80 ? const Color(0xFFFF9F0A) : const Color(0xFF47E266),
+                              color: course.attendancePercent < 80
+                                  ? const Color(0xFFFF9F0A)
+                                  : const Color(0xFF47E266),
                               strokeWidth: 3.5,
                               strokeCap: StrokeCap.round,
                             ),
@@ -726,7 +808,10 @@ class _TeacherCourseCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF39393B).withValues(alpha: 0.7),
                           borderRadius: BorderRadius.circular(6),
@@ -741,7 +826,9 @@ class _TeacherCourseCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        course.schedule.contains('•') ? course.schedule.split('•').last.trim() : course.schedule,
+                        course.schedule.contains('•')
+                            ? course.schedule.split('•').last.trim()
+                            : course.schedule,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -777,7 +864,11 @@ class _TeacherCourseCard extends StatelessWidget {
                 else
                   const Row(
                     children: [
-                      Icon(Icons.check_circle, color: Color(0xFF47E266), size: 15),
+                      Icon(
+                        Icons.check_circle,
+                        color: Color(0xFF47E266),
+                        size: 15,
+                      ),
                       SizedBox(width: 4),
                       Text(
                         'Asistencia cerrada • Alumnos al día',
@@ -794,8 +885,13 @@ class _TeacherCourseCard extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF5E5CE6),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       elevation: 0,
                     ),
                     child: const Row(
@@ -803,12 +899,22 @@ class _TeacherCourseCard extends StatelessWidget {
                       children: [
                         Icon(Icons.radar, size: 15),
                         SizedBox(width: 4),
-                        Text('Iniciar Radar BLE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text(
+                          'Iniciar Radar BLE',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                   )
                 else
-                  const Icon(Icons.chevron_right, color: AppTheme.textSecondary, size: 20),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: AppTheme.textSecondary,
+                    size: 20,
+                  ),
               ],
             ),
           ],
