@@ -4,6 +4,7 @@ import '../../models/student_subject_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/student_viewmodel.dart';
+import '../teacher/teacher_home_screen.dart';
 import 'biometric_validation_screen.dart';
 import 'attendance_detail_screen.dart';
 import 'student_settings_screen.dart';
@@ -372,12 +373,20 @@ class StudentHomeScreen extends StatelessWidget {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Pronto conectaremos con Pantalla 9: Panel Docente',
+                    // Solo los docentes que también cursan materias.
+                    final perfil = context.read<AuthViewModel>().perfil;
+                    if (perfil == null || !perfil.esDocente) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Tu cuenta no tiene perfil docente.'),
                         ),
-                        duration: Duration(seconds: 1),
+                      );
+                      return;
+                    }
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TeacherHomeScreen(),
                       ),
                     );
                   },

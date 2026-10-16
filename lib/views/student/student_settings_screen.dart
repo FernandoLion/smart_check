@@ -671,9 +671,11 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
 
   Widget _buildStudentProfileCard(VerificacionResult? data) {
     final nombre = data?.nombre ?? 'Carlos Andrés Muñoz Rivera';
-    final email = data?.username != null
-        ? '${data!.username}@udla.edu.co'
-        : 'c.munoz@udla.edu.co';
+    // El correo real de la cuenta; deducirlo del nombre puede no coincidir.
+    final email = context.read<AuthViewModel>().perfil?.email ??
+        (data?.username != null
+            ? '${data!.username}@udla.edu.co'
+            : 'c.munoz@udla.edu.co');
     final idInfo = data?.cedula != null
         ? 'ID #${data!.cedula} • Semestre VI'
         : 'ID #2022-3810 • Semestre VI';

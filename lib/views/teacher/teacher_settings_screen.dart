@@ -90,7 +90,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
   @override
   Widget build(BuildContext context) {
     final authVM = context.watch<AuthViewModel>();
-    final VerificacionResult? chairaData = authVM.verificacionResult;
+    final VerificacionResult? chairaData = authVM.usuarioActual;
 
     return Scaffold(
       backgroundColor: _surfaceBg,
@@ -346,9 +346,11 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
     final nombre = data?.nombre != null
         ? 'Prof. ${data!.nombre}'
         : 'Prof. Jhojan Fernando León Claros';
-    final email = data?.username != null
-        ? '${data!.username}@udla.edu.co'
-        : 'j.leon@udla.edu.co';
+    // El correo real de la cuenta; deducirlo del nombre puede no coincidir.
+    final email = context.read<AuthViewModel>().perfil?.email ??
+        (data?.username != null
+            ? '${data!.username}@udla.edu.co'
+            : 'j.leon@udla.edu.co');
     final idText = data?.cedula != null ? 'ID #${data!.cedula}' : 'ID #88419';
     final fotoBytes = data?.imagenBytes;
 
