@@ -1,7 +1,6 @@
 import 'dart:math' as math;
-
+import 'cedula_login_screen.dart';
 import 'package:flutter/material.dart';
-
 import 'manual_rollcall_screen.dart';
 import '../../utils/app_theme.dart';
 import 'face_verification_screen.dart';
@@ -143,14 +142,13 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
   }
 
   void _onCedulaLoginTap() {
-    // Según el Roadmap: 21 (Radar) -> Botón "Ingresar por cédula" -> 24 (Ingreso por Cédula)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ir a Pantalla 24: Ingreso por Cédula'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-  }
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const CedulaLoginScreen(),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
