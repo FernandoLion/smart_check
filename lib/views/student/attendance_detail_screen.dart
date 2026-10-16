@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../models/student_subject_model.dart';
 import '../../../utils/app_theme.dart';
 import 'biometric_validation_screen.dart';
-
+import "../attendance/ble_beacon_screen.dart";
 class AttendanceDetailScreen extends StatefulWidget {
   final StudentSubjectModel? subject;
 
@@ -79,7 +79,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => const BiometricValidationScreen(),
+          builder: (_) => const BleBeaconScreen(),
         ),
       );
     });
