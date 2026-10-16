@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import "../attendance/attendance_radar_screen.dart";
 import '../../utils/app_theme.dart';
 import 'session_detail_screen.dart';
 import '../attendance/geocerca_setup_screen.dart';
@@ -482,7 +482,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        const AttendanceRadarScreen();
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primaryIndigo,
                         foregroundColor: Colors.white,
