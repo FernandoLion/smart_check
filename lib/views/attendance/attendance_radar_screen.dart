@@ -1,6 +1,9 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../../utils/app_theme.dart';
+import 'face_verification_screen.dart';
 
 class AttendanceRadarScreen extends StatefulWidget {
   final String courseTitle;
@@ -125,12 +128,9 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
   }
 
   void _onFaceVerificationTap() {
-    // Según el Roadmap: 21 (Radar) -> Botón "Verificar cara" -> 22 (Verificación Facial)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ir a Pantalla 22: Verificación Facial en Clase'),
-        duration: Duration(seconds: 1),
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const FaceVerificationScreen()),
     );
   }
 
@@ -238,10 +238,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                 Icon(Icons.chevron_left, color: _secondaryBlue, size: 24),
                 Text(
                   'Mis Clases',
-                  style: TextStyle(
-                    color: _secondaryBlue,
-                    fontSize: 15,
-                  ),
+                  style: TextStyle(color: _secondaryBlue, fontSize: 15),
                 ),
               ],
             ),
@@ -532,9 +529,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                             decoration: BoxDecoration(
                               color: _surfaceContainer,
                               shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppTheme.textSecondary,
-                              ),
+                              border: Border.all(color: AppTheme.textSecondary),
                             ),
                             child: const Center(
                               child: CircleAvatar(
@@ -763,7 +758,11 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.face_retouching_natural, color: _primaryIndigo, size: 18),
+                  Icon(
+                    Icons.face_retouching_natural,
+                    color: _primaryIndigo,
+                    size: 18,
+                  ),
                   SizedBox(width: 8),
                   Flexible(
                     child: Text(
