@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../utils/app_theme.dart';
 import 'session_detail_screen.dart';
-
+import '../attendance/geocerca_setup_screen.dart';
 class CourseDetailScreen extends StatefulWidget {
   final String courseName;
   final String courseCode;
