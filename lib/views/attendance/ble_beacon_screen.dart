@@ -129,7 +129,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   @override
   Widget build(BuildContext context) {
     final authVM = context.watch<AuthViewModel>();
-    final VerificacionResult? chairaData = authVM.verificacionResult;
+    final VerificacionResult? chairaData = authVM.usuarioActual;
 
     return Scaffold(
       backgroundColor: _surfaceOled,
