@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'manual_rollcall_screen.dart';
 import '../../utils/app_theme.dart';
 import 'face_verification_screen.dart';
 
@@ -135,12 +136,9 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
   }
 
   void _onManualRollcallTap() {
-    // Según el Roadmap: 21 (Radar) -> Botón "Llamado manual" -> 23 (Llamado Manual)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ir a Pantalla 23: Llamado Manual'),
-        duration: Duration(seconds: 1),
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ManualRollcallScreen()),
     );
   }
 
