@@ -20,7 +20,8 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _alsoStudent = true;
+  // Apagado por defecto: un docente solo es también estudiante si lo activa.
+  bool _alsoStudent = false;
   int _passwordStrength = 0;
 
   @override
