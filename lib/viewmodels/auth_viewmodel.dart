@@ -7,9 +7,10 @@ import '../models/verificacion_result_model.dart';
 import '../services/auth_service.dart';
 import '../services/chaira_service.dart';
 import '../services/perfil_service.dart';
+import '../utils/usuario_input_formatter.dart' as formatter;
 
 class AuthViewModel extends ChangeNotifier {
-  static const dominioInstitucional = '@udla.edu.co';
+  static const dominioInstitucional = formatter.dominioInstitucional;
 
   final AuthService _authService;
   final ChairaService _chairaService;
@@ -48,10 +49,36 @@ class AuthViewModel extends ChangeNotifier {
 
   User? get currentUser => _authService.currentUser;
 
-  /// Completa "jh.leon" a "jh.leon@udla.edu.co".
-  static String normalizarEmail(String usuario) {
-    final valor = usuario.trim().toLowerCase();
-    return valor.contains('@') ? valor : '$valor$dominioInstitucional';
+  static final _formatoUsuario = RegExp(r'^[a-z0-9]+([._-][a-z0-9]+)*$');
+
+  /// Solo se usan cuentas @udla.edu.co: el usuario escribe "jh.leon" (o el
+  /// correo completo) y aquí se valida y se completa a "jh.leon@udla.edu.co".
+  /// Devuelve null si no es un usuario institucional válido; el motivo queda
+  /// en [errorUsuario].
+  static String? correoInstitucional(String entrada) {
+    return errorUsuario(entrada) == null
+        ? '${_usuario(entrada)}$dominioInstitucional'
+        : null;
+  }
+
+  /// Mensaje que explica por qué [entrada] no es un usuario válido, o null.
+  static String? errorUsuario(String entrada) {
+    final valor = entrada.trim().toLowerCase();
+    if (valor.isEmpty) return 'Escribe tu usuario institucional.';
+    if (valor.contains('@') && !valor.endsWith(dominioInstitucional)) {
+      return 'Solo se permiten cuentas $dominioInstitucional.';
+    }
+    if (!_formatoUsuario.hasMatch(_usuario(valor))) {
+      return 'Escribe solo tu usuario, por ejemplo jh.leon.';
+    }
+    return null;
+  }
+
+  static String _usuario(String entrada) {
+    final valor = entrada.trim().toLowerCase();
+    return valor.endsWith(dominioInstitucional)
+        ? valor.substring(0, valor.length - dominioInstitucional.length)
+        : valor;
   }
 
   /// Limpia errores o datos previos de Chaira (útil al salir de la pantalla de registro)
@@ -72,10 +99,10 @@ class AuthViewModel extends ChangeNotifier {
     _fotoPerfil = null;
     notifyListeners();
 
-    final error = await _authService.signInWithEmailPassword(
-      normalizarEmail(usuario),
-      password,
-    );
+    final correo = correoInstitucional(usuario);
+    if (correo == null) return _fallar(errorUsuario(usuario)!);
+
+    final error = await _authService.signInWithEmailPassword(correo, password);
     if (error != null) return _fallar(error);
 
     try {
@@ -116,7 +143,7 @@ class AuthViewModel extends ChangeNotifier {
   /// 3. Registrar usuario en Firebase y guardar su perfil verificado en
   /// Chairá. [tambienEstudiante] solo aplica a docentes.
   Future<bool> register(
-    String email,
+    String usuario,
     String password, {
     bool tambienEstudiante = false,
   }) async {
@@ -126,12 +153,13 @@ class AuthViewModel extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    final correo = correoInstitucional(usuario);
+    if (correo == null) return _fallar(errorUsuario(usuario)!);
 
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    final correo = normalizarEmail(email);
     final error = await _authService.registerWithEmailPassword(correo, password);
     if (error != null) return _fallar(error);
 
@@ -209,7 +237,10 @@ class AuthViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final error = await _authService.recoverPassword(normalizarEmail(email));
+    final correo = correoInstitucional(email);
+    if (correo == null) return _fallar(errorUsuario(email)!);
+
+    final error = await _authService.recoverPassword(correo);
     if (error != null) return _fallar(error);
 
     _isLoading = false;

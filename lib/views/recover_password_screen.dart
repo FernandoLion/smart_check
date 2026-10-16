@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../utils/app_theme.dart';
+import '../utils/usuario_input_formatter.dart';
 import '../viewmodels/auth_viewmodel.dart';
 
 class RecoverPasswordScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor, ingresa tu correo institucional'),
+          content: Text('Por favor, ingresa tu usuario institucional'),
         ),
       );
       return;
@@ -113,7 +114,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Ingresa tu documento o correo institucional y te enviaremos un enlace seguro de restablecimiento.',
+            'Ingresa tu usuario institucional y te enviaremos un enlace seguro de restablecimiento a tu correo.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppTheme.textSecondary,
@@ -139,10 +140,13 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
                   child: TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    inputFormatters: [UsuarioInstitucionalFormatter()],
                     onChanged: (_) => setState(() {}),
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: const InputDecoration(
-                      hintText: 'Documento o correo @udla.edu.co',
+                      hintText: 'usuario',
                       hintStyle: TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 15,
@@ -162,6 +166,15 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
+                const SizedBox(width: 8),
+                const Text(
+                  AuthViewModel.dominioInstitucional,
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -308,7 +321,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
                   const TextSpan(text: 'Revisa tu bandeja institucional en '),
                   TextSpan(
                     text: _emailController.text.isNotEmpty
-                        ? _emailController.text
+                        ? '${_emailController.text}${AuthViewModel.dominioInstitucional}'
                         : 'tu correo',
                     style: const TextStyle(
                       color: AppTheme.secondary,

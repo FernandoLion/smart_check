@@ -5,6 +5,7 @@ import 'teacher/teacher_home_screen.dart';
 import '../models/usuario_perfil_model.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
+import '../utils/usuario_input_formatter.dart';
 import 'recover_password_screen.dart';
 import 'smart_register_screen.dart';
 import 'student/student_home_screen.dart';
@@ -244,12 +245,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLoginForm(bool isLoading) {
     return Column(
       children: [
-        // Input Documento/Email
+        // Usuario institucional: el dominio @udla.edu.co es fijo, como en
+        // Google con @gmail.com; solo se escribe "jh.leon".
         TextFormField(
           controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          autocorrect: false,
+          enableSuggestions: false,
+          textInputAction: TextInputAction.next,
+          inputFormatters: [UsuarioInstitucionalFormatter()],
           style: const TextStyle(color: Colors.white, fontSize: 16),
           decoration: InputDecoration(
-            hintText: 'usuario o usuario@udla.edu.co',
+            hintText: 'usuario',
             hintStyle: const TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 16,
@@ -259,6 +266,8 @@ class _LoginScreenState extends State<LoginScreen> {
               color: AppTheme.textSecondary,
               size: 22,
             ),
+            suffixIcon: const _DominioFijo(),
+            suffixIconConstraints: const BoxConstraints(minHeight: 48),
             filled: true,
             fillColor: AppTheme.surfaceControl,
             contentPadding: const EdgeInsets.symmetric(
@@ -722,6 +731,33 @@ class _LoginScreenState extends State<LoginScreen> {
         builder: (_) => role == 'Estudiante'
             ? const StudentHomeScreen()
             : const TeacherHomeScreen(),
+      ),
+    );
+  }
+}
+
+/// Sufijo fijo del campo de usuario, con el mismo estilo que en el registro.
+class _DominioFijo extends StatelessWidget {
+  const _DominioFijo();
+
+  @override
+  Widget build(BuildContext context) {
+    // Sin `alignment`: el Container debe medir lo que mide el texto, no
+    // expandirse a todo el ancho del campo.
+    return Container(
+      margin: const EdgeInsets.only(right: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF353437),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Text(
+        AuthViewModel.dominioInstitucional,
+        style: TextStyle(
+          color: AppTheme.textSecondary,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
