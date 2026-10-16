@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/verificacion_result_model.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
+import '../utils/usuario_input_formatter.dart';
 import 'login_screen.dart';
 import 'face_setup_screen.dart';
 
@@ -85,16 +86,13 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
     final password = _passwordController.text.trim();
 
     if (usernameInput.isEmpty || password.isEmpty) {
-      _showError('Completa tu correo institucional y contraseña.');
+      _showError('Completa tu usuario institucional y contraseña.');
       return;
     }
 
-    final fullEmail = usernameInput.contains('@')
-        ? usernameInput
-        : '$usernameInput@udla.edu.co';
-
+    // El dominio @udla.edu.co es fijo: el ViewModel lo agrega y valida.
     final success = await authViewModel.register(
-      fullEmail,
+      usernameInput,
       password,
       tambienEstudiante: result.esDocente && _alsoStudent,
     );
@@ -748,12 +746,21 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
               Expanded(
                 child: TextField(
                   controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  inputFormatters: [UsuarioInstitucionalFormatter()],
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: const InputDecoration(
+                    hintText: 'usuario',
+                    hintStyle: TextStyle(
+                      color: AppTheme.textTertiary,
+                      fontWeight: FontWeight.normal,
+                    ),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(horizontal: 16),
                   ),

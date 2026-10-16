@@ -157,8 +157,40 @@ void main() {
     });
   });
 
-  test('normaliza el usuario al correo institucional', () {
-    expect(AuthViewModel.normalizarEmail(' JH.Leon '), 'jh.leon@udla.edu.co');
-    expect(AuthViewModel.normalizarEmail('a@b.co'), 'a@b.co');
+  group('usuario institucional (@udla.edu.co fijo)', () {
+    test('completa el usuario con el dominio', () {
+      expect(AuthViewModel.correoInstitucional(' JH.Leon '),
+          'jh.leon@udla.edu.co');
+      expect(AuthViewModel.correoInstitucional('jh.leon@udla.edu.co'),
+          'jh.leon@udla.edu.co');
+      expect(AuthViewModel.correoInstitucional('wi.patino-2'),
+          'wi.patino-2@udla.edu.co');
+    });
+
+    test('rechaza otros dominios y usuarios mal escritos', () {
+      expect(AuthViewModel.correoInstitucional('a@gmail.com'), isNull);
+      expect(AuthViewModel.errorUsuario('a@gmail.com'),
+          'Solo se permiten cuentas @udla.edu.co.');
+      for (final malo in ['', 'jh leon', 'jh..leon', '.jh', 'jh.', 'jh@']) {
+        expect(AuthViewModel.correoInstitucional(malo), isNull, reason: malo);
+      }
+    });
+
+    test('el login no consulta Firebase con un usuario inválido', () async {
+      final vm = crear();
+
+      expect(await vm.signIn('a@gmail.com', 'Clave123!'), isFalse);
+      expect(vm.errorMessage, 'Solo se permiten cuentas @udla.edu.co.');
+    });
+
+    test('el registro solo crea cuentas @udla.edu.co', () async {
+      final vm = crear();
+      await vm.verificarEnChaira('1117000000');
+
+      expect(await vm.register('an.perez@gmail.com', 'Clave123!'), isFalse);
+      expect(auth.cuentas, isEmpty);
+      expect(await vm.register('an.perez@udla.edu.co', 'Clave123!'), isTrue);
+      expect(auth.cuentas.keys, ['an.perez@udla.edu.co']);
+    });
   });
 }
