@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/inscrito_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../widgets/add_students_modal.dart';
 import 'import_csv_screen.dart';
+/// Agrega estudiantes uno a uno, por cédula (verificada en Chairá) o por
+/// correo institucional. Al salir devuelve la lista de [Inscrito] agregados
+/// con `Navigator.pop`.
 class AddStudentScreen extends StatefulWidget {
   final String courseTitle;
 
-  const AddStudentScreen({
-    super.key,
-    this.courseTitle = 'Ing. de Software II • Grupo 302-B',
-  });
+  const AddStudentScreen({super.key, this.courseTitle = ''});
 
   @override
   State<AddStudentScreen> createState() => _AddStudentScreenState();
@@ -33,27 +34,21 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
   late final TextEditingController _searchController;
 
-  // Lista interactiva de "Añadidos recientemente"
-  final List<_RecentAddedStudent> _recentlyAdded = [
-    const _RecentAddedStudent(
-      name: 'Sofía Mendoza Cruz',
-      idAndProgram: 'ID: 2022-3419 • Ing. Software',
-      timeAgo: 'Hace 3 min',
-      initials: 'SM',
-    ),
-    const _RecentAddedStudent(
-      name: 'Mateo Gómez Silva',
-      idAndProgram: 'ID: 2020-8812 • Ing. Sistemas',
-      timeAgo: 'Hace 8 min',
-      initials: 'MG',
-    ),
-  ];
+  // Añadidos en esta pantalla: lo que se pinta y lo que se devuelve.
+  final List<_RecentAddedStudent> _recentlyAdded = [];
+  final List<Inscrito> _agregados = [];
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    // Que no aparezca una consulta a Chairá de otra pantalla.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AuthViewModel>().clearState();
+    });
   }
+
+  void _salir() => Navigator.pop<List<Inscrito>>(context, _agregados);
 
   @override
   void dispose() {
@@ -62,27 +57,54 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   }
 
   Future<void> _performChairaSearch() async {
-    final doc = _searchController.text.trim();
-    if (doc.isEmpty) return;
+    final entrada = _searchController.text.trim();
+    if (entrada.isEmpty) return;
 
-    await context.read<AuthViewModel>().verificarEnChaira(doc);
+    if (entrada.contains('@')) {
+      final correo = AuthViewModel.correoInstitucional(entrada);
+      if (correo == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AuthViewModel.errorUsuario(entrada) ?? 'Correo no válido',
+            ),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+        return;
+      }
+      _agregar(Inscrito(email: correo, nombre: correo.split('@').first.toUpperCase()));
+      _searchController.clear();
+      return;
+    }
+
+    await context
+        .read<AuthViewModel>()
+        .verificarEnChaira(entrada.replaceAll(RegExp(r'[.\s-]'), ''));
   }
 
-  void _handleAddStudentToClass(
-    String nombre,
-    String idInfo,
-  ) {
-    final parts = nombre.trim().split(' ');
+  void _agregar(Inscrito inscrito) {
+    final yaEsta = _agregados.any(
+      (a) => a.claves.any(inscrito.claves.contains),
+    );
+    if (yaEsta) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${inscrito.nombre} ya está en la lista')),
+      );
+      return;
+    }
+    final parts = inscrito.nombre.trim().split(RegExp(r'\s+'));
     final initials = parts.length >= 2
         ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
-        : nombre.substring(0, 2).toUpperCase();
+        : inscrito.nombre.padRight(2).substring(0, 2).toUpperCase();
 
     setState(() {
+      _agregados.insert(0, inscrito);
       _recentlyAdded.insert(
         0,
         _RecentAddedStudent(
-          name: nombre,
-          idAndProgram: idInfo,
+          name: inscrito.nombre,
+          idAndProgram: inscrito.claves.join(' • '),
           timeAgo: 'Ahora',
           initials: initials,
         ),
@@ -91,7 +113,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$nombre añadido al Grupo 302-B'),
+        content: Text('${inscrito.nombre} agregado'),
         backgroundColor: AppTheme.success,
         duration: const Duration(seconds: 1),
       ),
@@ -104,11 +126,13 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       context,
       onImportCsvTap: () async {
         // Al tocar "Importar CSV", abrimos la pantalla 13
-        await Navigator.push(
+        final nuevos = await Navigator.push<List<Inscrito>>(
           context,
-          MaterialPageRoute(builder: (_) => const ImportCsvScreen()),
+          MaterialPageRoute(
+            builder: (_) => ImportCsvScreen(courseName: widget.courseTitle),
+          ),
         );
-        // Opcional: si success es true, actualizas la lista de alumnos
+        if (nuevos != null) nuevos.forEach(_agregar);
       },
     );
   } 
@@ -118,7 +142,12 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     final authVM = context.watch<AuthViewModel>();
     final VerificacionResult? liveResult = authVM.verificacionResult;
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _salir();
+      },
+      child: Scaffold(
       backgroundColor: _bgSurface,
       body: SafeArea(
         child: Column(
@@ -136,7 +165,10 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                   const SizedBox(height: 20),
 
                   // Sección 2: Smart Search Result Card (Identity Verification Glass Card)
-                  _buildVerifiedStudentCard(liveResult),
+                  if (liveResult != null && liveResult.success)
+                    _buildVerifiedStudentCard(liveResult)
+                  else
+                    _buildPistaBusqueda(authVM.errorMessage),
                   const SizedBox(height: 24),
 
                   // Sección 3: Añadidos Recientemente (Cupertino Inset Grouped List)
@@ -149,6 +181,28 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    ),
+    );
+  }
+
+  Widget _buildPistaBusqueda(String? error) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _surfaceElevated,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Text(
+        error ??
+            'Escribe la cédula y toca buscar para verificarla en Chairá, o '
+                'escribe el correo institucional para agregarlo directamente.',
+        style: TextStyle(
+          color: error != null ? AppTheme.error : AppTheme.textSecondary,
+          fontSize: 14,
+          height: 1.35,
         ),
       ),
     );
@@ -169,7 +223,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         children: [
           // Leading: "< Volver"
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: _salir,
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -237,7 +291,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 ),
               ),
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: _salir,
                 child: const Text(
                   'Listo',
                   style: TextStyle(
@@ -747,10 +801,14 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
           // 5. Primary CTA Button ("Añadir a la Clase")
           ElevatedButton(
-            onPressed: () => _handleAddStudentToClass(
-              nombre,
-              'ID: 2022-3810 • Ing. Sistemas',
-            ),
+            onPressed: hasLiveMatch
+                ? () => _agregar(
+                      Inscrito(
+                        cedula: cedula.replaceAll(RegExp(r'[.\s-]'), ''),
+                        nombre: nombre,
+                      ),
+                    )
+                : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: _primaryIndigo,
               foregroundColor: Colors.white,
@@ -1004,7 +1062,10 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
               const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
-                  setState(() => _recentlyAdded.removeAt(index));
+                  setState(() {
+                    _recentlyAdded.removeAt(index);
+                    _agregados.removeAt(index);
+                  });
                 },
                 child: Container(
                   width: 28,

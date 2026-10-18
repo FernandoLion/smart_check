@@ -5,7 +5,9 @@ import '../attendance/geocerca_setup_screen.dart';
 import 'teacher_settings_screen.dart';
 import 'course_detail_screen.dart';
 import '../../utils/app_theme.dart';
+import '../../models/curso_model.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/teacher_viewmodel.dart';
 import '../student/student_home_screen.dart';
 import 'create_course_screen.dart';
 
@@ -17,7 +19,8 @@ class TeacherCourseModel {
   final String group;
   final String location;
   final String schedule;
-  final int attendancePercent;
+  /// Null mientras no haya sesiones con asistencia registrada.
+  final int? attendancePercent;
   final int enrolledCount;
   final CourseStatus status;
   final String statusLabel;
@@ -29,7 +32,7 @@ class TeacherCourseModel {
     required this.group,
     required this.location,
     required this.schedule,
-    required this.attendancePercent,
+    this.attendancePercent,
     required this.enrolledCount,
     required this.status,
     required this.statusLabel,
@@ -58,53 +61,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
 
   int _selectedFilter = 0; // 0: Todos, 1: Activos, 2: Hoy, 3: Archivados
 
-  final List<TeacherCourseModel> _courses = const [
-    TeacherCourseModel(
-      code: 'SIS-402',
-      name: 'Ingeniería de Software II',
-      group: 'Grupo 302-B • Aula B2-301',
-      location: 'Presencial',
-      schedule: 'Mar / Jue • 08:00 - 10:00',
-      attendancePercent: 88,
-      enrolledCount: 24,
-      status: CourseStatus.active,
-      statusLabel: 'Activo',
-      isSpecialToday: true,
-    ),
-    TeacherCourseModel(
-      code: 'SIS-301',
-      name: 'Arquitectura de Software',
-      group: 'Grupo 101-A • Lab Sistemas 2',
-      location: 'Laboratorio',
-      schedule: 'Lun / Mié • 10:00 - 12:00',
-      attendancePercent: 92,
-      enrolledCount: 28,
-      status: CourseStatus.active,
-      statusLabel: 'Activo',
-    ),
-    TeacherCourseModel(
-      code: 'SIS-505',
-      name: 'Sistemas Distribuidos y Redes',
-      group: 'Grupo 501-C • Aula C-104',
-      location: 'Clase Larga',
-      schedule: 'Viernes • 14:00 - 18:00',
-      attendancePercent: 76,
-      enrolledCount: 19,
-      status: CourseStatus.today,
-      statusLabel: 'Activo',
-    ),
-    TeacherCourseModel(
-      code: 'SIS-204',
-      name: 'Bases de Datos Avanzadas',
-      group: 'Grupo 201 • Vacacional',
-      location: 'Ciclo 2024-2',
-      schedule: 'Vacacional',
-      attendancePercent: 95,
-      enrolledCount: 15,
-      status: CourseStatus.archived,
-      statusLabel: 'Archivado',
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -113,17 +69,23 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     final nombre = chairaData?.nombre ?? 'Usuario';
     final fotoBytes = chairaData?.imagenBytes;
 
-    List<TeacherCourseModel> filteredCourses = _courses;
+    final teacherVM = context.watch<TeacherViewModel>();
+    final uid = authVM.perfil?.uid;
+    if (uid != null) teacherVM.vigilarCursos(uid);
+    final ahora = DateTime.now();
+    final courses = teacherVM.cursos.map((c) => _aModelo(c, ahora)).toList();
+
+    List<TeacherCourseModel> filteredCourses = courses;
     if (_selectedFilter == 1) {
-      filteredCourses = _courses
+      filteredCourses = courses
           .where((c) => c.status != CourseStatus.archived)
           .toList();
     } else if (_selectedFilter == 2) {
-      filteredCourses = _courses
+      filteredCourses = courses
           .where((c) => c.isSpecialToday || c.status == CourseStatus.today)
           .toList();
     } else if (_selectedFilter == 3) {
-      filteredCourses = _courses
+      filteredCourses = courses
           .where((c) => c.status == CourseStatus.archived)
           .toList();
     }
@@ -153,6 +115,20 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                     children: [
+                      if (teacherVM.cargando)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 48),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (teacherVM.error != null)
+                        _buildMensajeLista(teacherVM.error!)
+                      else if (courses.isEmpty)
+                        _buildMensajeLista(
+                          'Aún no tienes cursos. Toca "Crear Curso" para '
+                          'agregar el primero.',
+                        )
+                      else if (filteredCourses.isEmpty)
+                        _buildMensajeLista('Ningún curso en este filtro.'),
                       ...filteredCourses.map(
                         (course) => Padding(
                           padding: const EdgeInsets.only(bottom: 16.0),
@@ -191,6 +167,43 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  static const _dias = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  /// Convierte un curso de Firestore al modelo que pintan las tarjetas.
+  TeacherCourseModel _aModelo(Curso curso, DateTime ahora) {
+    final hoy = curso.horarios.any((h) => h.dia == ahora.weekday);
+    final enCurso = curso.horarioEn(ahora) != null;
+    final dias = curso.horarios.map((h) => _dias[h.dia]).toSet().join(' / ');
+    final primera = curso.horarios.isEmpty ? null : curso.horarios.first;
+    return TeacherCourseModel(
+      code: curso.codigo,
+      name: curso.nombre,
+      group: [
+        if (curso.grupo.isNotEmpty) 'Grupo ${curso.grupo}',
+        if (curso.aula.isNotEmpty) curso.aula,
+      ].join(' • '),
+      location: curso.periodo,
+      schedule: primera == null
+          ? 'Sin horario'
+          : '$dias • ${primera.inicio} - ${primera.fin}',
+      enrolledCount: curso.totalInscritos,
+      status: enCurso ? CourseStatus.today : CourseStatus.active,
+      statusLabel: enCurso ? 'En clase' : 'Activo',
+      isSpecialToday: hoy,
+    );
+  }
+
+  Widget _buildMensajeLista(String mensaje) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 48, left: 24, right: 24),
+      child: Text(
+        mensaje,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
       ),
     );
   }
@@ -792,9 +805,9 @@ class _TeacherCourseCard extends StatelessWidget {
                             width: 44,
                             height: 44,
                             child: CircularProgressIndicator(
-                              value: course.attendancePercent / 100,
+                              value: (course.attendancePercent ?? 0) / 100,
                               backgroundColor: const Color(0xFF39393B),
-                              color: course.attendancePercent < 80
+                              color: (course.attendancePercent ?? 100) < 80
                                   ? const Color(0xFFFF9F0A)
                                   : const Color(0xFF47E266),
                               strokeWidth: 3.5,
@@ -802,7 +815,9 @@ class _TeacherCourseCard extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${course.attendancePercent}%',
+                            course.attendancePercent == null
+                                ? '—'
+                                : '${course.attendancePercent}%',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,

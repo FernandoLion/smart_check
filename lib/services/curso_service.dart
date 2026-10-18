@@ -100,9 +100,19 @@ class CursoService {
         });
         await batch.commit().timeout(_timeout);
       }
+      await _actualizarTotal(cursoId);
     } catch (e) {
       throw CursoException(_mensaje(e, 'inscribir a los estudiantes'));
     }
+  }
+
+  /// Guarda en el curso cuántos inscritos tiene (un mismo estudiante puede
+  /// aparecer por cédula y por correo en [Curso.clavesInscritos]).
+  Future<void> _actualizarTotal(String cursoId) async {
+    final conteo = await _inscritos(cursoId).count().get().timeout(_timeout);
+    await _cursos
+        .doc(cursoId)
+        .update({'total_inscritos': conteo.count ?? 0}).timeout(_timeout);
   }
 
   Future<void> quitarInscrito(String cursoId, Inscrito inscrito) async {
@@ -113,6 +123,7 @@ class CursoService {
           'claves_inscritos': FieldValue.arrayRemove(inscrito.claves),
         });
       await batch.commit().timeout(_timeout);
+      await _actualizarTotal(cursoId);
     } catch (e) {
       throw CursoException(_mensaje(e, 'quitar al estudiante'));
     }

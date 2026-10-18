@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../models/curso_model.dart';
+import '../../models/inscrito_model.dart';
 import '../../utils/app_theme.dart';
+import '../../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/teacher_viewmodel.dart';
 import 'add_student_screen.dart';
 import 'import_csv_screen.dart';
+
 class CreateCourseScreen extends StatefulWidget {
   const CreateCourseScreen({super.key});
 
@@ -22,85 +28,148 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   static const Color _secondaryBlue = Color(0xFF3E90FF);
   static const Color _secondaryLight = Color(0xFFAAC7FF);
 
-  late final TextEditingController _courseNameController;
-  String _courseCode = 'SIS-402';
-  String _schedule = 'Mar / Jue • 08:00 - 10:00 AM';
-  String _classroom = 'Bloque B2 - Aula 301';
+  final _courseNameController = TextEditingController();
+  final _courseCodeController = TextEditingController();
+  final _groupController = TextEditingController();
+  final _classroomController = TextEditingController();
+  final List<Horario> _horarios = [];
+  final List<Inscrito> _pendientes = [];
 
-  final List<_PreviewStudent> _previewStudents = const [
-    _PreviewStudent(
-      name: 'Diego Fernando Parra',
-      subtitle: 'ID: 2021-9923 • Ing. Sistemas',
-      initials: 'DP',
-    ),
-    _PreviewStudent(
-      name: 'Valentina Rios Morales',
-      subtitle: 'ID: 2021-0492 • Ing. Sistemas',
-      initials: 'VR',
-    ),
-    _PreviewStudent(
-      name: 'Mateo Gómez Silva',
-      subtitle: 'ID: 2020-8812 • Ing. Software',
-      initials: 'MG',
-    ),
-  ];
+  static const _dias = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-  @override
-  void initState() {
-    super.initState();
-    _courseNameController = TextEditingController(
-      text: 'Ingeniería de Software II',
+  /// Periodo académico actual: "2026-1" (ene-jun) o "2026-2" (jul-dic).
+  static String get _periodo {
+    final ahora = DateTime.now();
+    return '${ahora.year}-${ahora.month <= 6 ? 1 : 2}';
+  }
+
+  String get _resumenHorario {
+    if (_horarios.isEmpty) return 'Toca para agregar';
+    return _horarios
+        .map((h) => '${_dias[h.dia]} ${h.inicio}-${h.fin}')
+        .join(' • ');
+  }
+
+  String get _horasSemana {
+    final minutos = _horarios.fold<int>(
+      0,
+      (total, h) => total + h.finMinutos - h.inicioMinutos,
     );
+    final horas = minutos / 60;
+    final texto = horas == horas.roundToDouble()
+        ? horas.toInt().toString()
+        : horas.toStringAsFixed(1);
+    return '$texto hrs/sem';
   }
 
   @override
   void dispose() {
     _courseNameController.dispose();
+    _courseCodeController.dispose();
+    _groupController.dispose();
+    _classroomController.dispose();
     super.dispose();
   }
 
-  void _handleSaveCourse() {
-    if (_courseNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ingresa el nombre de la materia'),
-          backgroundColor: AppTheme.error,
-        ),
-      );
-      return;
+  void _mostrarError(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje), backgroundColor: AppTheme.error),
+    );
+  }
+
+  Future<void> _handleSaveCourse() async {
+    final teacherVM = context.read<TeacherViewModel>();
+    if (teacherVM.guardando) return;
+    final nombre = _courseNameController.text.trim();
+    final codigo = _courseCodeController.text.trim().toUpperCase();
+    if (nombre.isEmpty) return _mostrarError('Ingresa el nombre de la materia');
+    if (codigo.isEmpty) return _mostrarError('Ingresa el código de la materia');
+    if (_horarios.isEmpty) {
+      return _mostrarError('Agrega al menos un bloque de horario');
+    }
+    final perfil = context.read<AuthViewModel>().perfil;
+    if (perfil == null) {
+      return _mostrarError('Tu sesión expiró. Vuelve a entrar.');
     }
 
-    // Según el Roadmap: 10 (Crear Curso) -> Curso creado OK -> 14 (Detalle Curso · Estudiantes)
-    ScaffoldMessenger.of(context).showSnackBar(
+    final curso = Curso(
+      codigo: codigo,
+      nombre: nombre,
+      grupo: _groupController.text.trim(),
+      aula: _classroomController.text.trim(),
+      periodo: _periodo,
+      docenteUid: perfil.uid,
+      docenteNombre: perfil.nombre,
+      horarios: List.of(_horarios),
+    );
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final id = await teacherVM.crearCurso(curso, _pendientes);
+    if (!mounted) return;
+    if (id == null) {
+      _mostrarError(teacherVM.error ?? 'No se pudo crear el curso.');
+      return;
+    }
+    messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          'Curso "${_courseNameController.text.trim()}" guardado con éxito',
-        ),
+        content: Text('Curso "$nombre" creado'),
         backgroundColor: AppTheme.success,
-        duration: const Duration(seconds: 1),
+        duration: const Duration(seconds: 2),
       ),
     );
-    Navigator.pop(context);
+    navigator.pop();
   }
 
-  void _onImportCsvTap() {
-    // Según el Roadmap: Conectará con Pantalla 13 (import_csv_screen.dart)
-    Navigator.push(
+  /// Agrega estudiantes sin repetir (por cédula o correo).
+  void _agregarPendientes(List<Inscrito> nuevos) {
+    final claves = _pendientes.expand((p) => p.claves).toSet();
+    setState(() {
+      for (final n in nuevos) {
+        if (n.claves.any(claves.contains)) continue;
+        claves.addAll(n.claves);
+        _pendientes.add(n);
+      }
+    });
+  }
+
+  Future<void> _editarHorario() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _surfaceElevated,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _EditorHorario(
+        horarios: _horarios,
+        alCambiar: () => setState(() {}),
+      ),
+    );
+  }
+
+  Future<void> _onImportCsvTap() async {
+    final nuevos = await Navigator.push<List<Inscrito>>(
       context,
       MaterialPageRoute(
-        builder: (_) => const ImportCsvScreen(),
+        builder: (_) => ImportCsvScreen(
+          courseName: _courseNameController.text.trim(),
+        ),
       ),
     );
+    if (nuevos != null) _agregarPendientes(nuevos);
   }
 
-  void _onAddStudentTap() {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const AddStudentScreen(),
-    ),
-  );
-}
+  Future<void> _onAddStudentTap() async {
+    final nuevos = await Navigator.push<List<Inscrito>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddStudentScreen(
+          courseTitle: _courseNameController.text.trim(),
+        ),
+      ),
+    );
+    if (nuevos != null) _agregarPendientes(nuevos);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -175,14 +244,20 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           ),
           GestureDetector(
             onTap: _handleSaveCourse,
-            child: const Text(
-              'Guardar',
-              style: TextStyle(
-                color: _primaryIndigo,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: context.watch<TeacherViewModel>().guardando
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text(
+                    'Guardar',
+                    style: TextStyle(
+                      color: _primaryIndigo,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -211,17 +286,17 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 const SizedBox(width: 8),
                 Flexible(
                   child: RichText(
-                    text: const TextSpan(
-                      style: TextStyle(
+                    text: TextSpan(
+                      style: const TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
                       children: [
-                        TextSpan(text: 'Universidad de la Amazonia • '),
+                        const TextSpan(text: 'Universidad de la Amazonia • '),
                         TextSpan(
-                          text: '2025-1',
-                          style: TextStyle(
+                          text: _periodo,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
@@ -353,13 +428,25 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                           color: Colors.white.withValues(alpha: 0.08),
                         ),
                       ),
-                      child: Text(
-                        _courseCode,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.bold,
+                      child: SizedBox(
+                        width: 72,
+                        child: TextField(
+                          controller: _courseCodeController,
+                          textCapitalization: TextCapitalization.characters,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.bold,
+                          ),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                            border: InputBorder.none,
+                            hintText: 'CÓDIGO',
+                            hintStyle: TextStyle(color: AppTheme.textTertiary),
+                          ),
                         ),
                       ),
                     ),
@@ -370,7 +457,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
               // Fila 2: Horario Semanal
               InkWell(
-                onTap: () {},
+                onTap: _editarHorario,
                 child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Row(
@@ -403,7 +490,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              _schedule,
+                              _resumenHorario,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 17,
@@ -416,18 +503,18 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Row(
+                      Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '4 hrs/sem',
-                            style: TextStyle(
+                            _horasSemana,
+                            style: const TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 13,
                             ),
                           ),
-                          SizedBox(width: 4),
-                          Icon(
+                          const SizedBox(width: 4),
+                          const Icon(
                             Icons.chevron_right,
                             color: AppTheme.textTertiary,
                             size: 18,
@@ -440,9 +527,19 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
               ),
               _buildDivider(),
 
+              // Fila: Grupo
+              _buildCampoTexto(
+                icono: Icons.groups_outlined,
+                color: _tertiaryGreen,
+                titulo: 'Grupo',
+                controller: _groupController,
+                pista: 'Ej. 302-B',
+              ),
+              _buildDivider(),
+
               // Fila 3: Aula / Ubicación Física + Badge Geocerca ±25m
               InkWell(
-                onTap: () {},
+                onTap: null,
                 child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Row(
@@ -474,15 +571,22 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            Text(
-                              _classroom,
+                            TextField(
+                              controller: _classroomController,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                                border: InputBorder.none,
+                                hintText: 'Ej. Bloque B2 - Aula 301',
+                                hintStyle: TextStyle(
+                                  color: AppTheme.textTertiary,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -528,7 +632,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 4),
           child: Text(
-            'La geocerca y la baliza BLE se asociarán automáticamente al aula seleccionada.',
+            'La geocerca del aula se configura después, desde el detalle del curso.',
             style: TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 13,
@@ -558,24 +662,13 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                   letterSpacing: 0.8,
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(
-                    Icons.cloud_done_outlined,
-                    color: _tertiaryGreen,
-                    size: 15,
-                  ),
-                  SizedBox(width: 5),
-                  Text(
-                    'Sincronizado UDLA',
-                    style: TextStyle(
-                      color: _tertiaryGreen,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+              Text(
+                '${_pendientes.length} por inscribir',
+                style: const TextStyle(
+                  color: _tertiaryGreen,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -657,7 +750,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 ),
                 const SizedBox(height: 3),
                 const Text(
-                  '24 alumnos detectados en archivo',
+                  'Pega la lista desde Excel o un CSV',
                   style: TextStyle(
                     color: _tertiaryGreen,
                     fontSize: 13,
@@ -726,7 +819,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Añadir Cédula',
+                      'Añadir por Cédula o Correo',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 17,
@@ -742,7 +835,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 ),
                 const SizedBox(height: 3),
                 const Text(
-                  'Búsqueda individual de carné',
+                  'Búsqueda individual en Chairá',
                   style: TextStyle(
                     color: AppTheme.textSecondary,
                     fontSize: 13,
@@ -757,35 +850,30 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   }
 
   Widget _buildStudentsPreviewList() {
+    if (_pendientes.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 4),
+        child: Text(
+          'Todavía no hay estudiantes. Puedes crear el curso sin ellos y '
+          'agregarlos después.',
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+        ),
+      );
+    }
+    final visibles = _pendientes.take(3).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  'VISTA PREVIA DE ALUMNOS (3 DE 24 CARGADOS)',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
-              SizedBox(width: 8),
-              Text(
-                'CSV Validado',
-                style: TextStyle(
-                  color: AppTheme.textTertiary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'VISTA PREVIA (${visibles.length} DE ${_pendientes.length})',
+            style: const TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.6,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -798,27 +886,27 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
-              for (int i = 0; i < _previewStudents.length; i++) ...[
-                _buildPreviewStudentTile(_previewStudents[i]),
+              for (final inscrito in visibles) ...[
+                _buildPreviewStudentTile(_PreviewStudent.desde(inscrito)),
                 _buildDivider(),
               ],
-              // Botón inferior dentro de la tarjeta: "Ver los 24 estudiantes importados >"
               InkWell(
-                onTap: _onAddStudentTap,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                onTap: _verTodos,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Ver los 24 estudiantes importados',
-                        style: TextStyle(
+                        'Ver los ${_pendientes.length} estudiantes',
+                        style: const TextStyle(
                           color: _primaryLight,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Icon(
+                      const Icon(
                         Icons.chevron_right,
                         color: _primaryLight,
                         size: 20,
@@ -831,6 +919,107 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _verTodos() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _surfaceElevated,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) => SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.7,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final inscrito in List.of(_pendientes))
+                  ListTile(
+                    title: Text(
+                      inscrito.nombre,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      inscrito.claves.join(' • '),
+                      style: const TextStyle(color: AppTheme.textSecondary),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppTheme.textSecondary,
+                      ),
+                      tooltip: 'Quitar',
+                      onPressed: () {
+                        setState(() => _pendientes.remove(inscrito));
+                        setSheet(() {});
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCampoTexto({
+    required IconData icono,
+    required Color color,
+    required String titulo,
+    required TextEditingController controller,
+    required String pista,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icono, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titulo,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                TextField(
+                  controller: controller,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                    hintText: pista,
+                    hintStyle: const TextStyle(color: AppTheme.textTertiary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -951,4 +1140,158 @@ class _PreviewStudent {
     required this.subtitle,
     required this.initials,
   });
+
+  factory _PreviewStudent.desde(Inscrito inscrito) {
+    final partes = inscrito.nombre.trim().split(RegExp(r'\s+'));
+    final iniciales = partes.length >= 2
+        ? '${partes[0][0]}${partes[1][0]}'
+        : inscrito.nombre.padRight(2).substring(0, 2);
+    return _PreviewStudent(
+      name: inscrito.nombre,
+      subtitle: inscrito.claves.join(' • '),
+      initials: iniciales.toUpperCase(),
+    );
+  }
+}
+
+/// Hoja para agregar y quitar bloques del horario semanal.
+class _EditorHorario extends StatefulWidget {
+  final List<Horario> horarios;
+  final VoidCallback alCambiar;
+
+  const _EditorHorario({required this.horarios, required this.alCambiar});
+
+  @override
+  State<_EditorHorario> createState() => _EditorHorarioState();
+}
+
+class _EditorHorarioState extends State<_EditorHorario> {
+  static const _dias = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  int _dia = DateTime.monday;
+  TimeOfDay _inicio = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _fin = const TimeOfDay(hour: 10, minute: 0);
+
+  static String _hhmm(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _elegir(bool esInicio) async {
+    final elegido = await showTimePicker(
+      context: context,
+      initialTime: esInicio ? _inicio : _fin,
+    );
+    if (elegido == null) return;
+    setState(() {
+      if (esInicio) {
+        _inicio = elegido;
+      } else {
+        _fin = elegido;
+      }
+    });
+  }
+
+  void _agregar() {
+    final inicio = _inicio.hour * 60 + _inicio.minute;
+    final fin = _fin.hour * 60 + _fin.minute;
+    if (fin <= inicio) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('La hora de fin debe ser después del inicio'),
+        ),
+      );
+      return;
+    }
+    widget.horarios
+      ..add(Horario(dia: _dia, inicio: _hhmm(_inicio), fin: _hhmm(_fin)))
+      ..sort((a, b) => a.dia != b.dia
+          ? a.dia.compareTo(b.dia)
+          : a.inicioMinutos.compareTo(b.inicioMinutos));
+    widget.alCambiar();
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Horario semanal',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (final h in List.of(widget.horarios))
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  '${_dias[h.dia]}  ${h.inicio} - ${h.fin}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppTheme.error),
+                  tooltip: 'Quitar bloque',
+                  onPressed: () {
+                    widget.horarios.remove(h);
+                    widget.alCambiar();
+                    setState(() {});
+                  },
+                ),
+              ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              children: [
+                for (var d = DateTime.monday; d <= DateTime.saturday; d++)
+                  ChoiceChip(
+                    label: Text(_dias[d]),
+                    selected: _dia == d,
+                    onSelected: (_) => setState(() => _dia = d),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _elegir(true),
+                    child: Text('Inicio ${_hhmm(_inicio)}'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _elegir(false),
+                    child: Text('Fin ${_hhmm(_fin)}'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _agregar,
+                icon: const Icon(Icons.add),
+                label: const Text('Agregar bloque'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

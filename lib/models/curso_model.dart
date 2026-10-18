@@ -88,6 +88,7 @@ class Curso {
   final List<Horario> horarios;
   final Geocerca? geocerca;
   final List<String> clavesInscritos;
+  final int totalInscritos;
 
   const Curso({
     this.id = '',
@@ -101,6 +102,7 @@ class Curso {
     this.horarios = const [],
     this.geocerca,
     this.clavesInscritos = const [],
+    this.totalInscritos = 0,
   });
 
   factory Curso.fromMap(String id, Map<String, dynamic> map) {
@@ -120,6 +122,7 @@ class Curso {
       geocerca: geocerca == null ? null : Geocerca.fromMap(geocerca),
       clavesInscritos:
           List<String>.from(map['claves_inscritos'] as List? ?? const []),
+      totalInscritos: map['total_inscritos'] as int? ?? 0,
     );
   }
 
@@ -134,6 +137,7 @@ class Curso {
         'horarios': horarios.map((h) => h.toMap()).toList(),
         'geocerca': geocerca?.toMap(),
         'claves_inscritos': clavesInscritos,
+        'total_inscritos': totalInscritos,
       };
 
   /// El bloque de horario que está en curso en [momento], o null.

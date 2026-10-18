@@ -18,6 +18,7 @@ import 'package:smart_check/models/usuario_perfil_model.dart';
 import 'package:smart_check/services/chaira_service.dart';
 import 'package:smart_check/viewmodels/auth_viewmodel.dart';
 import 'package:smart_check/viewmodels/student_viewmodel.dart';
+import 'package:smart_check/viewmodels/teacher_viewmodel.dart';
 import 'package:smart_check/views/login_screen.dart';
 import 'package:smart_check/views/smart_register_screen.dart';
 import 'package:smart_check/views/student/student_home_screen.dart';
@@ -25,6 +26,7 @@ import 'package:smart_check/views/teacher/teacher_home_screen.dart';
 
 import 'auth_fakes.dart';
 import 'chaira_fixtures.dart';
+import 'curso_fakes.dart';
 
 /// Chairá simulado: responde a cualquier documento con la persona de prueba.
 ChairaService _chairaFalso() => ChairaService(
@@ -149,6 +151,9 @@ void main() {
               ),
             ),
             ChangeNotifierProvider(create: (_) => StudentViewModel()),
+            ChangeNotifierProvider(
+              create: (_) => TeacherViewModel(servicio: FakeCursoService()),
+            ),
           ],
           child: const MaterialApp(home: LoginScreen()),
         ),

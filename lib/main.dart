@@ -8,6 +8,7 @@ import 'utils/app_theme.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'views/login_screen.dart';
 import 'viewmodels/student_viewmodel.dart';
+import 'viewmodels/teacher_viewmodel.dart';
 
 /// Para probar sin tocar el Firebase real:
 /// `firebase emulators:start` y luego
@@ -37,6 +38,7 @@ class SmartCheckApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => StudentViewModel()),
+        ChangeNotifierProvider(create: (_) => TeacherViewModel()),
       ],
       child: MaterialApp(
         title: 'SmartCheck',
