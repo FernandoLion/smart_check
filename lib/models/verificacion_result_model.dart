@@ -74,7 +74,7 @@ class VerificacionResult {
   bool get esDocente => tipoUsuario?.toUpperCase().contains('DOCENTE') ?? false;
 
   /// Genera un nombre de usuario a partir del nombre completo.
-  /// Ejemplo: "Jhojan Fernando León Claros" -> "jh.leon"
+  /// Ejemplo: "Ana María Pérez Gómez" -> "an.perez"
   String? get username {
     if (nombre == null || nombre!.trim().isEmpty) return null;
     final parts = _sinTildes(nombre!.trim().toLowerCase())

@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 const dominioInstitucional = '@udla.edu.co';
 
 /// Para los campos de usuario con el dominio @udla.edu.co fijo: el usuario
-/// escribe solo "jh.leon". Quita espacios, pasa a minúsculas y, si se escribe
-/// o pega el correo completo ("jh.leon@udla.edu.co"), lo deja en "jh.leon".
+/// escribe solo "an.perez". Quita espacios, pasa a minúsculas y, si se escribe
+/// o pega el correo completo ("an.perez@udla.edu.co"), lo deja en "an.perez".
 /// Un @ con otro dominio se deja para que la validación lo rechace.
 class UsuarioInstitucionalFormatter extends TextInputFormatter {
   @override

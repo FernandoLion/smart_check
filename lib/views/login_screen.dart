@@ -246,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Column(
       children: [
         // Usuario institucional: el dominio @udla.edu.co es fijo, como en
-        // Google con @gmail.com; solo se escribe "jh.leon".
+        // Google con @gmail.com; solo se escribe "an.perez".
         TextFormField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,

@@ -51,8 +51,8 @@ class AuthViewModel extends ChangeNotifier {
 
   static final _formatoUsuario = RegExp(r'^[a-z0-9]+([._-][a-z0-9]+)*$');
 
-  /// Solo se usan cuentas @udla.edu.co: el usuario escribe "jh.leon" (o el
-  /// correo completo) y aquí se valida y se completa a "jh.leon@udla.edu.co".
+  /// Solo se usan cuentas @udla.edu.co: el usuario escribe "an.perez" (o el
+  /// correo completo) y aquí se valida y se completa a "an.perez@udla.edu.co".
   /// Devuelve null si no es un usuario institucional válido; el motivo queda
   /// en [errorUsuario].
   static String? correoInstitucional(String entrada) {
@@ -69,7 +69,7 @@ class AuthViewModel extends ChangeNotifier {
       return 'Solo se permiten cuentas $dominioInstitucional.';
     }
     if (!_formatoUsuario.hasMatch(_usuario(valor))) {
-      return 'Escribe solo tu usuario, por ejemplo jh.leon.';
+      return 'Escribe solo tu usuario, por ejemplo an.perez.';
     }
     return null;
   }

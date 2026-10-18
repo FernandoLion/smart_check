@@ -110,7 +110,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                   _buildHeaderSection(),
                   const SizedBox(height: 20),
 
-                  // Profile Card (Prof. Jhojan Fernando León Claros)
+                  // Profile Card del docente
                   _buildTeacherProfileCard(chairaData),
                   const SizedBox(height: 24),
 
