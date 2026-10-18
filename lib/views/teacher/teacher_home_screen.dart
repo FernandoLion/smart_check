@@ -371,6 +371,10 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   }
 
   Widget _buildSegmentedControl(BuildContext context) {
+    // Solo para el docente que también cursa materias.
+    if (!(context.watch<AuthViewModel>().perfil?.esDual ?? false)) {
+      return const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(

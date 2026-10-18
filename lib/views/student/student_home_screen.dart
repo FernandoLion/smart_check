@@ -357,91 +357,93 @@ class StudentHomeScreen extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-
         // CupertinoSlidingSegmentedControl (Docente / • Estudiante)
-        Container(
-          height: 38,
-          padding: const EdgeInsets.all(2.5),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceControl,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    // Solo los docentes que también cursan materias.
-                    final perfil = context.read<AuthViewModel>().perfil;
-                    if (perfil == null || !perfil.esDocente) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Tu cuenta no tiene perfil docente.'),
+        // Solo para quien es docente y también cursa materias.
+        if (context.watch<AuthViewModel>().perfil?.esDual ?? false) ...[
+          const SizedBox(height: 12),
+          Container(
+            height: 38,
+            padding: const EdgeInsets.all(2.5),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceControl,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      // Solo los docentes que también cursan materias.
+                      final perfil = context.read<AuthViewModel>().perfil;
+                      if (perfil == null || !perfil.esDocente) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Tu cuenta no tiene perfil docente.'),
+                          ),
+                        );
+                        return;
+                      }
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TeacherHomeScreen(),
                         ),
                       );
-                      return;
-                    }
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const TeacherHomeScreen(),
+                    },
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    );
-                  },
-                  child: Container(
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text(
-                      'Docente',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceElevated,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircleAvatar(radius: 3, backgroundColor: _tertiaryGreen),
-                      SizedBox(width: 6),
-                      Text(
-                        'Estudiante',
+                      child: const Text(
+                        'Docente',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppTheme.textSecondary,
                           fontSize: 13,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceElevated,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(radius: 3, backgroundColor: _tertiaryGreen),
+                        SizedBox(width: 6),
+                        Text(
+                          'Estudiante',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

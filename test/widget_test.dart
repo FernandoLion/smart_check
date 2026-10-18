@@ -169,6 +169,8 @@ void main() {
 
       expect(find.text(preguntaPerfil), findsNothing);
       expect(find.byType(StudentHomeScreen), findsOneWidget);
+      // Sin perfil docente no se ofrece cambiar de panel.
+      expect(find.text('Docente'), findsNothing);
     });
 
     testWidgets('un docente entra directo al panel docente', (tester) async {
@@ -178,6 +180,8 @@ void main() {
 
       expect(find.text(preguntaPerfil), findsNothing);
       expect(find.byType(TeacherHomeScreen), findsOneWidget);
+      // Sin perfil de estudiante no se ofrece cambiar de panel.
+      expect(find.text('Estudiante'), findsNothing);
     });
 
     testWidgets('solo al docente que también cursa materias se le pregunta', (
