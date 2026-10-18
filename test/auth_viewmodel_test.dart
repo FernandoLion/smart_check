@@ -66,25 +66,25 @@ void main() {
 
   group('inicio de sesión', () {
     test('carga el perfil y los roles guardados', () async {
-      auth.cuentas['jh.leon@udla.edu.co'] = 'Clave123!';
-      perfiles.perfiles['uid-jh.leon@udla.edu.co'] = perfilDe(
-        'jh.leon@udla.edu.co',
-        'JHOJAN FERNANDO LEON CLAROS',
+      auth.cuentas['an.perez@udla.edu.co'] = 'Clave123!';
+      perfiles.perfiles['uid-an.perez@udla.edu.co'] = perfilDe(
+        'an.perez@udla.edu.co',
+        'ANA MARÍA PÉREZ GÓMEZ',
         [Rol.estudiante],
       );
       final vm = crear();
 
-      expect(await vm.signIn('JH.Leon', 'Clave123!'), isTrue);
+      expect(await vm.signIn('AN.Perez', 'Clave123!'), isTrue);
       expect(vm.perfil!.esEstudiante, isTrue);
       expect(vm.perfil!.esDocente, isFalse);
     });
 
     test('muestra al usuario logueado y no la última consulta a Chairá',
         () async {
-      auth.cuentas['jh.leon@udla.edu.co'] = 'Clave123!';
-      perfiles.perfiles['uid-jh.leon@udla.edu.co'] = perfilDe(
-        'jh.leon@udla.edu.co',
-        'JHOJAN FERNANDO LEON CLAROS',
+      auth.cuentas['ca.munoz@udla.edu.co'] = 'Clave123!';
+      perfiles.perfiles['uid-ca.munoz@udla.edu.co'] = perfilDe(
+        'ca.munoz@udla.edu.co',
+        'CARLOS ANDRÉS MUÑOZ RIVERA',
         [Rol.estudiante],
       );
       final vm = crear(tipoChaira: 'DOCENTE');
@@ -92,39 +92,39 @@ void main() {
       // Se consulta a otra persona (una docente) sin registrarla...
       await vm.verificarEnChaira('1117000000');
       // ...y luego se inicia sesión con otra cuenta.
-      await vm.signIn('jh.leon', 'Clave123!');
+      await vm.signIn('ca.munoz', 'Clave123!');
 
-      expect(vm.usuarioActual!.nombre, 'JHOJAN FERNANDO LEON CLAROS');
+      expect(vm.usuarioActual!.nombre, 'CARLOS ANDRÉS MUÑOZ RIVERA');
       expect(vm.verificacionResult, isNull);
     });
 
     test('rechaza credenciales incorrectas', () async {
-      auth.cuentas['jh.leon@udla.edu.co'] = 'Clave123!';
+      auth.cuentas['an.perez@udla.edu.co'] = 'Clave123!';
       final vm = crear();
 
-      expect(await vm.signIn('jh.leon', 'otra'), isFalse);
+      expect(await vm.signIn('an.perez', 'otra'), isFalse);
       expect(vm.perfil, isNull);
     });
 
     test('cierra la sesión si no puede leer el perfil', () async {
-      auth.cuentas['jh.leon@udla.edu.co'] = 'Clave123!';
+      auth.cuentas['an.perez@udla.edu.co'] = 'Clave123!';
       perfiles.fallo = const PerfilException('sin conexión');
       final vm = crear();
 
-      expect(await vm.signIn('jh.leon', 'Clave123!'), isFalse);
+      expect(await vm.signIn('an.perez', 'Clave123!'), isFalse);
       expect(vm.errorMessage, 'sin conexión');
       expect(auth.currentUser, isNull);
     });
 
     test('cerrar sesión borra el perfil', () async {
-      auth.cuentas['jh.leon@udla.edu.co'] = 'Clave123!';
-      perfiles.perfiles['uid-jh.leon@udla.edu.co'] = perfilDe(
-        'jh.leon@udla.edu.co',
-        'JHOJAN FERNANDO LEON CLAROS',
+      auth.cuentas['an.perez@udla.edu.co'] = 'Clave123!';
+      perfiles.perfiles['uid-an.perez@udla.edu.co'] = perfilDe(
+        'an.perez@udla.edu.co',
+        'ANA MARÍA PÉREZ GÓMEZ',
         [Rol.estudiante],
       );
       final vm = crear();
-      await vm.signIn('jh.leon', 'Clave123!');
+      await vm.signIn('an.perez', 'Clave123!');
 
       await vm.signOut();
 
@@ -147,9 +147,9 @@ void main() {
     });
 
     test('rechaza el documento de otra persona', () async {
-      auth.cuentas['jh.leon@udla.edu.co'] = 'Clave123!';
+      auth.cuentas['ca.munoz@udla.edu.co'] = 'Clave123!';
       final vm = crear(tipoChaira: 'DOCENTE');
-      await vm.signIn('jh.leon', 'Clave123!');
+      await vm.signIn('ca.munoz', 'Clave123!');
 
       expect(await vm.vincularDocumento('1117000000'), isFalse);
       expect(vm.errorMessage, contains('no corresponde'));
@@ -159,10 +159,10 @@ void main() {
 
   group('usuario institucional (@udla.edu.co fijo)', () {
     test('completa el usuario con el dominio', () {
-      expect(AuthViewModel.correoInstitucional(' JH.Leon '),
-          'jh.leon@udla.edu.co');
-      expect(AuthViewModel.correoInstitucional('jh.leon@udla.edu.co'),
-          'jh.leon@udla.edu.co');
+      expect(AuthViewModel.correoInstitucional(' AN.Perez '),
+          'an.perez@udla.edu.co');
+      expect(AuthViewModel.correoInstitucional('an.perez@udla.edu.co'),
+          'an.perez@udla.edu.co');
       expect(AuthViewModel.correoInstitucional('wi.patino-2'),
           'wi.patino-2@udla.edu.co');
     });
@@ -171,7 +171,7 @@ void main() {
       expect(AuthViewModel.correoInstitucional('a@gmail.com'), isNull);
       expect(AuthViewModel.errorUsuario('a@gmail.com'),
           'Solo se permiten cuentas @udla.edu.co.');
-      for (final malo in ['', 'jh leon', 'jh..leon', '.jh', 'jh.', 'jh@']) {
+      for (final malo in ['', 'an perez', 'an..perez', '.an', 'an.', 'an@']) {
         expect(AuthViewModel.correoInstitucional(malo), isNull, reason: malo);
       }
     });

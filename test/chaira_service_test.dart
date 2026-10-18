@@ -149,7 +149,7 @@ void main() {
 
     test('genera usuarios de correo sin tildes ni eñes', () {
       expect(conNombre('ANA MARÍA PÉREZ GÓMEZ').username, 'an.perez');
-      expect(conNombre('Jhojan Fernando León Claros').username, 'jh.leon');
+      expect(conNombre('Carlos Andrés Muñoz Rivera').username, 'ca.munoz');
       expect(conNombre(' NÚÑEZ  ORDÓÑEZ ').username, 'n.ordonez');
     });
 

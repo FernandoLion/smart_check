@@ -14,15 +14,15 @@ void main() {
       .text;
 
   test('deja solo el usuario aunque se pegue el correo completo', () {
-    expect(formatear('jh.leon'), 'jh.leon');
-    expect(formatear('JH.Leon'), 'jh.leon');
-    expect(formatear(' jh.leon '), 'jh.leon');
-    expect(formatear('JH.Leon@UDLA.edu.co'), 'jh.leon');
+    expect(formatear('an.perez'), 'an.perez');
+    expect(formatear('AN.Perez'), 'an.perez');
+    expect(formatear(' an.perez '), 'an.perez');
+    expect(formatear('AN.Perez@UDLA.edu.co'), 'an.perez');
   });
 
   test('al escribir el correo letra por letra queda solo el usuario', () {
     var valor = TextEditingValue.empty;
-    for (final letra in 'jh.leon@udla.edu.co'.split('')) {
+    for (final letra in 'an.perez@udla.edu.co'.split('')) {
       final texto = valor.text + letra;
       valor = UsuarioInstitucionalFormatter().formatEditUpdate(
         valor,
@@ -32,10 +32,10 @@ void main() {
         ),
       );
     }
-    expect(valor.text, 'jh.leon');
+    expect(valor.text, 'an.perez');
   });
 
   test('deja otros dominios para que la validación los rechace', () {
-    expect(formatear('jh.leon@gmail.com'), 'jh.leon@gmail.com');
+    expect(formatear('an.perez@gmail.com'), 'an.perez@gmail.com');
   });
 }

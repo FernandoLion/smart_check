@@ -130,11 +130,11 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       final auth = FakeAuthService()
-        ..cuentas['jh.leon@udla.edu.co'] = 'Clave123!';
+        ..cuentas['an.perez@udla.edu.co'] = 'Clave123!';
       final perfiles = FakePerfilService()
-        ..perfiles['uid-jh.leon@udla.edu.co'] = perfilDe(
-          'jh.leon@udla.edu.co',
-          'JHOJAN FERNANDO LEON CLAROS',
+        ..perfiles['uid-an.perez@udla.edu.co'] = perfilDe(
+          'an.perez@udla.edu.co',
+          'ANA MARÍA PÉREZ GÓMEZ',
           roles,
         );
 
@@ -153,7 +153,7 @@ void main() {
           child: const MaterialApp(home: LoginScreen()),
         ),
       );
-      await tester.enterText(find.byType(TextFormField).at(0), 'jh.leon');
+      await tester.enterText(find.byType(TextFormField).at(0), 'an.perez');
       await tester.enterText(find.byType(TextFormField).at(1), 'Clave123!');
       await tester.tap(find.widgetWithText(ElevatedButton, 'Iniciar Sesión'));
       await tester.pump();
