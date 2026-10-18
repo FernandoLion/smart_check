@@ -2,9 +2,31 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function miPerfil() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function soyDocente() {
+      return autenticado() && 'docente' in miPerfil().get('roles', []);
+    }
+
+    // Cédula y correo con los que el docente pudo inscribir al usuario.
+    function misClaves() {
+      return [
+        miPerfil().get('cedula', ''),
+        request.auth.token.get('email', '').lower()
+      ];
+    }
+
     // Perfil de cada usuario (lo crea la app al registrarse).
     // Solo el propio usuario puede leerlo y crearlo; no se puede modificar
     // desde la app, para que nadie cambie su rol después de registrarse.
+    // PENDIENTE: el rol docente lo decide la app según Chairá; quien escriba
+    // directo en Firestore podría asignárselo. Cerrarlo con una Cloud Function.
     match /usuarios/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow create: if request.auth != null
@@ -13,6 +35,69 @@ service cloud.firestore {
         && request.resource.data.roles.size() > 0
         && request.resource.data.roles.hasOnly(['docente', 'estudiante']);
       allow update, delete: if false;
+    }
+
+    // Cursos: los crea un docente a su nombre; los leen él y sus inscritos.
+    match /cursos/{cursoId} {
+      function curso() {
+        return get(/databases/$(database)/documents/cursos/$(cursoId)).data;
+      }
+
+      function soySuDocente() {
+        return autenticado() && curso().docente_uid == request.auth.uid;
+      }
+
+      function estoyInscrito() {
+        return autenticado() && curso().claves_inscritos.hasAny(misClaves());
+      }
+
+      allow read: if autenticado()
+        && (resource.data.docente_uid == request.auth.uid
+          || resource.data.claves_inscritos.hasAny(misClaves()));
+      allow create: if soyDocente()
+        && request.resource.data.docente_uid == request.auth.uid
+        && request.resource.data.claves_inscritos is list;
+      allow update: if autenticado()
+        && resource.data.docente_uid == request.auth.uid
+        && request.resource.data.docente_uid == resource.data.docente_uid;
+      allow delete: if autenticado()
+        && resource.data.docente_uid == request.auth.uid;
+
+      match /inscritos/{clave} {
+        allow read: if soySuDocente() || clave in misClaves();
+        allow write: if soySuDocente();
+      }
+
+      match /sesiones/{sesionId} {
+        function sesion() {
+          return get(/databases/$(database)/documents/cursos/$(cursoId)/sesiones/$(sesionId)).data;
+        }
+
+        allow read: if soySuDocente() || estoyInscrito();
+        allow create: if soySuDocente()
+          && request.resource.data.abierta == true
+          && request.resource.data.fin > request.resource.data.inicio;
+        // Solo se puede cerrar; no se reabre ni se cambia la franja.
+        allow update: if soySuDocente()
+          && request.resource.data.abierta == false
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['abierta']);
+        allow delete: if false;
+
+        // Solo el celular del docente escribe asistencias. Por BLE, con la
+        // sesión abierta y dentro de su franja (hora del servidor); a mano,
+        // también después, para corregir.
+        match /asistencias/{clave} {
+          allow read: if soySuDocente() || clave in misClaves();
+          allow create, update: if soySuDocente()
+            && clave in curso().claves_inscritos
+            && request.resource.data.registrado_por == request.auth.uid
+            && (request.resource.data.metodo == 'manual'
+              || (sesion().abierta
+                && request.time >= sesion().inicio
+                && request.time < sesion().fin));
+          allow delete: if false;
+        }
+      }
     }
   }
 }
