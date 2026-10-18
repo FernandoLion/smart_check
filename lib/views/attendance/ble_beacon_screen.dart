@@ -616,8 +616,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   }
 
   Widget _buildCryptographicIdentityCapsule(VerificacionResult? data) {
-    final nombre = data?.nombre ?? 'Jhojan Fernando Leon';
-    final cedula = data?.cedula ?? data?.documentoConsultado ?? '1117554321';
+    final nombre = data?.nombre ?? 'Usuario';
+    final cedula = data?.cedula ?? data?.documentoConsultado ?? '—';
 
     return Container(
       padding: const EdgeInsets.all(16),

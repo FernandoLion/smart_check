@@ -829,7 +829,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                           ),
                         ),
                         Text(
-                          'Validado por Prof. Jhojan F.',
+                          'Validado por Prof. Ana M.',
                           style: TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 12,

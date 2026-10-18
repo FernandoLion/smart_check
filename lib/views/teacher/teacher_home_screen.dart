@@ -110,7 +110,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   Widget build(BuildContext context) {
     final authVM = context.watch<AuthViewModel>();
     final chairaData = authVM.usuarioActual;
-    final nombre = chairaData?.nombre ?? 'Jhojan Fernando Leon';
+    final nombre = chairaData?.nombre ?? 'Usuario';
     final fotoBytes = chairaData?.imagenBytes;
 
     List<TeacherCourseModel> filteredCourses = _courses;

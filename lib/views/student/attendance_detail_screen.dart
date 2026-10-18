@@ -280,7 +280,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                 children: [
                   TextSpan(text: 'Docente: '),
                   TextSpan(
-                    text: 'Jhojan F. Leon',
+                    text: 'Ana M. Pérez',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,

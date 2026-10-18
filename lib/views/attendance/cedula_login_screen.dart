@@ -64,7 +64,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
   @override
   void initState() {
     super.initState();
-    _searchController = TextEditingController(text: '1117540289');
+    _searchController = TextEditingController();
   }
 
   @override
@@ -76,7 +76,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
   void _handleSearchTyping(String val) {
     final cleanVal = val.trim();
     setState(() {
-      _isMatchVisible = cleanVal == '1117540289' ||
+      _isMatchVisible = cleanVal == '1117000000' ||
           cleanVal == '2022-3810' ||
           cleanVal.length >= 8;
     });
@@ -524,7 +524,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
         : 'Ingeniería de Sistemas • Semestre VI';
     final cedula = hasLive
         ? (liveResult.cedula ?? _searchController.text)
-        : '1.117.540.289';
+        : '1.117.000.000';
     final codigoInst = '2022-3810';
     final fotoBytes = hasLive ? liveResult.imagenBytes : null;
 

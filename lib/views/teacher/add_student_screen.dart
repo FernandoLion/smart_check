@@ -52,7 +52,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   @override
   void initState() {
     super.initState();
-    _searchController = TextEditingController(text: '1117540289');
+    _searchController = TextEditingController();
   }
 
   @override
@@ -389,7 +389,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         : 'Carlos Andrés Muñoz Rivera';
     final cedula = hasLiveMatch
         ? (liveResult.cedula ?? _searchController.text)
-        : '1.117.540.289';
+        : '1.117.000.000';
     final programa = hasLiveMatch
         ? '${liveResult.programa ?? 'Ing. de Sistemas'} • Semestre VI'
         : 'Ing. de Sistemas • Semestre VI';

@@ -10,7 +10,7 @@ class FaceVerificationScreen extends StatefulWidget {
   const FaceVerificationScreen({
     super.key,
     this.courseTitle = 'Ing. de Software II - Grupo 302-B',
-    this.professorName = 'Docente: Jhojan F. Leon',
+    this.professorName = 'Docente: Ana M. Pérez',
     this.classroom = 'Aula 301',
   });
 

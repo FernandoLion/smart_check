@@ -285,8 +285,8 @@ class _FaceSetupScreenState extends State<FaceSetupScreen>
   }
 
   Widget _buildVerifiedIdentityCard(VerificacionResult? data) {
-    final nombre = data?.nombre ?? 'Jhojan Fernando Leon Claros';
-    final cedula = data?.cedula ?? data?.documentoConsultado ?? '1117554321';
+    final nombre = data?.nombre ?? 'Usuario';
+    final cedula = data?.cedula ?? data?.documentoConsultado ?? '—';
     final rol = (data?.tipoUsuario ?? 'DOCENTE').toUpperCase();
     final fotoBytes = data?.imagenBytes;
 

@@ -345,7 +345,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
   Widget _buildTeacherProfileCard(VerificacionResult? data) {
     final nombre = data?.nombre != null
         ? 'Prof. ${data!.nombre}'
-        : 'Prof. Jhojan Fernando León Claros';
+        : 'Prof. Usuario';
     // El correo real de la cuenta; deducirlo del nombre puede no coincidir.
     final email = context.read<AuthViewModel>().perfil?.email ??
         (data?.username != null
