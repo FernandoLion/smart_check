@@ -350,7 +350,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
     final email = context.read<AuthViewModel>().perfil?.email ??
         (data?.username != null
             ? '${data!.username}@udla.edu.co'
-            : 'j.leon@udla.edu.co');
+            : 'usuario@udla.edu.co');
     final idText = data?.cedula != null ? 'ID #${data!.cedula}' : 'ID #88419';
     final fotoBytes = data?.imagenBytes;
 
