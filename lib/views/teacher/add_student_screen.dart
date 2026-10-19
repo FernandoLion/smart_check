@@ -1022,7 +1022,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                               ),
                             ),
                             child: const Text(
-                              '✓ Inscrito',
+                              '✓ Agregado',
                               style: TextStyle(
                                 color: _tertiaryGreen,
                                 fontSize: 10,

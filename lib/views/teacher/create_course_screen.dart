@@ -37,11 +37,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
   static const _dias = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-  /// Periodo académico actual: "2026-1" (ene-jun) o "2026-2" (jul-dic).
-  static String get _periodo {
-    final ahora = DateTime.now();
-    return '${ahora.year}-${ahora.month <= 6 ? 1 : 2}';
-  }
+  static String get _periodo => Curso.periodoActual();
 
   String get _resumenHorario {
     if (_horarios.isEmpty) return 'Toca para agregar';
@@ -899,7 +895,9 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Ver los ${_pendientes.length} estudiantes',
+                        _pendientes.length == 1
+                            ? 'Ver el estudiante'
+                            : 'Ver los ${_pendientes.length} estudiantes',
                         style: const TextStyle(
                           color: _primaryLight,
                           fontSize: 16,

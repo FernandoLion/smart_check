@@ -26,6 +26,9 @@ class TeacherCourseModel {
   final String statusLabel;
   final bool isSpecialToday;
 
+  /// Texto del pie de la tarjeta (próxima clase, clase en curso...).
+  final String footer;
+
   const TeacherCourseModel({
     required this.code,
     required this.name,
@@ -37,6 +40,7 @@ class TeacherCourseModel {
     required this.status,
     required this.statusLabel,
     this.isSpecialToday = false,
+    this.footer = '',
   });
 }
 
@@ -108,7 +112,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 _buildSegmentedControl(context),
 
                 // 4. SEARCH & FILTER CHIPS
-                _buildSearchAndFilters(),
+                _buildSearchAndFilters(
+                  todos: courses.length,
+                  activos: courses
+                      .where((c) => c.status != CourseStatus.archived)
+                      .length,
+                  hoy: courses
+                      .where(
+                        (c) => c.isSpecialToday || c.status == CourseStatus.today,
+                      )
+                      .length,
+                ),
 
                 // 5. LISTA DE CURSOS (WALLET PASS STYLE)
                 Expanded(
@@ -175,8 +189,13 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
 
   /// Convierte un curso de Firestore al modelo que pintan las tarjetas.
   TeacherCourseModel _aModelo(Curso curso, DateTime ahora) {
-    final hoy = curso.horarios.any((h) => h.dia == ahora.weekday);
-    final enCurso = curso.horarioEn(ahora) != null;
+    final minutoActual = ahora.hour * 60 + ahora.minute;
+    final enCurso = curso.horarioEn(ahora);
+    final pendienteHoy = curso.horarios
+        .where((h) => h.dia == ahora.weekday && h.inicioMinutos > minutoActual)
+        .toList();
+    // Hay clase hoy que todavía no termina: se ofrece iniciar el radar.
+    final hoy = enCurso != null || pendienteHoy.isNotEmpty;
     final dias = curso.horarios.map((h) => _dias[h.dia]).toSet().join(' / ');
     final primera = curso.horarios.isEmpty ? null : curso.horarios.first;
     return TeacherCourseModel(
@@ -191,10 +210,30 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           ? 'Sin horario'
           : '$dias • ${primera.inicio} - ${primera.fin}',
       enrolledCount: curso.totalInscritos,
-      status: enCurso ? CourseStatus.today : CourseStatus.active,
-      statusLabel: enCurso ? 'En clase' : 'Activo',
+      status: enCurso != null ? CourseStatus.today : CourseStatus.active,
+      statusLabel: enCurso != null ? 'En clase' : 'Activo',
       isSpecialToday: hoy,
+      footer: enCurso != null
+          ? 'Clase en curso hasta ${enCurso.fin}'
+          : pendienteHoy.isNotEmpty
+              ? 'Próxima clase hoy ${pendienteHoy.first.inicio}'
+              : _proximaClase(curso, ahora),
     );
+  }
+
+  /// "Próxima clase: Mié 08:00" a partir de mañana, o "Sin horario".
+  String _proximaClase(Curso curso, DateTime ahora) {
+    if (curso.horarios.isEmpty) return 'Sin horario';
+    for (var dias = 1; dias <= 7; dias++) {
+      final dia = (ahora.weekday - 1 + dias) % 7 + 1;
+      final bloques = curso.horarios.where((h) => h.dia == dia).toList()
+        ..sort((a, b) => a.inicioMinutos.compareTo(b.inicioMinutos));
+      if (bloques.isNotEmpty) {
+        final cuando = dias == 1 ? 'mañana' : _dias[dia];
+        return 'Próxima clase: $cuando ${bloques.first.inicio}';
+      }
+    }
+    return 'Sin horario';
   }
 
   Widget _buildMensajeLista(String mensaje) {
@@ -293,9 +332,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                           color: _primaryIndigo.withValues(alpha: 0.4),
                         ),
                       ),
-                      child: const Text(
-                        '2025-1',
-                        style: TextStyle(
+                      child: Text(
+                        Curso.periodoActual(),
+                        style: const TextStyle(
                           color: _primaryLight,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -485,7 +524,11 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     );
   }
 
-  Widget _buildSearchAndFilters() {
+  Widget _buildSearchAndFilters({
+    required int todos,
+    required int activos,
+    required int hoy,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Column(
@@ -536,14 +579,19 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildFilterChip(0, 'Todos', '4'),
+                _buildFilterChip(0, 'Todos', '$todos'),
                 const SizedBox(width: 8),
-                _buildFilterChip(1, 'Activos', '3', dotColor: _tertiaryGreen),
+                _buildFilterChip(
+                  1,
+                  'Activos',
+                  '$activos',
+                  dotColor: _tertiaryGreen,
+                ),
                 const SizedBox(width: 8),
                 _buildFilterChip(
                   2,
                   'Hoy',
-                  '2',
+                  '$hoy',
                   icon: Icons.schedule,
                   iconColor: _systemAmber,
                 ),
@@ -840,7 +888,9 @@ class _TeacherCourseCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${course.enrolledCount} Alumnos inscritos',
+                            course.enrolledCount == 1
+                                ? '1 Alumno inscrito'
+                                : '${course.enrolledCount} Alumnos inscritos',
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 12,
@@ -892,39 +942,36 @@ class _TeacherCourseCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (course.isSpecialToday)
-                  const Row(
-                    children: [
-                      Icon(Icons.timer, color: Color(0xFFFF9F0A), size: 15),
-                      SizedBox(width: 4),
-                      Text(
-                        'Próxima clase hoy 08:00 AM',
-                        style: TextStyle(
-                          color: Color(0xFFFF9F0A),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  )
-                else
-                  const Row(
+                Flexible(
+                  child: Row(
                     children: [
                       Icon(
-                        Icons.check_circle,
-                        color: Color(0xFF47E266),
+                        course.isSpecialToday ? Icons.timer : Icons.event,
+                        color: course.isSpecialToday
+                            ? const Color(0xFFFF9F0A)
+                            : AppTheme.textSecondary,
                         size: 15,
                       ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Asistencia cerrada • Alumnos al día',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          course.footer,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: course.isSpecialToday
+                                ? const Color(0xFFFF9F0A)
+                                : AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: course.isSpecialToday
+                                ? FontWeight.w500
+                                : FontWeight.w400,
+                          ),
                         ),
                       ),
                     ],
                   ),
+                ),
                 if (course.isSpecialToday)
                   ElevatedButton(
                     onPressed: () {

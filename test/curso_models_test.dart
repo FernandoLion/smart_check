@@ -68,6 +68,11 @@ void main() {
       expect(leido.clavesInscritos, isEmpty);
     });
 
+    test('calcula el periodo académico por semestre', () {
+      expect(Curso.periodoActual(DateTime(2026, 6, 30)), '2026-1');
+      expect(Curso.periodoActual(DateTime(2026, 7, 1)), '2026-2');
+    });
+
     test('encuentra el bloque de horario en curso', () {
       expect(curso.horarioEn(DateTime(2026, 10, 22, 9, 30))?.dia,
           DateTime.thursday);

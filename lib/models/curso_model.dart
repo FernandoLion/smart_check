@@ -140,6 +140,12 @@ class Curso {
         'total_inscritos': totalInscritos,
       };
 
+  /// Periodo académico de [momento]: "2026-1" (ene-jun) o "2026-2" (jul-dic).
+  static String periodoActual([DateTime? momento]) {
+    final m = momento ?? DateTime.now();
+    return '${m.year}-${m.month <= 6 ? 1 : 2}';
+  }
+
   /// El bloque de horario que está en curso en [momento], o null.
   Horario? horarioEn(DateTime momento) {
     for (final h in horarios) {
