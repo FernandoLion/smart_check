@@ -15,6 +15,15 @@ class CursoException implements Exception {
   String toString() => mensaje;
 }
 
+/// Asistencia de un estudiante en un curso: a cuántas de las sesiones que ya
+/// terminaron asistió.
+class ResumenAsistencia {
+  final int sesiones;
+  final int asistidas;
+
+  const ResumenAsistencia({this.sesiones = 0, this.asistidas = 0});
+}
+
 /// Cursos, inscritos, sesiones y asistencias en Firestore:
 ///
 /// ```
@@ -181,6 +190,49 @@ class CursoService {
     } catch (e) {
       throw CursoException(_mensaje(e, 'registrar la asistencia'));
     }
+  }
+
+  /// Asistencia del estudiante en un curso. Solo cuentan las sesiones que ya
+  /// terminaron: las que siguen en curso aún no son una falta.
+  ///
+  /// [claves] son la cédula y el correo, porque el docente pudo inscribirlo
+  /// por cualquiera de los dos.
+  Future<ResumenAsistencia> resumenAsistencia(
+    String cursoId,
+    List<String> claves, {
+    DateTime? ahora,
+  }) async {
+    if (claves.isEmpty) return const ResumenAsistencia();
+    final momento = ahora ?? DateTime.now();
+    try {
+      final docs = await _sesiones(cursoId).get().timeout(_timeout);
+      final terminadas = docs.docs
+          .map((d) => Sesion.fromMap(d.id, d.data()))
+          .where((s) => s.fin.isBefore(momento))
+          .toList();
+      final asistio = await Future.wait(
+        terminadas.map((s) => _asistio(cursoId, s.id, claves)),
+      );
+      return ResumenAsistencia(
+        sesiones: terminadas.length,
+        asistidas: asistio.where((a) => a).length,
+      );
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'leer tu asistencia'));
+    }
+  }
+
+  Future<bool> _asistio(
+    String cursoId,
+    String sesionId,
+    List<String> claves,
+  ) async {
+    for (final clave in claves) {
+      final doc = await _asistencias(cursoId, sesionId).doc(clave).get();
+      final data = doc.data();
+      if (data != null) return Asistencia.fromMap(clave, data).cuentaComoAsistio;
+    }
+    return false;
   }
 
   static String _mensaje(Object e, String accion) {

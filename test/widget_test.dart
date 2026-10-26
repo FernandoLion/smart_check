@@ -150,7 +150,9 @@ void main() {
                 chairaService: chairaFalso(),
               ),
             ),
-            ChangeNotifierProvider(create: (_) => StudentViewModel()),
+            ChangeNotifierProvider(
+              create: (_) => StudentViewModel(servicio: FakeCursoService()),
+            ),
             ChangeNotifierProvider(
               create: (_) => TeacherViewModel(servicio: FakeCursoService()),
             ),

@@ -9,6 +9,9 @@ import 'package:smart_check/services/curso_service.dart';
 class FakeCursoService extends Fake implements CursoService {
   final cursos = <String, Curso>{};
   final inscritosPorCurso = <String, Map<String, Inscrito>>{};
+
+  /// Asistencia ya calculada por curso, como la devolvería Firestore.
+  final resumenes = <String, ResumenAsistencia>{};
   CursoException? fallo;
   final _cambios = StreamController<void>.broadcast();
   var _siguienteId = 1;
@@ -21,8 +24,45 @@ class FakeCursoService extends Fake implements CursoService {
     }
   }
 
-  List<Curso> _delDocente(String uid) =>
-      cursos.values.where((c) => c.docenteUid == uid).toList();
+  List<Curso> _delDocente(String uid) => _conId((c) => c.docenteUid == uid);
+
+  /// Firestore siempre entrega el id del documento; el mapa es la fuente.
+  List<Curso> _conId(bool Function(Curso) filtro) => cursos.entries
+      .map((e) => Curso.fromMap(e.key, e.value.toMap()))
+      .where(filtro)
+      .toList();
+
+  @override
+  Stream<List<Curso>> cursosDelEstudiante({
+    String? cedula,
+    String? email,
+  }) async* {
+    final claves = [
+      if (cedula != null && cedula.isNotEmpty) cedula,
+      if (email != null && email.isNotEmpty) email.toLowerCase(),
+    ];
+    if (claves.isEmpty) {
+      yield const [];
+      return;
+    }
+    yield _inscritoEn(claves);
+    await for (final _ in _cambios.stream) {
+      yield _inscritoEn(claves);
+    }
+  }
+
+  List<Curso> _inscritoEn(List<String> claves) =>
+      _conId((c) => c.clavesInscritos.any(claves.contains));
+
+  @override
+  Future<ResumenAsistencia> resumenAsistencia(
+    String cursoId,
+    List<String> claves, {
+    DateTime? ahora,
+  }) async {
+    if (fallo != null) throw fallo!;
+    return resumenes[cursoId] ?? const ResumenAsistencia();
+  }
 
   @override
   Future<String> crearCurso(Curso curso) async {

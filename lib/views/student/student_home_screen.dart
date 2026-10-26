@@ -28,6 +28,13 @@ class StudentHomeScreen extends StatelessWidget {
     final programa = chairaData?.programa ?? 'Ingeniería de Sistemas';
     final fotoBytes = chairaData?.imagenBytes;
 
+    final perfil = authVM.perfil;
+    if (perfil != null) {
+      context
+          .read<StudentViewModel>()
+          .vigilarCursos(cedula: perfil.cedula, email: perfil.email);
+    }
+
     return Scaffold(
       backgroundColor: Colors.black, // bg-surface-oled
       body: SafeArea(
@@ -57,27 +64,28 @@ class StudentHomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
 
-                      // Quick Stats Bento Banner (Asistencia 91% + Créditos 18/18)
+                      // Quick Stats Bento Banner (asistencia global y materias)
                       _buildQuickStatsBanner(studentVM),
                       const SizedBox(height: 24),
 
-                      // Encabezado "Semáforo Académico"
+                      // Encabezado "Semáforo de Asistencia"
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4.0),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              'Semáforo Académico',
+                              'Semáforo de Asistencia',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            Text(
-                              studentVM.evaluationProgress,
-                              style: const TextStyle(
+                            const Text(
+                              'Mínimo '
+                              '${StudentSubjectModel.minimoAsistencia}%',
+                              style: TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
@@ -89,15 +97,7 @@ class StudentHomeScreen extends StatelessWidget {
                       const SizedBox(height: 14),
 
                       // Tarjetas de Asignaturas (Apple Wallet Pass Cards)
-                      ...studentVM.subjects.map(
-                        (subject) => Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: _SubjectPassCard(
-                            subject: subject,
-                            onTap: () => _onSubjectTap(context, subject),
-                          ),
-                        ),
-                      ),
+                      ..._buildSubjects(context, studentVM),
                     ],
                   ),
                 ),
@@ -492,7 +492,9 @@ class StudentHomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${vm.globalAttendance}%',
+                    vm.globalAttendance == null
+                        ? '—'
+                        : '${vm.globalAttendance}%',
                     style: const TextStyle(
                       color: _tertiaryGreen,
                       fontSize: 20,
@@ -529,13 +531,13 @@ class StudentHomeScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.credit_card,
+                        Icons.menu_book_outlined,
                         color: _systemAmber,
                         size: 14,
                       ),
                       SizedBox(width: 4),
                       Text(
-                        'Créditos',
+                        'Materias',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 12,
@@ -545,32 +547,17 @@ class StudentHomeScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        '${vm.enrolledCredits}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        '/ ${vm.maxCredits}',
-                        style: const TextStyle(
-                          color: AppTheme.textTertiary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    '${vm.subjects.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   const Text(
-                    'Inscritos',
+                    'Inscritas',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
                       fontSize: 10,
@@ -580,8 +567,125 @@ class StudentHomeScreen extends StatelessWidget {
               ),
             ),
           ),
-          // Espacio del 3er bloque de la grilla (tal cual se ve en la captura de Stitch)
-          const Expanded(child: SizedBox()),
+          const SizedBox(width: 10),
+          // Card 3: materias por debajo del mínimo de asistencia
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceControl.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.05),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: _systemRed,
+                        size: 14,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'En riesgo',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${vm.materiasEnRiesgo}',
+                    style: TextStyle(
+                      color: vm.materiasEnRiesgo == 0
+                          ? Colors.white
+                          : _systemRed,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Materias',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildSubjects(BuildContext context, StudentViewModel vm) {
+    if (vm.cargando) {
+      return const [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 48),
+          child: Center(
+            child: CircularProgressIndicator(color: _primaryIndigo),
+          ),
+        ),
+      ];
+    }
+    if (vm.error != null) {
+      return [_buildAviso(Icons.error_outline, vm.error!, _systemRed)];
+    }
+    if (vm.subjects.isEmpty) {
+      return [
+        _buildAviso(
+          Icons.school_outlined,
+          'Todavía no estás inscrito en ninguna materia. El docente te '
+          'inscribe con tu cédula o tu correo al crear el curso.',
+          AppTheme.textSecondary,
+        ),
+      ];
+    }
+    return vm.subjects
+        .map(
+          (subject) => Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: _SubjectPassCard(
+              subject: subject,
+              onTap: () => _onSubjectTap(context, subject),
+            ),
+          ),
+        )
+        .toList();
+  }
+
+  Widget _buildAviso(IconData icono, String texto, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceElevated.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          Icon(icono, color: color, size: 32),
+          const SizedBox(height: 12),
+          Text(
+            texto,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 13,
+              height: 1.4,
+            ),
+          ),
         ],
       ),
     );
@@ -691,6 +795,7 @@ class _SubjectPassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = _accentColor;
+    final porcentaje = subject.attendancePercent;
 
     return GestureDetector(
       onTap: onTap,
@@ -769,7 +874,7 @@ class _SubjectPassCard extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  subject.modality,
+                                  'Grupo ${subject.group}',
                                   style: const TextStyle(
                                     color: AppTheme.textSecondary,
                                     fontSize: 12,
@@ -843,7 +948,7 @@ class _SubjectPassCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // 2. CAJA CENTRAL DE MÉTRICAS (Traffic Light Highlight Well)
+                  // 2. CAJA CENTRAL: asistencia del estudiante en la materia
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -853,137 +958,58 @@ class _SubjectPassCard extends StatelessWidget {
                         color: accent.withValues(alpha: 0.25),
                       ),
                     ),
-                    child: Column(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Nota grande + Badge de estado
-                            Row(
-                              children: [
-                                Text(
-                                  subject.currentGrade.toStringAsFixed(1),
-                                  style: TextStyle(
-                                    color: accent,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    height: 1.0,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: accent.withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: accent.withValues(alpha: 0.35),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        subject.statusLabel,
-                                        style: TextStyle(
-                                          color: accent,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      subject.statusSubLabel,
-                                      style: const TextStyle(
-                                        color: AppTheme.textTertiary,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-
-                            // Meta derecha (Ej. "Para Aprobar / Faltan 1.3 pts")
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  subject.targetHeader,
-                                  style: const TextStyle(
-                                    color: AppTheme.textSecondary,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  subject.targetValue,
-                                  style: TextStyle(
-                                    color: accent,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Divider(
-                          color: Colors.white.withValues(alpha: 0.08),
-                          height: 1,
-                        ),
-                        const SizedBox(height: 8),
-                        // Micro cálculo inferior
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Flexible(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    _bottomNoteIcon,
-                                    color: accent,
-                                    size: 14,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      subject.bottomLeftNote,
-                                      style: TextStyle(
-                                        color: subject.status ==
-                                                SubjectStatus.warning
-                                            ? AppTheme.textSecondary
-                                            : accent,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
                             Text(
-                              subject.bottomRightNote,
+                              porcentaje == null ? '—' : '$porcentaje%',
                               style: TextStyle(
-                                color: subject.status == SubjectStatus.warning
-                                    ? Colors.white
-                                    : AppTheme.textSecondary,
-                                fontSize: 11,
-                                fontWeight:
-                                    subject.status == SubjectStatus.warning
-                                        ? FontWeight.w500
-                                        : FontWeight.normal,
+                                color: accent,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                height: 1.0,
                               ),
+                            ),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: accent.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: accent.withValues(alpha: 0.35),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    subject.statusLabel,
+                                    style: TextStyle(
+                                      color: accent,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  subject.sessionsLabel,
+                                  style: const TextStyle(
+                                    color: AppTheme.textTertiary,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
+                        Icon(_bottomNoteIcon, color: accent, size: 26),
                       ],
                     ),
                   ),
@@ -1007,7 +1033,7 @@ class _SubjectPassCard extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '${subject.attendancePercent}% ',
+                              porcentaje == null ? '— ' : '$porcentaje% ',
                               style: TextStyle(
                                 color: subject.status == SubjectStatus.warning
                                     ? Colors.white
@@ -1018,7 +1044,8 @@ class _SubjectPassCard extends StatelessWidget {
                             ),
                             Flexible(
                               child: Text(
-                                subject.attendanceNote,
+                                '(mínimo '
+                                '${StudentSubjectModel.minimoAsistencia}%)',
                                 style: TextStyle(
                                   color:
                                       subject.status == SubjectStatus.critical
@@ -1067,7 +1094,7 @@ class _SubjectPassCard extends StatelessWidget {
                     ),
                     child: FractionallySizedBox(
                       alignment: Alignment.centerLeft,
-                      widthFactor: subject.attendancePercent / 100.0,
+                      widthFactor: (porcentaje ?? 0) / 100.0,
                       child: Container(
                         decoration: BoxDecoration(
                           color: accent,
