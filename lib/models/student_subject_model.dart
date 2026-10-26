@@ -1,15 +1,10 @@
+import 'asistencia_resumen.dart';
 import 'curso_model.dart';
-
-/// Semáforo de asistencia de una materia.
-enum SubjectStatus { safe, warning, critical }
 
 /// Una materia del estudiante tal como se ve en su tarjeta: horario, docente
 /// y asistencia. No lleva notas: el portal del estudiante solo muestra
 /// asistencia.
 class StudentSubjectModel {
-  /// Asistencia mínima para no reprobar la materia.
-  static const minimoAsistencia = 80;
-
   static const _dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   final String cursoId;
@@ -19,10 +14,7 @@ class StudentSubjectModel {
   final String room;
   final String schedule;
   final String professor;
-
-  /// Sesiones que ya terminaron y a cuántas asistió.
-  final int sessionsTotal;
-  final int sessionsAttended;
+  final AsistenciaResumen asistencia;
 
   const StudentSubjectModel({
     required this.cursoId,
@@ -32,14 +24,12 @@ class StudentSubjectModel {
     required this.room,
     required this.schedule,
     required this.professor,
-    this.sessionsTotal = 0,
-    this.sessionsAttended = 0,
+    this.asistencia = const AsistenciaResumen(),
   });
 
   factory StudentSubjectModel.desdeCurso(
     Curso curso, {
-    int sesiones = 0,
-    int asistidas = 0,
+    AsistenciaResumen asistencia = const AsistenciaResumen(),
   }) {
     return StudentSubjectModel(
       cursoId: curso.id,
@@ -49,8 +39,7 @@ class StudentSubjectModel {
       room: curso.aula,
       schedule: horarioLegible(curso.horarios),
       professor: curso.docenteNombre,
-      sessionsTotal: sesiones,
-      sessionsAttended: asistidas,
+      asistencia: asistencia,
     );
   }
 
@@ -71,49 +60,35 @@ class StudentSubjectModel {
         .join(' / ');
   }
 
-  /// null mientras ninguna sesión haya terminado.
-  int? get attendancePercent => sessionsTotal == 0
-      ? null
-      : (sessionsAttended * 100 / sessionsTotal).round();
-
-  SubjectStatus get status {
-    final porcentaje = attendancePercent;
-    if (porcentaje == null || porcentaje >= 90) return SubjectStatus.safe;
-    if (porcentaje >= minimoAsistencia) return SubjectStatus.warning;
-    return SubjectStatus.critical;
-  }
-
-  /// Cuántas clases puede faltar todavía sin bajar del mínimo.
-  int get faltasDisponibles {
-    if (sessionsTotal == 0) return 0;
-    final permitidas = (sessionsTotal * (100 - minimoAsistencia) / 100).floor();
-    final perdidas = sessionsTotal - sessionsAttended;
-    final restantes = permitidas - perdidas;
-    return restantes < 0 ? 0 : restantes;
-  }
+  int get sessionsTotal => asistencia.sesiones;
+  int get sessionsAttended => asistencia.asistidas;
+  int? get attendancePercent => asistencia.porcentaje;
+  NivelAsistencia get status => asistencia.nivel;
 
   String get sessionsLabel {
-    if (sessionsTotal == 0) return 'Aún no hay clases registradas';
-    final clases = sessionsTotal == 1 ? 'clase' : 'clases';
-    return '$sessionsAttended de $sessionsTotal $clases';
+    if (asistencia.sesiones == 0) return 'Aún no hay clases registradas';
+    final clases = asistencia.sesiones == 1 ? 'clase' : 'clases';
+    return '${asistencia.asistidas} de ${asistencia.sesiones} $clases';
   }
 
   String get statusLabel {
-    if (attendancePercent == null) return 'Sin registro';
-    switch (status) {
-      case SubjectStatus.safe:
+    if (asistencia.porcentaje == null) return 'Sin registro';
+    switch (asistencia.nivel) {
+      case NivelAsistencia.alDia:
         return 'Al día';
-      case SubjectStatus.warning:
+      case NivelAsistencia.atencion:
         return 'Atención';
-      case SubjectStatus.critical:
+      case NivelAsistencia.riesgo:
         return 'En riesgo';
     }
   }
 
   String get absencesBadge {
-    if (sessionsTotal == 0) return 'Sin clases aún';
-    if (status == SubjectStatus.critical) return 'Por debajo del mínimo';
-    final faltas = faltasDisponibles;
+    if (asistencia.sesiones == 0) return 'Sin clases aún';
+    if (asistencia.nivel == NivelAsistencia.riesgo) {
+      return 'Por debajo del mínimo';
+    }
+    final faltas = asistencia.faltasDisponibles;
     if (faltas == 0) return 'Sin faltas disponibles';
     return faltas == 1 ? '1 falta disponible' : '$faltas faltas disponibles';
   }

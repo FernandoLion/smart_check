@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_check/models/asistencia_resumen.dart';
 import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/student_subject_model.dart';
 
@@ -11,8 +12,8 @@ StudentSubjectModel materia({int sesiones = 0, int asistidas = 0}) =>
       room: 'Aula 204',
       schedule: 'Mar / Jue • 08:00 - 10:00',
       professor: 'ANA MARÍA PÉREZ GÓMEZ',
-      sessionsTotal: sesiones,
-      sessionsAttended: asistidas,
+      asistencia:
+          AsistenciaResumen(sesiones: sesiones, asistidas: asistidas),
     );
 
 void main() {
@@ -42,31 +43,13 @@ void main() {
     });
   });
 
-  group('asistencia', () {
-    test('no hay porcentaje mientras no termine ninguna clase', () {
+  group('textos de la tarjeta', () {
+    test('sin clases registradas no inventa nada', () {
       final sinClases = materia();
       expect(sinClases.attendancePercent, isNull);
-      expect(sinClases.status, SubjectStatus.safe);
+      expect(sinClases.statusLabel, 'Sin registro');
       expect(sinClases.sessionsLabel, 'Aún no hay clases registradas');
       expect(sinClases.absencesBadge, 'Sin clases aún');
-    });
-
-    test('redondea el porcentaje', () {
-      expect(materia(sesiones: 3, asistidas: 2).attendancePercent, 67);
-    });
-
-    test('el semáforo usa el mínimo del 80%', () {
-      expect(materia(sesiones: 10, asistidas: 9).status, SubjectStatus.safe);
-      expect(materia(sesiones: 10, asistidas: 8).status, SubjectStatus.warning);
-      expect(
-          materia(sesiones: 10, asistidas: 7).status, SubjectStatus.critical);
-    });
-
-    test('cuenta las faltas que todavía puede darse', () {
-      // De 10 clases puede faltar a 2; ya faltó a 1.
-      expect(materia(sesiones: 10, asistidas: 9).faltasDisponibles, 1);
-      expect(materia(sesiones: 10, asistidas: 8).faltasDisponibles, 0);
-      expect(materia(sesiones: 10, asistidas: 5).faltasDisponibles, 0);
     });
 
     test('usa el singular con una sola clase', () {
@@ -74,11 +57,21 @@ void main() {
       expect(materia(sesiones: 2, asistidas: 1).sessionsLabel, '1 de 2 clases');
     });
 
+    test('nombra el nivel de asistencia', () {
+      expect(materia(sesiones: 10, asistidas: 10).statusLabel, 'Al día');
+      expect(materia(sesiones: 10, asistidas: 8).statusLabel, 'Atención');
+      expect(materia(sesiones: 10, asistidas: 5).statusLabel, 'En riesgo');
+    });
+
     test('avisa cuando ya está por debajo del mínimo', () {
       expect(materia(sesiones: 10, asistidas: 5).absencesBadge,
           'Por debajo del mínimo');
+      expect(materia(sesiones: 10, asistidas: 8).absencesBadge,
+          'Sin faltas disponibles');
       expect(materia(sesiones: 20, asistidas: 19).absencesBadge,
           '3 faltas disponibles');
+      expect(materia(sesiones: 10, asistidas: 9).absencesBadge,
+          '1 falta disponible');
     });
   });
 
@@ -95,12 +88,15 @@ void main() {
       horarios: [Horario(dia: DateTime.tuesday, inicio: '08:00', fin: '10:00')],
     );
 
-    final materia =
-        StudentSubjectModel.desdeCurso(curso, sesiones: 4, asistidas: 3);
+    final materia = StudentSubjectModel.desdeCurso(
+      curso,
+      asistencia: const AsistenciaResumen(sesiones: 4, asistidas: 3),
+    );
 
     expect(materia.cursoId, 'c1');
     expect(materia.professor, 'ANA MARÍA PÉREZ GÓMEZ');
     expect(materia.schedule, 'Mar • 08:00 - 10:00');
     expect(materia.attendancePercent, 75);
+    expect(materia.status, NivelAsistencia.riesgo);
   });
 }

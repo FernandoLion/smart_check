@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/asistencia_resumen.dart';
 import '../models/curso_model.dart';
 import '../models/student_subject_model.dart';
 import '../services/curso_service.dart';
@@ -41,12 +42,12 @@ class StudentViewModel extends ChangeNotifier {
     final porcentaje = globalAttendance;
     if (porcentaje == null) return 'Sin clases aún';
     if (porcentaje >= 90) return 'Al día';
-    if (porcentaje >= StudentSubjectModel.minimoAsistencia) return 'Atención';
+    if (porcentaje >= AsistenciaResumen.minimo) return 'Atención';
     return 'En riesgo';
   }
 
   int get materiasEnRiesgo =>
-      _subjects.where((s) => s.status == SubjectStatus.critical).length;
+      _subjects.where((s) => s.status == NivelAsistencia.riesgo).length;
 
   /// Empieza a escuchar los cursos donde el estudiante está inscrito por
   /// [cedula] o por [email]. Volver a llamarlo con los mismos no hace nada.
@@ -104,8 +105,7 @@ class StudentViewModel extends ChangeNotifier {
         for (var i = 0; i < ordenados.length; i++)
           StudentSubjectModel.desdeCurso(
             ordenados[i],
-            sesiones: resumenes[i].sesiones,
-            asistidas: resumenes[i].asistidas,
+            asistencia: resumenes[i],
           ),
       ];
       notifyListeners();

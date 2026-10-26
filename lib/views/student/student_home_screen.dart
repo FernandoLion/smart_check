@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/asistencia_resumen.dart';
 import '../../models/student_subject_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -83,8 +84,7 @@ class StudentHomeScreen extends StatelessWidget {
                               ),
                             ),
                             const Text(
-                              'Mínimo '
-                              '${StudentSubjectModel.minimoAsistencia}%',
+                              'Mínimo ${AsistenciaResumen.minimo}%',
                               style: TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontSize: 12,
@@ -761,33 +761,33 @@ class _SubjectPassCard extends StatelessWidget {
 
   Color get _accentColor {
     switch (subject.status) {
-      case SubjectStatus.warning:
+      case NivelAsistencia.atencion:
         return const Color(0xFFFF9F0A); // system-amber
-      case SubjectStatus.safe:
+      case NivelAsistencia.alDia:
         return const Color(0xFF47E266); // tertiary
-      case SubjectStatus.critical:
+      case NivelAsistencia.riesgo:
         return const Color(0xFFFF453A); // system-red
     }
   }
 
   IconData get _bottomNoteIcon {
     switch (subject.status) {
-      case SubjectStatus.warning:
+      case NivelAsistencia.atencion:
         return Icons.flag;
-      case SubjectStatus.safe:
+      case NivelAsistencia.alDia:
         return Icons.verified;
-      case SubjectStatus.critical:
+      case NivelAsistencia.riesgo:
         return Icons.warning_amber_rounded;
     }
   }
 
   IconData get _attendanceIcon {
     switch (subject.status) {
-      case SubjectStatus.warning:
+      case NivelAsistencia.atencion:
         return Icons.fact_check_outlined;
-      case SubjectStatus.safe:
+      case NivelAsistencia.alDia:
         return Icons.check_circle_outline;
-      case SubjectStatus.critical:
+      case NivelAsistencia.riesgo:
         return Icons.warning_amber_rounded;
     }
   }
@@ -1035,7 +1035,7 @@ class _SubjectPassCard extends StatelessWidget {
                             Text(
                               porcentaje == null ? '— ' : '$porcentaje% ',
                               style: TextStyle(
-                                color: subject.status == SubjectStatus.warning
+                                color: subject.status == NivelAsistencia.atencion
                                     ? Colors.white
                                     : accent,
                                 fontSize: 12,
@@ -1044,11 +1044,10 @@ class _SubjectPassCard extends StatelessWidget {
                             ),
                             Flexible(
                               child: Text(
-                                '(mínimo '
-                                '${StudentSubjectModel.minimoAsistencia}%)',
+                                '(mínimo ${AsistenciaResumen.minimo}%)',
                                 style: TextStyle(
                                   color:
-                                      subject.status == SubjectStatus.critical
+                                      subject.status == NivelAsistencia.riesgo
                                           ? accent
                                           : AppTheme.textTertiary,
                                   fontSize: 11,

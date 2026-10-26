@@ -14,6 +14,9 @@ import 'create_course_screen.dart';
 enum CourseStatus { active, today, archived }
 
 class TeacherCourseModel {
+  /// El curso en Firestore del que sale esta tarjeta.
+  final Curso curso;
+
   final String code;
   final String name;
   final String group;
@@ -30,6 +33,7 @@ class TeacherCourseModel {
   final String footer;
 
   const TeacherCourseModel({
+    required this.curso,
     required this.code,
     required this.name,
     required this.group,
@@ -152,14 +156,8 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => CourseDetailScreen(
-                                    courseName: course.name,
-                                    courseCode: course.code,
-                                    groupName: course.group
-                                        .split('•')
-                                        .first
-                                        .trim(),
-                                  ),
+                                  builder: (_) =>
+                                      CourseDetailScreen(curso: course.curso),
                                 ),
                               );
                             },
@@ -199,6 +197,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     final dias = curso.horarios.map((h) => _dias[h.dia]).toSet().join(' / ');
     final primera = curso.horarios.isEmpty ? null : curso.horarios.first;
     return TeacherCourseModel(
+      curso: curso,
       code: curso.codigo,
       name: curso.nombre,
       group: [

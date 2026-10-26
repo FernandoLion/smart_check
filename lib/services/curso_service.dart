@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/asistencia_resumen.dart';
 import '../models/curso_model.dart';
 import '../models/inscrito_model.dart';
 import '../models/sesion_model.dart';
@@ -13,15 +14,6 @@ class CursoException implements Exception {
 
   @override
   String toString() => mensaje;
-}
-
-/// Asistencia de un estudiante en un curso: a cuántas de las sesiones que ya
-/// terminaron asistió.
-class ResumenAsistencia {
-  final int sesiones;
-  final int asistidas;
-
-  const ResumenAsistencia({this.sesiones = 0, this.asistidas = 0});
 }
 
 /// Cursos, inscritos, sesiones y asistencias en Firestore:
@@ -197,12 +189,12 @@ class CursoService {
   ///
   /// [claves] son la cédula y el correo, porque el docente pudo inscribirlo
   /// por cualquiera de los dos.
-  Future<ResumenAsistencia> resumenAsistencia(
+  Future<AsistenciaResumen> resumenAsistencia(
     String cursoId,
     List<String> claves, {
     DateTime? ahora,
   }) async {
-    if (claves.isEmpty) return const ResumenAsistencia();
+    if (claves.isEmpty) return const AsistenciaResumen();
     final momento = ahora ?? DateTime.now();
     try {
       final docs = await _sesiones(cursoId).get().timeout(_timeout);
@@ -213,12 +205,36 @@ class CursoService {
       final asistio = await Future.wait(
         terminadas.map((s) => _asistio(cursoId, s.id, claves)),
       );
-      return ResumenAsistencia(
+      return AsistenciaResumen(
         sesiones: terminadas.length,
         asistidas: asistio.where((a) => a).length,
       );
     } catch (e) {
       throw CursoException(_mensaje(e, 'leer tu asistencia'));
+    }
+  }
+
+  /// Las asistencias de cada sesión, por id de sesión. Con esto el panel
+  /// docente arma a la vez el resumen de cada clase y el de cada inscrito.
+  Future<Map<String, List<Asistencia>>> asistenciasDeSesiones(
+    String cursoId,
+    List<String> sesionIds,
+  ) async {
+    if (sesionIds.isEmpty) return const {};
+    try {
+      final porSesion = await Future.wait(
+        sesionIds
+            .map((id) => _asistencias(cursoId, id).get().timeout(_timeout)),
+      );
+      return {
+        for (var i = 0; i < sesionIds.length; i++)
+          sesionIds[i]: porSesion[i]
+              .docs
+              .map((d) => Asistencia.fromMap(d.id, d.data()))
+              .toList(),
+      };
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'leer las asistencias'));
     }
   }
 

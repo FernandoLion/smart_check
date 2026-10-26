@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_check/models/asistencia_resumen.dart';
 import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/inscrito_model.dart';
+import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/services/curso_service.dart';
 
 /// Cursos en memoria, con los mismos efectos que el servicio real.
@@ -10,8 +12,13 @@ class FakeCursoService extends Fake implements CursoService {
   final cursos = <String, Curso>{};
   final inscritosPorCurso = <String, Map<String, Inscrito>>{};
 
+  final sesionesPorCurso = <String, List<Sesion>>{};
+
+  /// Asistencias por id de sesión.
+  final asistenciasPorSesion = <String, List<Asistencia>>{};
+
   /// Asistencia ya calculada por curso, como la devolvería Firestore.
-  final resumenes = <String, ResumenAsistencia>{};
+  final resumenes = <String, AsistenciaResumen>{};
   CursoException? fallo;
   final _cambios = StreamController<void>.broadcast();
   var _siguienteId = 1;
@@ -55,13 +62,45 @@ class FakeCursoService extends Fake implements CursoService {
       _conId((c) => c.clavesInscritos.any(claves.contains));
 
   @override
-  Future<ResumenAsistencia> resumenAsistencia(
+  Future<AsistenciaResumen> resumenAsistencia(
     String cursoId,
     List<String> claves, {
     DateTime? ahora,
   }) async {
     if (fallo != null) throw fallo!;
-    return resumenes[cursoId] ?? const ResumenAsistencia();
+    return resumenes[cursoId] ?? const AsistenciaResumen();
+  }
+
+  @override
+  Stream<List<Inscrito>> inscritos(String cursoId) async* {
+    List<Inscrito> actuales() =>
+        (inscritosPorCurso[cursoId] ?? const {}).values.toList();
+    yield actuales();
+    await for (final _ in _cambios.stream) {
+      yield actuales();
+    }
+  }
+
+  @override
+  Stream<List<Sesion>> sesiones(String cursoId) async* {
+    // El servicio real las entrega de la más reciente a la más antigua.
+    List<Sesion> actuales() => [...sesionesPorCurso[cursoId] ?? const []]
+      ..sort((a, b) => b.inicio.compareTo(a.inicio));
+    yield actuales();
+    await for (final _ in _cambios.stream) {
+      yield actuales();
+    }
+  }
+
+  @override
+  Future<Map<String, List<Asistencia>>> asistenciasDeSesiones(
+    String cursoId,
+    List<String> sesionIds,
+  ) async {
+    if (fallo != null) throw fallo!;
+    return {
+      for (final id in sesionIds) id: asistenciasPorSesion[id] ?? const [],
+    };
   }
 
   @override
