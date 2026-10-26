@@ -104,6 +104,59 @@ class FakeCursoService extends Fake implements CursoService {
   }
 
   @override
+  Future<String> abrirSesion(String cursoId, Sesion sesion) async {
+    if (fallo != null) throw fallo!;
+    final id = 'sesion-${_siguienteId++}';
+    sesionesPorCurso
+        .putIfAbsent(cursoId, () => [])
+        .add(Sesion(
+          id: id,
+          inicio: sesion.inicio,
+          fin: sesion.fin,
+          abierta: sesion.abierta,
+        ));
+    _cambios.add(null);
+    return id;
+  }
+
+  @override
+  Future<void> cerrarSesion(String cursoId, String sesionId) async {
+    if (fallo != null) throw fallo!;
+    final lista = sesionesPorCurso[cursoId] ?? [];
+    for (var i = 0; i < lista.length; i++) {
+      if (lista[i].id != sesionId) continue;
+      lista[i] = Sesion(
+        id: sesionId,
+        inicio: lista[i].inicio,
+        fin: lista[i].fin,
+        abierta: false,
+      );
+    }
+    _cambios.add(null);
+  }
+
+  @override
+  Stream<List<Asistencia>> asistencias(String cursoId, String sesionId) async* {
+    yield asistenciasPorSesion[sesionId] ?? const [];
+    await for (final _ in _cambios.stream) {
+      yield asistenciasPorSesion[sesionId] ?? const [];
+    }
+  }
+
+  @override
+  Future<void> registrarAsistencia(
+    String cursoId,
+    String sesionId,
+    Asistencia asistencia,
+  ) async {
+    if (fallo != null) throw fallo!;
+    final lista = asistenciasPorSesion.putIfAbsent(sesionId, () => [])
+      ..removeWhere((a) => a.claveInscrito == asistencia.claveInscrito);
+    lista.add(asistencia);
+    _cambios.add(null);
+  }
+
+  @override
   Future<String> crearCurso(Curso curso) async {
     if (fallo != null) throw fallo!;
     final id = 'curso-${_siguienteId++}';

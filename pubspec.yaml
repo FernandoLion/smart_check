@@ -41,6 +41,12 @@ dependencies:
   http: ^1.4.0
   cloud_firestore: ^6.10.0
 
+  # Asistencia por BLE: el celular del docente escanea y el del estudiante
+  # se anuncia. La geocerca comprueba que la clase se dicte donde toca.
+  flutter_blue_plus: ^2.3.10
+  flutter_ble_peripheral: ^3.1.0
+  geolocator: ^14.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
