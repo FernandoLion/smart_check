@@ -1,17 +1,22 @@
 import 'dart:math' as math;
-import 'cedula_login_screen.dart';
+
 import 'package:flutter/material.dart';
-import 'manual_rollcall_screen.dart';
+
+import '../../models/curso_model.dart';
+import '../../models/sesion_model.dart';
 import '../../utils/app_theme.dart';
-import 'face_verification_screen.dart';
+import '../../viewmodels/radar_viewmodel.dart';
+import 'manual_rollcall_screen.dart';
 
 class AttendanceRadarScreen extends StatefulWidget {
-  final String courseTitle;
+  final Curso curso;
 
-  const AttendanceRadarScreen({
-    super.key,
-    this.courseTitle = 'Ing. de Software • Aula 302B',
-  });
+  const AttendanceRadarScreen({super.key, required this.curso});
+
+  String get courseTitle => [
+        curso.nombre,
+        if (curso.aula.isNotEmpty) curso.aula,
+      ].join(' • ');
 
   @override
   State<AttendanceRadarScreen> createState() => _AttendanceRadarScreenState();
@@ -36,65 +41,16 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
   late final AnimationController _sweepController;
   late final AnimationController _pulseController;
 
-  bool _isRadarActive = true;
-  int _selectedFilter = 0; // 0: Todos (24), 1: Detectados (18), 2: Ausentes (6)
+  late final RadarViewModel _vm;
+  int _selectedFilter = 0; // 0: Todos, 1: Detectados, 2: Ausentes
 
-  final List<_RadarStudentItem> _students = const [
-    _RadarStudentItem(
-      name: 'Valentina Rios Morales',
-      idAndProgram: 'ID: 2021-0492 • Ing. de Sistemas',
-      signalDetail: 'Detectado hace 2m • 100% señal',
-      timeText: '08:14 AM',
-      initials: 'VR',
-      isPresent: true,
-    ),
-    _RadarStudentItem(
-      name: 'Camilo Torres Peña',
-      idAndProgram: 'ID: 2022-1180 • Ing. de Sistemas',
-      signalDetail: 'Detectado hace 3m • 92% señal',
-      timeText: '08:15 AM',
-      initials: 'CT',
-      isPresent: true,
-    ),
-    _RadarStudentItem(
-      name: 'Sofía Mendoza Cruz',
-      idAndProgram: 'ID: 2021-3042 • Ing. de Software',
-      signalDetail: 'Detectado hace 5m • 88% señal',
-      timeText: '08:17 AM',
-      initials: 'SM',
-      isPresent: true,
-    ),
-    _RadarStudentItem(
-      name: 'Mateo Gómez Silva',
-      idAndProgram: 'ID: 2020-8812 • Ing. de Software',
-      signalDetail: 'Detectado hace 7m • 79% señal',
-      timeText: '08:19 AM',
-      initials: 'MG',
-      isPresent: true,
-    ),
-    _RadarStudentItem(
-      name: 'Diego Fernando Parra',
-      idAndProgram: 'ID: 2021-9923 • Ing. de Software',
-      signalDetail: 'Buscando baliza BLE...',
-      timeText: 'Sin registro',
-      initials: 'DP',
-      isPresent: false,
-      absentIcon: Icons.wifi_tethering_off,
-    ),
-    _RadarStudentItem(
-      name: 'Lucía Beltrán Duarte',
-      idAndProgram: 'ID: 2022-4410 • Ing. de Sistemas',
-      signalDetail: 'Fuera del radio de aula',
-      timeText: 'Sin registro',
-      initials: 'LB',
-      isPresent: false,
-      absentIcon: Icons.close,
-    ),
-  ];
+  bool get _isRadarActive => _vm.escaneando;
 
   @override
   void initState() {
     super.initState();
+    _vm = RadarViewModel()..addListener(_alCambiarElRadar);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _arrancar());
 
     // Animación continua de 360° para el haz del radar (4s linear infinite)
     _sweepController = AnimationController(
@@ -111,48 +67,117 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
 
   @override
   void dispose() {
+    _vm.removeListener(_alCambiarElRadar);
+    _vm.dispose();
     _sweepController.dispose();
     _pulseController.dispose();
     super.dispose();
   }
 
-  void _toggleRadarState() {
-    setState(() {
-      _isRadarActive = !_isRadarActive;
-      if (_isRadarActive) {
-        _sweepController.repeat();
-      } else {
-        _sweepController.stop();
-      }
-    });
+  /// Abre la clase y empieza a escuchar. El viewmodel es quien comprueba el
+  /// horario, la geocerca y los permisos.
+  Future<void> _arrancar() async {
+    await _vm.iniciar(widget.curso, widget.curso.docenteUid);
+    if (!mounted) return;
+    final error = _vm.error;
+    if (error != null) _avisar(error);
   }
 
-  void _onFaceVerificationTap() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const FaceVerificationScreen()),
+  void _alCambiarElRadar() {
+    if (!mounted) return;
+    if (_vm.escaneando) {
+      if (!_sweepController.isAnimating) _sweepController.repeat();
+    } else {
+      _sweepController.stop();
+    }
+    setState(() {});
+  }
+
+  void _avisar(String mensaje) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje), backgroundColor: AppTheme.error),
     );
   }
 
-  void _onManualRollcallTap() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ManualRollcallScreen()),
+  /// Detener cierra la clase: es lo que hace que cuente en los porcentajes.
+  Future<void> _toggleRadarState() async {
+    if (_vm.ocupado) return;
+    if (_isRadarActive) {
+      final confirmado = await _confirmarCierre();
+      if (!confirmado || !mounted) return;
+      await _vm.detener();
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+    await _arrancar();
+  }
+
+  Future<bool> _confirmarCierre() async {
+    final cerrar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: _surfaceElevated,
+        title: const Text(
+          '¿Cerrar la clase?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Se deja de escuchar y la sesión queda cerrada. '
+          '${_vm.detectados} de ${_vm.totalInscritos} quedarán como '
+          'asistencia; el resto cuenta como falta.',
+          style: const TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Seguir escuchando'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Cerrar la clase',
+              style: TextStyle(color: _systemRed),
+            ),
+          ),
+        ],
+      ),
+    );
+    return cerrar ?? false;
+  }
+
+  /// Tocar a un estudiante lo marca a mano, para cuando el BLE no lo oyó.
+  Future<void> _marcarAMano(_RadarStudentItem item) async {
+    if (_vm.sesion == null) {
+      _avisar('Abre la clase antes de marcar asistencia.');
+      return;
+    }
+    if (item.isPresent) return;
+    final fila = _vm.lista.firstWhere((f) => f.inscrito.nombre == item.name);
+    final ok = await _vm.marcarManual(fila.inscrito);
+    if (!mounted) return;
+    if (!ok) {
+      _avisar(_vm.error ?? 'No se pudo marcar la asistencia.');
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${item.name} marcado a mano'),
+        duration: const Duration(seconds: 1),
+      ),
     );
   }
 
-  void _onCedulaLoginTap() {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const CedulaLoginScreen(),
-    ),
-  );
-}
+  Future<void> _onManualRollcallTap() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ManualRollcallScreen(radar: _vm)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filteredStudents = _students.where((s) {
+    final estudiantes = _vm.lista.map(_aItem).toList();
+    final filteredStudents = estudiantes.where((s) {
       if (_selectedFilter == 1) return s.isPresent;
       if (_selectedFilter == 2) return !s.isPresent;
       return true;
@@ -181,6 +206,11 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                       // Barra rápida de métodos alternativos (Pantallas 22 y 24 del Roadmap)
                       _buildAlternativeMethodsStrip(),
                       const SizedBox(height: 16),
+
+                      if (_vm.error != null) ...[
+                        _buildAvisoError(_vm.error!),
+                        const SizedBox(height: 16),
+                      ],
 
                       // SECTION 2: Cupertino Sliding Segment Filter
                       _buildSegmentedFilterSection(),
@@ -489,19 +519,19 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                       Positioned(
                         bottom: 36,
                         left: 52,
-                        child: _buildStudentBlip(initials: 'CT', size: 28),
+                        child: _buildBlipDetectado(1, 28),
                       ),
                       // Blip 3: Sofía Mendoza (Top Left)
                       Positioned(
                         top: 44,
                         left: 46,
-                        child: _buildStudentBlip(initials: 'SM', size: 28),
+                        child: _buildBlipDetectado(2, 28),
                       ),
                       // Blip 4: Mateo Gómez (Bottom Right)
                       Positioned(
                         bottom: 30,
                         right: 46,
-                        child: _buildStudentBlip(initials: 'MG', size: 28),
+                        child: _buildBlipDetectado(3, 28),
                       ),
                       // Blip 5: Mariana Ortiz (Right Center)
                       Positioned(
@@ -681,15 +711,107 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
     );
   }
 
+  /// Un punto del radar por cada estudiante ya detectado.
+  Widget _buildBlipDetectado(int n, double size, {bool grande = false}) {
+    final iniciales = _inicialesDetectado(n);
+    if (iniciales == null) return SizedBox(width: size, height: size);
+    return _buildStudentBlip(
+      initials: iniciales,
+      size: size,
+      bgColor: grande ? _tertiaryGreen.withValues(alpha: 0.25) : null,
+      showCheck: true,
+    );
+  }
+
+  /// Iniciales del detectado número [n], o null si todavía no hay tantos.
+  String? _inicialesDetectado(int n) {
+    final detectados = _vm.lista.where((i) => i.detectado).toList();
+    if (n >= detectados.length) return null;
+    return _iniciales(detectados[n].inscrito.nombre);
+  }
+
+  static String _iniciales(String nombre) {
+    final partes = nombre.trim().split(RegExp(r'\s+'));
+    if (partes.isEmpty || partes.first.isEmpty) return '?';
+    if (partes.length == 1) return partes.first.substring(0, 1).toUpperCase();
+    return (partes[0].substring(0, 1) + partes[1].substring(0, 1))
+        .toUpperCase();
+  }
+
+  _RadarStudentItem _aItem(InscritoEnRadar fila) {
+    final asistencia = fila.asistencia;
+    final identificacion = fila.inscrito.cedula ?? fila.inscrito.email ?? '';
+    return _RadarStudentItem(
+      name: fila.inscrito.nombre,
+      idAndProgram: identificacion,
+      signalDetail: _detalleSenal(fila),
+      timeText: asistencia == null ? 'Sin registro' : _hora(asistencia.hora),
+      initials: _iniciales(fila.inscrito.nombre),
+      isPresent: fila.detectado,
+      absentIcon: fila.detectado ? null : Icons.wifi_tethering_off,
+    );
+  }
+
+  String _detalleSenal(InscritoEnRadar fila) {
+    final asistencia = fila.asistencia;
+    if (asistencia == null) {
+      return _isRadarActive ? 'Buscando baliza BLE...' : 'Sin detectar';
+    }
+    if (asistencia.metodo == MetodoAsistencia.manual) {
+      return asistencia.estado == EstadoAsistencia.ausente
+          ? 'Marcado ausente a mano'
+          : 'Marcado a mano por ti';
+    }
+    final tarde = asistencia.estado == EstadoAsistencia.tarde;
+    final senal = fila.rssi == null ? '' : ' • ${_calidad(fila.rssi!)} señal';
+    return '${tarde ? 'Llegó tarde' : 'Detectado por BLE'}$senal';
+  }
+
+  /// De -40 dBm (pegado al docente) a -100 dBm (al límite del aula).
+  static String _calidad(int rssi) {
+    final porcentaje = ((rssi + 100) * 100 / 60).clamp(0, 100).round();
+    return '$porcentaje%';
+  }
+
+  static String _hora(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:'
+      '${d.minute.toString().padLeft(2, '0')}';
+
+  Widget _buildAvisoError(String mensaje) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _systemRed.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _systemRed.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline, color: _systemRed, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              mensaje,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStudentBlip({
     required String initials,
     required double size,
     Color? bgColor,
     bool showCheck = false,
   }) {
-    return GestureDetector(
-      onTap: _onFaceVerificationTap,
-      child: Stack(
+    return Stack(
         clipBehavior: Clip.none,
         children: [
           Container(
@@ -733,82 +855,49 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
             ),
           ),
         ],
-      ),
     );
   }
 
-  /// Barra rápida para conectar con las Pantallas 22 (Verificar cara) y 24 (Ingresar por cédula) del Roadmap
+  /// Estado de la clase abierta: hasta cuándo se puede marcar y cuántos van.
   Widget _buildAlternativeMethodsStrip() {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: _onFaceVerificationTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-              decoration: BoxDecoration(
-                color: _surfaceElevated,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.face_retouching_natural,
-                    color: _primaryIndigo,
-                    size: 18,
-                  ),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Verificar Rostro',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+    final sesion = _vm.sesion;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+      decoration: BoxDecoration(
+        color: _surfaceElevated,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            sesion == null ? Icons.lock_clock : Icons.schedule,
+            color: sesion == null ? AppTheme.textTertiary : _tertiaryGreen,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              sesion == null
+                  ? 'La clase no está abierta.'
+                  : 'Se puede marcar hasta las ${_hora(sesion.fin)}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: GestureDetector(
-            onTap: _onCedulaLoginTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-              decoration: BoxDecoration(
-                color: _surfaceElevated,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.dialpad, color: _secondaryBlue, size: 18),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Ingresar Cédula',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
+          Text(
+            '${_vm.detectados}/${_vm.totalInscritos}',
+            style: const TextStyle(
+              color: _tertiaryGreen,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -825,17 +914,21 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
           ),
           child: Row(
             children: [
-              _buildFilterTab(index: 0, label: 'Todos', count: '(24)'),
+              _buildFilterTab(
+                index: 0,
+                label: 'Todos',
+                count: '(${_vm.totalInscritos})',
+              ),
               _buildFilterTab(
                 index: 1,
                 label: 'Detectados',
-                count: '(18)',
+                count: '(${_vm.detectados})',
                 dotColor: _tertiaryGreen,
               ),
               _buildFilterTab(
                 index: 2,
                 label: 'Ausentes',
-                count: '(6)',
+                count: '(${_vm.faltantes})',
                 dotColor: _systemRed,
               ),
             ],
@@ -927,7 +1020,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
 
   Widget _buildStudentAttendanceCard(_RadarStudentItem student) {
     return GestureDetector(
-      onTap: _onFaceVerificationTap,
+      onTap: () => _marcarAMano(student),
       child: Opacity(
         opacity: student.isPresent ? 1.0 : 0.6,
         child: Container(

@@ -18,11 +18,15 @@ class StudentViewModel extends ChangeNotifier {
   StreamSubscription<List<Curso>>? _suscripcion;
   List<String> _claves = const [];
 
+  List<Curso> _cursos = const [];
   List<StudentSubjectModel> _subjects = const [];
   bool _cargando = false;
   String? _error;
 
   List<StudentSubjectModel> get subjects => _subjects;
+
+  /// Los cursos tal cual, para la baliza BLE.
+  List<Curso> get cursos => _cursos;
   bool get cargando => _cargando;
   String? get error => _error;
 
@@ -60,6 +64,7 @@ class StudentViewModel extends ChangeNotifier {
     _suscripcion?.cancel();
     _claves = claves;
     _subjects = const [];
+    _cursos = const [];
     _error = null;
     _cargando = claves.isNotEmpty;
     if (claves.isEmpty) {
@@ -87,6 +92,7 @@ class StudentViewModel extends ChangeNotifier {
 
   Future<void> _alLlegarCursos(List<Curso> cursos) async {
     final ordenados = [...cursos]..sort((a, b) => a.nombre.compareTo(b.nombre));
+    _cursos = ordenados;
     // Se muestran los cursos de una vez y la asistencia se llena al llegar.
     _subjects =
         ordenados.map(StudentSubjectModel.desdeCurso).toList(growable: false);

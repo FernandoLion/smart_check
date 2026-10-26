@@ -1,18 +1,26 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../models/curso_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/beacon_viewmodel.dart';
 
 class BleBeaconScreen extends StatefulWidget {
-  final String courseName;
-  final String classroom;
+  /// Las materias del estudiante: entre ellas se busca la que el docente
+  /// tenga abierta ahora.
+  final List<Curso> cursos;
+
+  /// Cédula o correo con el que el docente lo inscribió.
+  final String clave;
 
   const BleBeaconScreen({
     super.key,
-    this.courseName = 'Ingeniería de Software II',
-    this.classroom = 'Aula 301 (Edif. B)',
+    required this.cursos,
+    required this.clave,
   });
 
   @override
@@ -35,10 +43,22 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   late final AnimationController _coreBreathingController;
   late final AnimationController _liveDotController;
 
+  late final BeaconViewModel _vm;
+
   Timer? _countdownTimer;
-  int _totalSeconds = 4 * 60 + 59; // 04:59 inicial como en el script
   bool _isDisconnecting = false;
   bool _isStopped = false;
+
+  String get _courseName => _vm.curso?.nombre ?? 'Buscando clase abierta...';
+  String get _classroom => _vm.curso?.aula ?? '—';
+
+  /// Lo que queda de la franja en la que se puede marcar.
+  int get _totalSeconds {
+    final sesion = _vm.sesion;
+    if (sesion == null) return 0;
+    final restan = sesion.fin.difference(DateTime.now()).inSeconds;
+    return restan < 0 ? 0 : restan;
+  }
 
   @override
   void initState() {
@@ -62,22 +82,31 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
       duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
 
-    // Temporizador de 5 minutos en reversa
+    _vm = BeaconViewModel()..addListener(_alCambiar);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _empezar());
+
+    // Refresca la cuenta atrás hasta que se cierre la franja de la clase.
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
-      if (_totalSeconds <= 0) {
-        timer.cancel();
-        setState(() {});
-        return;
-      }
-      setState(() {
-        _totalSeconds--;
-      });
+      setState(() {});
+      if (_vm.sesion != null && _totalSeconds <= 0) timer.cancel();
     });
+  }
+
+  Future<void> _empezar() async {
+    final ok = await _vm.marcar(widget.cursos, widget.clave);
+    if (!mounted || ok) return;
+    setState(() => _isStopped = true);
+  }
+
+  void _alCambiar() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _vm.removeListener(_alCambiar);
+    _vm.dispose();
     _countdownTimer?.cancel();
     _rippleController.dispose();
     _coreBreathingController.dispose();
@@ -101,7 +130,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
     _countdownTimer?.cancel();
     setState(() => _isDisconnecting = true);
 
-    await Future.delayed(const Duration(milliseconds: 700));
+    await _vm.parar();
     if (!mounted) return;
 
     setState(() {
@@ -117,12 +146,13 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   }
 
   void _onOpenRadarScreen() {
-    // Según el Roadmap: 20 (Emisión BLE) -> Ver alumnos detectados -> 21 (Radar de Asistencia)
+    final mensaje = _vm.error ??
+        (_vm.anunciando
+            ? 'Tu celular se está anunciando. El docente te verá aparecer en '
+                'su radar.'
+            : 'Todavía no te estás anunciando.');
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ir a Pantalla 21: Radar de Asistencia en Tiempo Real'),
-        duration: Duration(seconds: 1),
-      ),
+      SnackBar(content: Text(mensaje), duration: const Duration(seconds: 3)),
     );
   }
 
@@ -334,7 +364,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              widget.courseName,
+                              _courseName,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 13,
@@ -354,7 +384,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            widget.classroom,
+                            _classroom,
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 13,

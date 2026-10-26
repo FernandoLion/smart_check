@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../attendance/geocerca_setup_screen.dart';
+import '../attendance/attendance_radar_screen.dart';
 import 'teacher_settings_screen.dart';
 import 'course_detail_screen.dart';
 import '../../utils/app_theme.dart';
@@ -977,7 +977,8 @@ class _TeacherCourseCard extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const GeocercaSetupScreen(),
+                          builder: (_) =>
+                              AttendanceRadarScreen(curso: course.curso),
                         ),
                       );
                     },

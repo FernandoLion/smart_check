@@ -6,7 +6,7 @@ import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/student_viewmodel.dart';
 import '../teacher/teacher_home_screen.dart';
-import 'biometric_validation_screen.dart';
+import '../attendance/ble_beacon_screen.dart';
 import 'attendance_detail_screen.dart';
 import 'student_settings_screen.dart';
 
@@ -722,10 +722,21 @@ class StudentHomeScreen extends StatelessWidget {
   }
 
 void _onRegisterAttendanceTap(BuildContext context) {
+  final perfil = context.read<AuthViewModel>().perfil;
+  final clave = perfil?.cedula ?? perfil?.email;
+  if (clave == null || clave.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tu sesión expiró. Vuelve a entrar.')),
+    );
+    return;
+  }
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) => const BiometricValidationScreen(),
+      builder: (_) => BleBeaconScreen(
+        cursos: context.read<StudentViewModel>().cursos,
+        clave: clave,
+      ),
     ),
   );
 }

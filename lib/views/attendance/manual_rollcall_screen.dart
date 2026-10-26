@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+
+import '../../models/inscrito_model.dart';
 import '../../utils/app_theme.dart';
+import '../../viewmodels/radar_viewmodel.dart';
 
 class ManualRollcallScreen extends StatefulWidget {
-  final String courseName;
+  /// El radar que abrió la clase: de ahí salen los no detectados y por ahí
+  /// se escribe la asistencia.
+  final RadarViewModel radar;
 
-  const ManualRollcallScreen({
-    super.key,
-    this.courseName = 'Ing. de Software II',
-  });
+  const ManualRollcallScreen({super.key, required this.radar});
+
+  String get courseName => radar.curso?.nombre ?? 'Clase';
 
   @override
   State<ManualRollcallScreen> createState() => _ManualRollcallScreenState();
@@ -26,85 +30,60 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
   static const Color _systemRed = Color(0xFFFF453A);
 
   // Lista de los 5 estudiantes no detectados por BLE
-  final List<_UndetectedStudent> _students = const [
-    _UndetectedStudent(
-      name: 'Diego Fernando Parra',
-      idCode: 'ID: 2021-9923',
-      program: 'Ing. de Software',
-      semesterGroup: 'Semestre 7 • Grupo 201 • Turno Matutino',
-      globalAttendance: '82%',
-      faultsSummary: '(5/6 faltas)',
-      classroom: 'Aula B2-301',
-      riskLabel: 'RIESGO CRÍTICO DE INASISTENCIA',
-      probableReason: 'Motivo probable: Dispositivo apagado o sin permisos BLE',
-      initials: 'DP',
-      isCritical: true,
-    ),
-    _UndetectedStudent(
-      name: 'Lucía Beltrán Duarte',
-      idCode: 'ID: 2022-4410',
-      program: 'Ing. de Sistemas',
-      semesterGroup: 'Semestre 6 • Grupo 302-B • Turno Matutino',
-      globalAttendance: '92%',
-      faultsSummary: '(1/6 faltas)',
-      classroom: 'Aula B2-301',
-      riskLabel: 'FUERA DEL RADIO DE AULA',
-      probableReason: 'Motivo probable: Señal BLE débil (>15m del emisor)',
-      initials: 'LB',
+  /// Los que el BLE no oyó, congelados al entrar para que la lista no se
+  /// mueva mientras el docente los pasa uno por uno.
+  late final List<Inscrito> _pendientes = widget.radar.lista
+      .where((f) => !f.detectado)
+      .map((f) => f.inscrito)
+      .toList();
+
+  late final List<_UndetectedStudent> _students =
+      _pendientes.map(_aTarjeta).toList();
+
+  _UndetectedStudent _aTarjeta(Inscrito inscrito) {
+    final curso = widget.radar.curso;
+    return _UndetectedStudent(
+      name: inscrito.nombre,
+      idCode: inscrito.cedula ?? inscrito.email ?? '',
+      program: curso?.nombre ?? '',
+      semesterGroup: curso == null
+          ? ''
+          : [
+              if (curso.grupo.isNotEmpty) 'Grupo ${curso.grupo}',
+              curso.periodo,
+            ].join(' • '),
+      globalAttendance: '—',
+      faultsSummary: 'Asistencia del curso en el detalle',
+      classroom: curso?.aula ?? '',
+      riskLabel: 'NO DETECTADO POR BLE',
+      probableReason:
+          'Motivo probable: Bluetooth apagado o sin permisos en su celular',
+      initials: _iniciales(inscrito.nombre),
       isCritical: false,
-    ),
-    _UndetectedStudent(
-      name: 'Andrés Felipe Silva',
-      idCode: 'ID: 2021-1088',
-      program: 'Ing. de Sistemas',
-      semesterGroup: 'Semestre 6 • Grupo 302-B • Turno Matutino',
-      globalAttendance: '86%',
-      faultsSummary: '(3/6 faltas)',
-      classroom: 'Aula B2-301',
-      riskLabel: 'ALERTA DE ASISTENCIA',
-      probableReason: 'Motivo probable: Bluetooth desactivado en el equipo',
-      initials: 'AS',
-      isCritical: false,
-    ),
-    _UndetectedStudent(
-      name: 'Mariana Ortiz Gómez',
-      idCode: 'ID: 2022-5102',
-      program: 'Ing. de Software',
-      semesterGroup: 'Semestre 6 • Grupo 302-B • Turno Matutino',
-      globalAttendance: '95%',
-      faultsSummary: '(1/6 faltas)',
-      classroom: 'Aula B2-301',
-      riskLabel: 'SIN RESPUESTA DE BALIZA',
-      probableReason: 'Motivo probable: Modo ahorro de batería activo',
-      initials: 'MO',
-      isCritical: false,
-    ),
-    _UndetectedStudent(
-      name: 'Juan Sebastián Rojas',
-      idCode: 'ID: 2020-7741',
-      program: 'Ing. de Sistemas',
-      semesterGroup: 'Semestre 7 • Grupo 302-B • Turno Matutino',
-      globalAttendance: '80%',
-      faultsSummary: '(5/6 faltas)',
-      classroom: 'Aula B2-301',
-      riskLabel: 'RIESGO CRÍTICO DE INASISTENCIA',
-      probableReason: 'Motivo probable: Sin conexión a red local del campus',
-      initials: 'JR',
-      isCritical: true,
-    ),
-  ];
+    );
+  }
+
+  static String _iniciales(String nombre) {
+    final partes = nombre.trim().split(RegExp(r'\s+'));
+    if (partes.isEmpty || partes.first.isEmpty) return '?';
+    if (partes.length == 1) return partes.first.substring(0, 1).toUpperCase();
+    return (partes[0].substring(0, 1) + partes[1].substring(0, 1))
+        .toUpperCase();
+  }
 
   int _currentIndex = 0;
   double _dragOffsetX = 0.0;
   bool _isAnimatingOut = false;
 
   void _triggerCardSwipe({required bool isPresent}) {
-    if (_isAnimatingOut) return;
+    if (_isAnimatingOut || _students.isEmpty) return;
 
+    final inscrito = _pendientes[_currentIndex];
     setState(() {
       _isAnimatingOut = true;
       _dragOffsetX = isPresent ? 420.0 : -420.0;
     });
+    _registrar(inscrito, isPresent);
 
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
@@ -115,12 +94,16 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
           _isAnimatingOut = false;
         });
       } else {
-        // Al completar los 5 estudiantes, notifica y regresa al Radar (Pantalla 21)
+        final total = _students.length;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('¡Llamado manual completado (5 de 5 registrados)!'),
+          SnackBar(
+            content: Text(
+              total == 1
+                  ? 'Llamado manual completado (1 estudiante)'
+                  : 'Llamado manual completado ($total estudiantes)',
+            ),
             backgroundColor: AppTheme.success,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
           ),
         );
         Navigator.pop(context);
@@ -128,6 +111,21 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
     });
   }
 
+  Future<void> _registrar(Inscrito inscrito, bool presente) async {
+    final ok = await widget.radar.marcarManual(inscrito, presente: presente);
+    if (!mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          widget.radar.error ?? 'No se pudo guardar la asistencia.',
+        ),
+        backgroundColor: AppTheme.error,
+      ),
+    );
+  }
+
+  /// Deshacer vuelve a la tarjeta anterior; la asistencia se corrige al
+  /// volver a pasarla.
   void _handleUndo() {
     if (_currentIndex > 0 && !_isAnimatingOut) {
       setState(() {
@@ -147,8 +145,59 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
     );
   }
 
+  Widget _buildTodosDetectados() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.verified, color: _tertiaryGreen, size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              'No queda nadie por marcar',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'El radar ya detectó a todos los inscritos de esta clase.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Volver al radar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_students.isEmpty) {
+      return Scaffold(
+        backgroundColor: _surfaceOled,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildTopHeader(context),
+              Expanded(child: _buildTodosDetectados()),
+            ],
+          ),
+        ),
+      );
+    }
     final currentStudent = _students[_currentIndex];
     final nextStudent = _currentIndex + 1 < _students.length
         ? _students[_currentIndex + 1]

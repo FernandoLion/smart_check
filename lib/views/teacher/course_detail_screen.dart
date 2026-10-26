@@ -558,9 +558,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    const AttendanceRadarScreen();
-                  },
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AttendanceRadarScreen(curso: widget.curso),
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryIndigo,
                     foregroundColor: Colors.white,

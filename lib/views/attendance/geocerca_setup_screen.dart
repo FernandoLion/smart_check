@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../utils/app_theme.dart';
-import 'ble_beacon_screen.dart';
 class GeocercaSetupScreen extends StatefulWidget {
   final String blockAndRoom;
   final String facultySubtitle;
@@ -60,12 +59,8 @@ class _GeocercaSetupScreenState extends State<GeocercaSetupScreen>
   }
 
 void _handleConfirmGeofence() {
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const BleBeaconScreen(),
-    ),
-  );
+  // La geocerca del curso se marca al crearlo, desde Crear Curso.
+  Navigator.pop(context);
 }
 
   @override

@@ -57,6 +57,7 @@ class RadarViewModel extends ChangeNotifier {
   bool _escaneando = false;
   String? _error;
 
+  Curso? get curso => _curso;
   Sesion? get sesion => _sesion;
   bool get ocupado => _ocupado;
   bool get escaneando => _escaneando;
