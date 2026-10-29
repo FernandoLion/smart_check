@@ -188,6 +188,17 @@ class FakeCursoService extends Fake implements CursoService {
   }
 
   @override
+  Future<void> eliminarCurso(String cursoId) async {
+    if (fallo != null) throw fallo!;
+    for (final sesion in sesionesPorCurso.remove(cursoId) ?? const <Sesion>[]) {
+      asistenciasPorSesion.remove(sesion.id);
+    }
+    inscritosPorCurso.remove(cursoId);
+    cursos.remove(cursoId);
+    _cambios.add(null);
+  }
+
+  @override
   Future<void> inscribir(String cursoId, List<Inscrito> nuevos) async {
     if (fallo != null) throw fallo!;
     final inscritos = inscritosPorCurso.putIfAbsent(cursoId, () => {});

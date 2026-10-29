@@ -73,6 +73,30 @@ void main() {
     expect(vm.guardando, isFalse);
   });
 
+  test('eliminar un curso lo quita con sus inscritos y la lista se actualiza',
+      () async {
+    vm.vigilarCursos('uid-docente');
+    final id = await vm.crearCurso(cursoDe('uid-docente', 'Redes'), const [
+      Inscrito(cedula: '1117000000', nombre: 'ANA'),
+    ]);
+    await pumpEventQueue();
+    expect(vm.cursos, hasLength(1));
+
+    expect(await vm.eliminarCurso(id!), isTrue);
+    await pumpEventQueue();
+
+    expect(vm.cursos, isEmpty);
+    expect(servicio.inscritosPorCurso[id], isNull);
+    expect(vm.guardando, isFalse);
+  });
+
+  test('informa el error si no se puede eliminar', () async {
+    servicio.fallo = const CursoException('No se pudo eliminar el curso.');
+
+    expect(await vm.eliminarCurso('curso-x'), isFalse);
+    expect(vm.error, 'No se pudo eliminar el curso.');
+  });
+
   test('cambiar de docente cambia la lista', () async {
     servicio.cursos['a'] = cursoDe('uid-1', 'Redes');
     servicio.cursos['b'] = cursoDe('uid-2', 'Arquitectura');

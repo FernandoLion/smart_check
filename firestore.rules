@@ -81,7 +81,8 @@ service cloud.firestore {
         allow update: if soySuDocente()
           && request.resource.data.abierta == false
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['abierta']);
-        allow delete: if false;
+        // Solo al eliminar el curso completo (la app no borra sesiones sueltas).
+        allow delete: if soySuDocente();
 
         // Solo el celular del docente escribe asistencias. Por BLE, con la
         // sesión abierta y dentro de su franja (hora del servidor); a mano,
@@ -95,7 +96,8 @@ service cloud.firestore {
               || (sesion().abierta
                 && request.time >= sesion().inicio
                 && request.time < sesion().fin));
-          allow delete: if false;
+          // Solo al eliminar el curso completo.
+          allow delete: if soySuDocente();
         }
       }
     }

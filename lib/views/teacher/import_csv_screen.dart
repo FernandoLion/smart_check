@@ -173,9 +173,10 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Copia las filas desde Excel o abre el CSV y pega el contenido '
-              'aquí. Una fila por estudiante, con su cédula y/o correo y el '
-              'nombre. Puede incluir encabezado (Cédula, Nombre, Correo).',
+              'Copia desde Excel las filas de los estudiantes junto con la '
+              'fila de títulos (DOCUMENTO, NOMBRECOMPLETO, MAIL_INST...) y '
+              'pégalas aquí. Solo se guardan la cédula, el nombre y el '
+              'correo; las demás columnas se ignoran.',
               style: TextStyle(
                 color: AppTheme.textSecondary,
                 fontSize: 14,
@@ -242,6 +243,19 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
             ),
           ],
         ),
+        if (_resultado.conEncabezado)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Cédula: ${_resultado.columnaCedula ?? '—'}  •  '
+              'Nombre: ${_resultado.columnaNombre ?? 'usuario del correo'}  •  '
+              'Correo: ${_resultado.columnaCorreo ?? '—'}',
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ),
         for (final error in errores.take(5))
           Padding(
             padding: const EdgeInsets.only(top: 4),
