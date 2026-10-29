@@ -77,6 +77,38 @@ class CursoService {
     }
   }
 
+  /// Borra el curso con sus inscritos, sesiones y asistencias.
+  ///
+  /// Firestore no borra las subcolecciones junto con el documento, así que se
+  /// borran primero (las reglas consultan el curso para autorizarlas) y el
+  /// curso al final.
+  Future<void> eliminarCurso(String cursoId) async {
+    try {
+      final sesiones = await _sesiones(cursoId).get().timeout(_timeout);
+      final asistencias = await Future.wait(
+        sesiones.docs.map(
+          (s) => _asistencias(cursoId, s.id).get().timeout(_timeout),
+        ),
+      );
+      final inscritos = await _inscritos(cursoId).get().timeout(_timeout);
+      final hijos = [
+        for (final lote in asistencias) ...lote.docs.map((d) => d.reference),
+        ...sesiones.docs.map((d) => d.reference),
+        ...inscritos.docs.map((d) => d.reference),
+      ];
+      for (var i = 0; i < hijos.length; i += 450) {
+        final batch = FirebaseFirestore.instance.batch();
+        for (final ref in hijos.skip(i).take(450)) {
+          batch.delete(ref);
+        }
+        await batch.commit().timeout(_timeout);
+      }
+      await _cursos.doc(cursoId).delete().timeout(_timeout);
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'eliminar el curso'));
+    }
+  }
+
   // --- Inscritos ------------------------------------------------------------
 
   Stream<List<Inscrito>> inscritos(String cursoId) => _inscritos(cursoId)

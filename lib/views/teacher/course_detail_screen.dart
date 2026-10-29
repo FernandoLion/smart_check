@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/asistencia_resumen.dart';
 import '../../models/curso_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/course_detail_viewmodel.dart';
+import '../../viewmodels/teacher_viewmodel.dart';
 import '../attendance/attendance_radar_screen.dart';
 import 'session_detail_screen.dart';
 
@@ -212,7 +214,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 children: [
                   _buildActionCircle(Icons.person_add_outlined),
                   const SizedBox(width: 6),
-                  _buildActionCircle(Icons.more_horiz),
+                  _buildActionCircle(Icons.more_horiz, onTap: _mostrarOpciones),
                 ],
               ),
             ],
@@ -297,17 +299,111 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  Widget _buildActionCircle(IconData icon) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: _surfaceControl.withValues(alpha: 0.8),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+  Widget _buildActionCircle(IconData icon, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: _surfaceControl.withValues(alpha: 0.8),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Icon(icon, color: _primaryLight, size: 17),
       ),
-      child: Icon(icon, color: _primaryLight, size: 17),
     );
+  }
+
+  void _mostrarOpciones() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _surfaceElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (hoja) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: ListTile(
+            leading: const Icon(Icons.delete_outline, color: _systemRed),
+            title: const Text(
+              'Eliminar curso',
+              style: TextStyle(color: _systemRed, fontWeight: FontWeight.w600),
+            ),
+            onTap: () {
+              Navigator.pop(hoja);
+              _confirmarEliminar();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmarEliminar() async {
+    final curso = widget.curso;
+    final inscritos = _vm.totalInscritos;
+    final sesiones = _vm.sesiones.length;
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogo) => AlertDialog(
+        backgroundColor: _surfaceElevated,
+        title: Text(
+          '¿Eliminar "${curso.nombre}"?',
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Se borrarán ${inscritos == 1 ? '1 estudiante inscrito' : '$inscritos estudiantes inscritos'}'
+          ' y ${sesiones == 1 ? '1 sesión' : '$sesiones sesiones'} con su asistencia. '
+          'Esto no se puede deshacer.',
+          style: const TextStyle(color: AppTheme.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogo, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogo, true),
+            style: TextButton.styleFrom(foregroundColor: _systemRed),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true || !mounted) return;
+
+    final teacherVM = context.read<TeacherViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    // Sin esto, las escuchas del curso fallarían mientras se borra.
+    _vm.detener();
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    final ok = await teacherVM.eliminarCurso(curso.id);
+    if (!mounted) return;
+    navigator.pop(); // el indicador de progreso
+    if (!ok) {
+      _vm.vigilar(curso.id);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(teacherVM.error ?? 'No se pudo eliminar el curso.'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Curso "${curso.nombre}" eliminado'),
+        backgroundColor: AppTheme.success,
+      ),
+    );
+    navigator.pop(); // vuelve a la lista de cursos
   }
 
   // ==========================================

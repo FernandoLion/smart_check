@@ -169,6 +169,15 @@ class CourseDetailViewModel extends ChangeNotifier {
     }
   }
 
+  /// Deja de escuchar el curso (por ejemplo, antes de borrarlo).
+  void detener() {
+    _subInscritos?.cancel();
+    _subSesiones?.cancel();
+    _subInscritos = null;
+    _subSesiones = null;
+    _cursoId = null;
+  }
+
   void _alFallar(Object e) {
     _cargando = false;
     _error = e.toString();

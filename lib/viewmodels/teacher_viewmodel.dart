@@ -89,6 +89,23 @@ class TeacherViewModel extends ChangeNotifier {
     }
   }
 
+  /// Borra el curso con todo lo que tiene. Devuelve false si falló.
+  Future<bool> eliminarCurso(String cursoId) async {
+    _guardando = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _servicio.eliminarCurso(cursoId);
+      return true;
+    } on CursoException catch (e) {
+      _error = e.mensaje;
+      return false;
+    } finally {
+      _guardando = false;
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
     _suscripcion?.cancel();

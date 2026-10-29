@@ -7,18 +7,38 @@ class ResultadoCsv {
   /// Filas que no se pudieron leer, con su número de línea (desde 1).
   final List<String> errores;
 
-  const ResultadoCsv(this.inscritos, this.errores);
+  /// Título de la columna usada para cada dato, tal como venía en el
+  /// encabezado (null si no hubo encabezado o no se encontró esa columna).
+  final String? columnaCedula;
+  final String? columnaNombre;
+  final String? columnaCorreo;
+
+  const ResultadoCsv(
+    this.inscritos,
+    this.errores, {
+    this.columnaCedula,
+    this.columnaNombre,
+    this.columnaCorreo,
+  });
+
+  bool get conEncabezado =>
+      columnaCedula != null || columnaNombre != null || columnaCorreo != null;
 }
 
 final _soloDigitos = RegExp(r'^\d{6,12}$');
 final _correo = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
+/// Sin encabezado, cada celda se reconoce por su forma. Con más columnas que
+/// estas (código, fecha, teléfono...) ya no se puede saber cuál es cuál.
+const _maxCeldasSinEncabezado = 4;
+
 /// Lee estudiantes de un texto con una fila por estudiante, separado por
 /// tabulaciones (copiado de Excel), punto y coma o comas.
 ///
-/// Si la primera fila es un encabezado (cédula / documento, nombre, correo)
-/// se usan sus columnas; si no, cada celda se reconoce por su forma: solo
-/// dígitos es la cédula, con @ es el correo y el resto forma el nombre.
+/// Si la primera fila es un encabezado (DOCUMENTO, NOMBRECOMPLETO, MAIL_INST,
+/// "Cédula", "Nombre", "Correo"...) se usan esas columnas y se ignoran las
+/// demás. Si no, cada celda se reconoce por su forma: solo dígitos es la
+/// cédula, con @ es el correo y el resto forma el nombre.
 /// Se ignoran filas vacías y estudiantes repetidos.
 ResultadoCsv parsearInscritos(String texto) {
   final lineas = texto
@@ -29,7 +49,15 @@ ResultadoCsv parsearInscritos(String texto) {
   if (noVacias.isEmpty) return const ResultadoCsv([], []);
 
   final separador = _detectarSeparador(noVacias.first);
-  final columnas = _columnasDeEncabezado(_celdas(noVacias.first, separador));
+  final encabezado = _celdas(noVacias.first, separador);
+  final columnas = _columnasDeEncabezado(encabezado);
+  if (columnas == null &&
+      encabezado.where((c) => c.isNotEmpty).length > _maxCeldasSinEncabezado) {
+    return const ResultadoCsv([], [
+      'No se encontró la fila de títulos. Copia también la primera fila del '
+          'Excel (DOCUMENTO, NOMBRECOMPLETO, MAIL_INST...).',
+    ]);
+  }
 
   final inscritos = <Inscrito>[];
   final vistos = <String>{};
@@ -56,7 +84,14 @@ ResultadoCsv parsearInscritos(String texto) {
     vistos.addAll(inscrito.claves);
     inscritos.add(inscrito);
   }
-  return ResultadoCsv(inscritos, errores);
+  String? titulo(int? i) => i == null ? null : encabezado[i];
+  return ResultadoCsv(
+    inscritos,
+    errores,
+    columnaCedula: titulo(columnas?.cedula),
+    columnaNombre: titulo(columnas?.nombre),
+    columnaCorreo: titulo(columnas?.correo),
+  );
 }
 
 String _detectarSeparador(String linea) {
@@ -80,20 +115,69 @@ class _Columnas {
   const _Columnas(this.cedula, this.nombre, this.correo);
 }
 
+/// "Correo Institucional" -> "correoinstitucional", "MAIL_INST" -> "mailinst".
+String _normalizarTitulo(String titulo) => titulo
+    .toLowerCase()
+    .replaceAll('á', 'a')
+    .replaceAll('é', 'e')
+    .replaceAll('í', 'i')
+    .replaceAll('ó', 'o')
+    .replaceAll('ú', 'u')
+    .replaceAll(RegExp(r'[^a-zñ]'), '');
+
+bool _esTituloCedula(String t) =>
+    !t.contains('tipo') &&
+    (t.contains('documento') ||
+        t.contains('cedula') ||
+        t.contains('identificacion') ||
+        t == 'cc' ||
+        t == 'id');
+
+/// Qué tan probable es que la columna sea el nombre del estudiante (0: no).
+/// "CODIGOESTUDIANTE" o "NOMBREPROGRAMA" no lo son.
+int _puntajeNombre(String t) {
+  if (t.contains('codigo') || t.contains('programa')) return 0;
+  if (t.contains('nombre') &&
+      (t.contains('completo') ||
+          t.contains('apellido') ||
+          t.contains('estudiante'))) {
+    return 3;
+  }
+  if (t == 'nombre' || t == 'nombres' || t == 'estudiante' || t == 'alumno') {
+    return 2;
+  }
+  return t.contains('nombre') ? 1 : 0;
+}
+
 _Columnas? _columnasDeEncabezado(List<String> celdas) {
+  // Una fila con un correo o una cédula es de datos, no de títulos (aunque
+  // un nombre como "Ismail" contenga "mail").
+  final esDeDatos = celdas.any(
+    (c) => c.contains('@') || _soloDigitos.hasMatch(_limpiarCedula(c)),
+  );
+  if (esDeDatos) return null;
+
   int? cedula, nombre, correo;
+  var mejorNombre = 0;
   for (var i = 0; i < celdas.length; i++) {
-    final c = celdas[i].toLowerCase();
-    if (c.contains('cédula') ||
-        c.contains('cedula') ||
-        c.contains('documento') ||
-        c == 'cc' ||
-        c == 'id') {
+    final t = _normalizarTitulo(celdas[i]);
+    if (t.isEmpty) continue;
+    if (_esTituloCedula(t)) {
       cedula ??= i;
-    } else if (c.contains('correo') || c.contains('email') || c.contains('mail')) {
-      correo ??= i;
-    } else if (c.contains('nombre') || c.contains('estudiante')) {
-      nombre ??= i;
+    } else if (t.contains('correo') || t.contains('mail')) {
+      // Si hay correo personal e institucional, se prefiere el institucional.
+      final institucional = t.contains('inst');
+      if (correo == null ||
+          (institucional &&
+              !_normalizarTitulo(celdas[correo]).contains('inst'))) {
+        correo = i;
+      }
+    } else {
+      final puntaje = _puntajeNombre(t);
+      if (puntaje > mejorNombre) {
+        mejorNombre = puntaje;
+        nombre = i;
+      }
     }
   }
   if (cedula == null && correo == null) return null;
@@ -135,11 +219,15 @@ Inscrito? _desdeFormas(List<String> celdas) {
   );
 }
 
+final _letra = RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]');
+
 Inscrito? _crear({String? cedula, String? correo, String? nombre}) {
   if (cedula == null && correo == null) return null;
+  // Un "nombre" sin letras (un código, un teléfono) no es un nombre.
+  final valido = nombre != null && _letra.hasMatch(nombre) ? nombre : null;
   return Inscrito(
     cedula: cedula,
     email: correo,
-    nombre: (nombre ?? correo?.split('@').first ?? cedula!).toUpperCase(),
+    nombre: (valido ?? correo?.split('@').first ?? cedula!).toUpperCase(),
   );
 }
