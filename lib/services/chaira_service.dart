@@ -1,9 +1,40 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 import '../models/verificacion_result_model.dart';
 import 'chaira_parser.dart';
+
+/// Cliente que confía, además de en las raíces del sistema, en la de Sectigo
+/// con la que está firmado el certificado de Chairá.
+///
+/// Esa raíz (R46) es de 2021 y falta en el almacén de certificados de varios
+/// Android todavía en uso, donde la consulta fallaba con
+/// `CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate`.
+/// Se añade a las del sistema, no se reemplazan: nada más queda de fiar.
+class _ClienteConRaizSectigo {
+  _ClienteConRaizSectigo._();
+
+  static const _rutaRaiz = 'assets/certs/sectigo_r46.pem';
+  static Future<http.Client>? _cliente;
+
+  static Future<http.Client> obtener() => _cliente ??= _crear();
+
+  static Future<http.Client> _crear() async {
+    try {
+      final pem = await rootBundle.load(_rutaRaiz);
+      final contexto = SecurityContext(withTrustedRoots: true)
+        ..setTrustedCertificatesBytes(pem.buffer.asUint8List());
+      return IOClient(HttpClient(context: contexto));
+    } catch (_) {
+      // Si el asset no está, se sigue con las raíces del sistema.
+      return http.Client();
+    }
+  }
+}
 
 /// Consulta los datos de una persona en Chairá (Universidad de la Amazonia).
 ///
@@ -16,15 +47,17 @@ class ChairaService {
     'https://chaira.uniamazonia.edu.co/Administrativo/Vistas/Publico/General/VerificaCarne.aspx',
   );
 
-  final http.Client _client;
-  final bool _ownsClient;
+  final http.Client? _inyectado;
   final Duration timeout;
 
   ChairaService({
     http.Client? client,
     this.timeout = const Duration(seconds: 30),
-  })  : _client = client ?? http.Client(),
-        _ownsClient = client == null;
+  }) : _inyectado = client;
+
+  /// El de las pruebas si lo hay; si no, el que confía en la raíz de Sectigo.
+  Future<http.Client> get _cliente async =>
+      _inyectado ?? await _ClienteConRaizSectigo.obtener();
 
   Future<VerificacionResult> verificarDocumento(String documento) async {
     final doc = documento.trim();
@@ -37,7 +70,8 @@ class ChairaService {
     }
 
     try {
-      final response = await _client
+      final cliente = await _cliente;
+      final response = await cliente
           .post(
             endpoint,
             headers: const {
@@ -91,7 +125,8 @@ class ChairaService {
   /// La foto es opcional: si no llega a tiempo se muestra el avatar genérico.
   Future<Uint8List?> descargarFoto(String url) async {
     try {
-      final response = await _client
+      final cliente = await _cliente;
+      final response = await cliente
           .get(Uri.parse(url))
           .timeout(const Duration(seconds: 8));
       final tipo = response.headers['content-type'] ?? '';
@@ -104,7 +139,7 @@ class ChairaService {
     return null;
   }
 
-  void dispose() {
-    if (_ownsClient) _client.close();
-  }
+  /// El cliente propio se comparte entre instancias y vive lo que la app, y
+  /// el inyectado lo cierra quien lo creó: aquí no hay nada que cerrar.
+  void dispose() {}
 }

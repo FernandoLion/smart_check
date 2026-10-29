@@ -82,7 +82,15 @@ class BleService {
       if (!await FlutterBluePlus.isSupported) {
         throw const BleException('Este dispositivo no tiene Bluetooth LE.');
       }
-      if (FlutterBluePlus.adapterStateNow != BluetoothAdapterState.on) {
+      // Recién inicializado el adaptador el estado en caché es `unknown`, así
+      // que se espera al primero de verdad antes de dar por apagado el radio.
+      final estado = await FlutterBluePlus.adapterState
+          .firstWhere((e) => e != BluetoothAdapterState.unknown)
+          .timeout(
+            const Duration(seconds: 5),
+            onTimeout: () => FlutterBluePlus.adapterStateNow,
+          );
+      if (estado != BluetoothAdapterState.on) {
         throw const BleException('Enciende el Bluetooth para pasar lista.');
       }
       _suscripcion = FlutterBluePlus.scanResults.listen((resultados) {

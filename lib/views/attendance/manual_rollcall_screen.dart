@@ -29,7 +29,6 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
   static const Color _systemAmber = Color(0xFFFF9F0A);
   static const Color _systemRed = Color(0xFFFF453A);
 
-  // Lista de los 5 estudiantes no detectados por BLE
   /// Los que el BLE no oyó, congelados al entrar para que la lista no se
   /// mueva mientras el docente los pasa uno por uno.
   late final List<Inscrito> _pendientes = widget.radar.lista
@@ -39,6 +38,12 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
 
   late final List<_UndetectedStudent> _students =
       _pendientes.map(_aTarjeta).toList();
+
+  /// "3 no detectados", o "1 no detectado" cuando solo falta uno.
+  String get _sinDetectar {
+    final n = _students.length;
+    return n == 1 ? '1 no detectado' : '$n no detectados';
+  }
 
   _UndetectedStudent _aTarjeta(Inscrito inscrito) {
     final curso = widget.radar.curso;
@@ -243,7 +248,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Dynamic Island Pill ("5 BLE")
+          // Píldora superior con los que faltan por oír.
           Center(
             child: Container(
               height: 28,
@@ -266,13 +271,13 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                       shape: BoxShape.circle,
                     ),
                   ),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.sensors, color: _primaryLight, size: 14),
-                      SizedBox(width: 4),
+                      const Icon(Icons.sensors, color: _primaryLight, size: 14),
+                      const SizedBox(width: 4),
                       Text(
-                        '5 BLE',
-                        style: TextStyle(
+                        '${_students.length} BLE',
+                        style: const TextStyle(
                           color: _primaryLight,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -381,14 +386,14 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
           const SizedBox(height: 10),
 
           // Section Title & Course Meta
-          const Row(
+          Row(
             children: [
-              Icon(Icons.warning_rounded, color: _systemAmber, size: 20),
-              SizedBox(width: 8),
+              const Icon(Icons.warning_rounded, color: _systemAmber, size: 20),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  'Llamado Manual: 5 no detectados',
-                  style: TextStyle(
+                  'Llamado Manual: $_sinDetectar',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
                     fontWeight: FontWeight.w600,

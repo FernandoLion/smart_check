@@ -114,11 +114,16 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
     super.dispose();
   }
 
+  /// Lo que queda de clase. Pasada la hora se muestra h:mm:ss, porque una
+  /// franja de dos horas en minutos ("90:58") no se entiende.
   String get _formattedTime {
     if (_isStopped) return '--:--';
-    final minutes = (_totalSeconds ~/ 60).toString().padLeft(2, '0');
-    final seconds = (_totalSeconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
+    final horas = _totalSeconds ~/ 3600;
+    final minutos = (_totalSeconds % 3600) ~/ 60;
+    final segundos = _totalSeconds % 60;
+    final mm = minutos.toString().padLeft(2, '0');
+    final ss = segundos.toString().padLeft(2, '0');
+    return horas == 0 ? '$mm:$ss' : '$horas:$mm:$ss';
   }
 
   Future<void> _handleStopTransmission() async {

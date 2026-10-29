@@ -504,44 +504,31 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                         ),
                       ),
 
-                      // Blips de estudiantes detectados en las órbitas
-                      // Blip 1: Valentina Rios (Top Right)
+                      // Un punto por cada estudiante que el radar ya oyó.
                       Positioned(
                         top: 28,
                         right: 64,
-                        child: _buildStudentBlip(
-                          initials: 'VR',
-                          size: 32,
-                          showCheck: true,
-                        ),
+                        child: _buildBlipDetectado(0, 32),
                       ),
-                      // Blip 2: Camilo Torres (Bottom Left)
                       Positioned(
                         bottom: 36,
                         left: 52,
                         child: _buildBlipDetectado(1, 28),
                       ),
-                      // Blip 3: Sofía Mendoza (Top Left)
                       Positioned(
                         top: 44,
                         left: 46,
                         child: _buildBlipDetectado(2, 28),
                       ),
-                      // Blip 4: Mateo Gómez (Bottom Right)
                       Positioned(
                         bottom: 30,
                         right: 46,
                         child: _buildBlipDetectado(3, 28),
                       ),
-                      // Blip 5: Mariana Ortiz (Right Center)
                       Positioned(
                         top: 108,
                         right: 22,
-                        child: _buildStudentBlip(
-                          initials: 'MO',
-                          size: 24,
-                          bgColor: _primaryIndigo.withValues(alpha: 0.4),
-                        ),
+                        child: _buildBlipDetectado(4, 24),
                       ),
                       // Blip 6: Andrés Silva (Outer left, buscando señal)
                       Positioned(
@@ -625,7 +612,8 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
             ),
           ),
 
-          // Live Metrics Bar under Radar ("18 / 24 Detectados (75%)" + "Alcance: ~8.2m")
+          // Cuántos van detectados de los inscritos y qué tan fuerte es la
+          // señal del que mejor se oye.
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
@@ -640,19 +628,19 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
-                      children: const [
+                      children: [
                         Text(
-                          '18 / 24',
-                          style: TextStyle(
+                          '${_vm.detectados} / ${_vm.totalInscritos}',
+                          style: const TextStyle(
                             color: _tertiaryFixed,
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
-                          'Detectados (75%)',
-                          style: TextStyle(
+                          'Detectados$_porcentajeDetectado',
+                          style: const TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 13,
                           ),
@@ -660,12 +648,13 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                       ],
                     ),
                     Row(
-                      children: const [
-                        Icon(Icons.radar, color: _primaryIndigo, size: 14),
-                        SizedBox(width: 4),
+                      children: [
+                        const Icon(Icons.radar,
+                            color: _primaryIndigo, size: 14),
+                        const SizedBox(width: 4),
                         Text(
-                          'Alcance: ~8.2m',
-                          style: TextStyle(
+                          _mejorSenal,
+                          style: const TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
@@ -688,7 +677,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                   ),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
-                    widthFactor: 0.75,
+                    widthFactor: _fraccionDetectada,
                     child: Container(
                       decoration: BoxDecoration(
                         color: _tertiaryGreen,
@@ -709,6 +698,27 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
         ],
       ),
     );
+  }
+
+  /// Qué parte de los inscritos lleva detectada el radar, de 0 a 1.
+  double get _fraccionDetectada {
+    final total = _vm.totalInscritos;
+    return total == 0 ? 0 : _vm.detectados / total;
+  }
+
+  String get _porcentajeDetectado {
+    if (_vm.totalInscritos == 0) return '';
+    return ' (${(_fraccionDetectada * 100).round()}%)';
+  }
+
+  /// La señal del estudiante que mejor se oye ahora mismo.
+  String get _mejorSenal {
+    final rssis = _vm.lista
+        .map((f) => f.rssi)
+        .whereType<int>()
+        .toList();
+    if (rssis.isEmpty) return 'Sin señal todavía';
+    return 'Mejor señal: ${_calidad(rssis.reduce((a, b) => a > b ? a : b))}';
   }
 
   /// Un punto del radar por cada estudiante ya detectado.
@@ -939,9 +949,9 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            children: [
               Text(
-                'ESTUDIANTES EN AULA (24 REGISTRADOS)',
+                'ESTUDIANTES EN AULA (${_vm.totalInscritos} INSCRITOS)',
                 style: TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 11,

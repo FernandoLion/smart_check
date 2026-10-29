@@ -69,6 +69,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    # Raiz de Sectigo (R46) con la que se firma el certificado de Chaira.
+    # Varios Android todavia en uso no la traen, asi que la app la lleva.
+    - assets/certs/sectigo_r46.pem
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
