@@ -14,6 +14,9 @@ class FakeCursoService extends Fake implements CursoService {
 
   final sesionesPorCurso = <String, List<Sesion>>{};
 
+  /// Imita la regla de Firestore que solo deja cerrar una sesión.
+  bool reabrirProhibido = false;
+
   /// Asistencias por id de sesión.
   final asistenciasPorSesion = <String, List<Asistencia>>{};
 
@@ -117,6 +120,25 @@ class FakeCursoService extends Fake implements CursoService {
         ));
     _cambios.add(null);
     return id;
+  }
+
+  @override
+  Future<void> reabrirSesion(String cursoId, String sesionId) async {
+    if (fallo != null) throw fallo!;
+    if (reabrirProhibido) {
+      throw const CursoException('permiso denegado en la base de datos');
+    }
+    final lista = sesionesPorCurso[cursoId] ?? [];
+    for (var i = 0; i < lista.length; i++) {
+      if (lista[i].id != sesionId) continue;
+      lista[i] = Sesion(
+        id: sesionId,
+        inicio: lista[i].inicio,
+        fin: lista[i].fin,
+        abierta: true,
+      );
+    }
+    _cambios.add(null);
   }
 
   @override

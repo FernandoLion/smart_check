@@ -158,6 +158,18 @@ class CursoService {
     }
   }
 
+  /// Vuelve a abrir una clase que ya se había cerrado, para seguir pasando
+  /// lista en la misma sesión en vez de crear otra.
+  Future<void> reabrirSesion(String cursoId, String sesionId) async {
+    try {
+      await _sesiones(cursoId)
+          .doc(sesionId)
+          .update({'abierta': true}).timeout(_timeout);
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'reabrir la sesión'));
+    }
+  }
+
   // --- Asistencias ----------------------------------------------------------
 
   Stream<List<Asistencia>> asistencias(String cursoId, String sesionId) =>
@@ -198,15 +210,28 @@ class CursoService {
     final momento = ahora ?? DateTime.now();
     try {
       final docs = await _sesiones(cursoId).get().timeout(_timeout);
+      // Cuenta la clase que ya cerró el docente y la que se pasó de su hora
+      // sin cerrarse; la que sigue en curso todavía no resta.
       final terminadas = docs.docs
           .map((d) => Sesion.fromMap(d.id, d.data()))
-          .where((s) => s.fin.isBefore(momento))
+          .where((s) => !s.abierta || s.fin.isBefore(momento))
           .toList();
+      // Una franja es una clase aunque el docente haya abierto el radar
+      // varias veces: se agrupan por hora de inicio para no contarla doble.
+      final porFranja = <DateTime, List<Sesion>>{};
+      for (final s in terminadas) {
+        porFranja.putIfAbsent(s.inicio, () => []).add(s);
+      }
       final asistio = await Future.wait(
-        terminadas.map((s) => _asistio(cursoId, s.id, claves)),
+        porFranja.values.map((sesiones) async {
+          final hubo = await Future.wait(
+            sesiones.map((s) => _asistio(cursoId, s.id, claves)),
+          );
+          return hubo.contains(true);
+        }),
       );
       return AsistenciaResumen(
-        sesiones: terminadas.length,
+        sesiones: porFranja.length,
         asistidas: asistio.where((a) => a).length,
       );
     } catch (e) {

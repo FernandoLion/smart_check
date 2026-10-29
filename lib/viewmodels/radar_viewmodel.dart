@@ -173,7 +173,18 @@ class RadarViewModel extends ChangeNotifier {
     );
     final existentes = await _cursos.sesiones(curso.id).first;
     for (final s in existentes) {
-      if (s.abierta && s.inicio == inicio) return s;
+      if (s.inicio != inicio) continue;
+      // La franja ya tiene sesión. Si el docente la había cerrado se intenta
+      // reabrir la misma, para no partir la clase en dos.
+      if (s.abierta) return s;
+      try {
+        await _cursos.reabrirSesion(curso.id, s.id);
+        return Sesion(id: s.id, inicio: s.inicio, fin: s.fin);
+      } on CursoException {
+        // Las reglas pueden prohibir reabrir. Entonces se abre otra y la
+        // asistencia las junta, porque cuenta por franja y no por sesión.
+        break;
+      }
     }
     final nueva = Sesion(inicio: inicio, fin: fin);
     final id = await _cursos.abrirSesion(curso.id, nueva);

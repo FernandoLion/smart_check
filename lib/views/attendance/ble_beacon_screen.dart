@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/curso_model.dart';
+import '../../services/ble_service.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -113,6 +114,20 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
     _liveDotController.dispose();
     super.dispose();
   }
+
+  /// Los 4 bytes que el celular está radiando, para poder cotejarlos con lo
+  /// que ve el docente si algo no cuadra.
+  String get _huella =>
+      '0x${BleService.huellaDe(widget.clave).toRadixString(16).toUpperCase().padLeft(8, '0')}';
+
+  String get _franja {
+    final sesion = _vm.sesion;
+    if (sesion == null) return '--:-- - --:--';
+    return '${_hora(sesion.inicio)} - ${_hora(sesion.fin)}';
+  }
+
+  static String _hora(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   /// Lo que queda de clase. Pasada la hora se muestra h:mm:ss, porque una
   /// franja de dos horas en minutos ("90:58") no se entiende.
@@ -750,7 +765,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
           Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
           const SizedBox(height: 12),
 
-          // Fila de Telemetría (UUID Beacon Aula & Potencia Señal RSSI)
+          // Lo que el estudiante sí puede comprobar: qué está emitiendo su
+          // celular y hasta cuándo dura la franja de la clase.
           Row(
             children: [
               Expanded(
@@ -763,20 +779,20 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                       color: Colors.white.withValues(alpha: 0.05),
                     ),
                   ),
-                  child: const Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'UUID Beacon Aula',
+                      const Text(
+                        'Huella emitida',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 11,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        '4A89-BLE-301',
-                        style: TextStyle(
+                        _huella,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
                           fontFamily: 'monospace',
@@ -798,40 +814,25 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                       color: Colors.white.withValues(alpha: 0.05),
                     ),
                   ),
-                  child: const Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Potencia Señal (RSSI)',
+                      const Text(
+                        'Franja de la clase',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 11,
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            '-54 dBm',
-                            style: TextStyle(
-                              color: _tertiaryGreen,
-                              fontSize: 12,
-                              fontFamily: 'monospace',
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              '(Excelente)',
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 10,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 4),
+                      Text(
+                        _franja,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -841,7 +842,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
           ),
           const SizedBox(height: 12),
 
-          // Verified Geofence Chip
+          // El aula de la clase. Quien comprueba la geocerca es el docente
+          // al abrir el radar, no este celular.
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
@@ -854,26 +856,31 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: _tertiaryGreen,
-                      size: 18,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Geocerca Aula 301 Verificada',
-                      style: TextStyle(
+                Flexible(
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.place_outlined,
                         color: _tertiaryGreen,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        size: 18,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          _classroom,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _tertiaryGreen,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Text(
-                  'AES-256',
+                  _vm.curso?.codigo ?? '',
                   style: TextStyle(
                     color: _tertiaryGreen.withValues(alpha: 0.8),
                     fontSize: 11,

@@ -289,4 +289,37 @@ void main() {
       isFalse,
     );
   });
+
+  test('volver a abrir el radar reusa la sesión de la franja', () async {
+    final curso = cursoEnClase();
+    await vm.iniciar(curso, 'uid-docente');
+    final sesionId = vm.sesion!.id;
+    await vm.detener();
+
+    final otro = RadarViewModel(cursos: cursos, ble: ble, ubicacion: ubicacion);
+    expect(await otro.iniciar(curso, 'uid-docente'), isTrue);
+
+    // La misma sesión, reabierta: dos del mismo bloque contarían la clase
+    // dos veces en la asistencia del estudiante.
+    expect(otro.sesion!.id, sesionId);
+    expect(cursos.sesionesPorCurso['c1']!.length, 1);
+    expect(cursos.sesionesPorCurso['c1']!.single.abierta, isTrue);
+    await otro.detener();
+  });
+
+  test('si no se puede reabrir, el radar abre otra sesión igual', () async {
+    final curso = cursoEnClase();
+    await vm.iniciar(curso, 'uid-docente');
+    final sesionId = vm.sesion!.id;
+    await vm.detener();
+    cursos.reabrirProhibido = true;
+
+    final otro = RadarViewModel(cursos: cursos, ble: ble, ubicacion: ubicacion);
+    expect(await otro.iniciar(curso, 'uid-docente'), isTrue);
+
+    expect(otro.error, isNull);
+    expect(otro.sesion!.id, isNot(sesionId));
+    expect(otro.sesion!.inicio, cursos.sesionesPorCurso['c1']!.first.inicio);
+    await otro.detener();
+  });
 }
