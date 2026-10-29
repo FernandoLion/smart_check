@@ -19,6 +19,15 @@ class StudentHomeScreen extends StatelessWidget {
   static const Color _systemAmber = Color(0xFFFF9F0A);
   static const Color _systemRed = Color(0xFFFF453A);
 
+  /// El mismo semáforo de las tarjetas, para que el número grande no diga
+  /// verde mientras el texto de al lado dice "En riesgo".
+  static Color _colorDeAsistencia(int? porcentaje) {
+    if (porcentaje == null) return AppTheme.textSecondary;
+    if (porcentaje >= 90) return _tertiaryGreen;
+    if (porcentaje >= AsistenciaResumen.minimo) return _systemAmber;
+    return _systemRed;
+  }
+
   @override
   Widget build(BuildContext context) {
     final authVM = context.watch<AuthViewModel>();
@@ -55,50 +64,55 @@ class StudentHomeScreen extends StatelessWidget {
 
                 // 2. MAIN SCROLLABLE CANVAS
                 Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-                    children: [
-                      // Título "Portal Estudiante" + Segmented Control (Docente / Estudiante)
-                      _buildTitleAndSwitcher(
-                        context,
-                        totalSubjects: studentVM.subjects.length,
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Quick Stats Bento Banner (asistencia global y materias)
-                      _buildQuickStatsBanner(studentVM),
-                      const SizedBox(height: 24),
-
-                      // Encabezado "Semáforo de Asistencia"
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Semáforo de Asistencia',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const Text(
-                              'Mínimo ${AsistenciaResumen.minimo}%',
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                  // Tirar de la lista relee la asistencia, por si el docente
+                  // acaba de pasar lista a mano.
+                  child: RefreshIndicator(
+                    onRefresh: studentVM.refrescar,
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                      children: [
+                        // Título "Portal Estudiante" + Segmented Control (Docente / Estudiante)
+                        _buildTitleAndSwitcher(
+                          context,
+                          totalSubjects: studentVM.subjects.length,
                         ),
-                      ),
-                      const SizedBox(height: 14),
+                        const SizedBox(height: 20),
 
-                      // Tarjetas de Asignaturas (Apple Wallet Pass Cards)
-                      ..._buildSubjects(context, studentVM),
-                    ],
+                        // Quick Stats Bento Banner (asistencia global y materias)
+                        _buildQuickStatsBanner(studentVM),
+                        const SizedBox(height: 24),
+
+                        // Encabezado "Semáforo de Asistencia"
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Semáforo de Asistencia',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const Text(
+                                'Mínimo ${AsistenciaResumen.minimo}%',
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Tarjetas de Asignaturas (Apple Wallet Pass Cards)
+                        ..._buildSubjects(context, studentVM),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -495,8 +509,8 @@ class StudentHomeScreen extends StatelessWidget {
                     vm.globalAttendance == null
                         ? '—'
                         : '${vm.globalAttendance}%',
-                    style: const TextStyle(
-                      color: _tertiaryGreen,
+                    style: TextStyle(
+                      color: _colorDeAsistencia(vm.globalAttendance),
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -721,7 +735,7 @@ class StudentHomeScreen extends StatelessWidget {
     );
   }
 
-void _onRegisterAttendanceTap(BuildContext context) {
+Future<void> _onRegisterAttendanceTap(BuildContext context) async {
   final perfil = context.read<AuthViewModel>().perfil;
   final clave = perfil?.cedula ?? perfil?.email;
   if (clave == null || clave.isEmpty) {
@@ -730,15 +744,15 @@ void _onRegisterAttendanceTap(BuildContext context) {
     );
     return;
   }
-  Navigator.push(
+  final estudiante = context.read<StudentViewModel>();
+  await Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) => BleBeaconScreen(
-        cursos: context.read<StudentViewModel>().cursos,
-        clave: clave,
-      ),
+      builder: (_) => BleBeaconScreen(cursos: estudiante.cursos, clave: clave),
     ),
   );
+  // Al volver de marcar, la asistencia ya cambió: hay que releerla.
+  await estudiante.refrescar();
 }
 
   void _onSubjectTap(BuildContext context, StudentSubjectModel subject) {

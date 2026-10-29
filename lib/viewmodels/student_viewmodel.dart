@@ -99,20 +99,26 @@ class StudentViewModel extends ChangeNotifier {
     _cargando = false;
     _error = null;
     notifyListeners();
+    await _cargarAsistencia(ordenados);
+  }
 
+  /// Relee la asistencia de los cursos que ya están en pantalla. La lista de
+  /// cursos cambia poco; la asistencia cambia cada vez que el docente pasa
+  /// lista, así que hay que poder volver a pedirla sin reiniciar la app.
+  Future<void> refrescar() =>
+      _cursos.isEmpty ? Future.value() : _cargarAsistencia(_cursos);
+
+  Future<void> _cargarAsistencia(List<Curso> cursos) async {
     final claves = _claves;
     try {
       final resumenes = await Future.wait(
-        ordenados.map((c) => _servicio.resumenAsistencia(c.id, claves)),
+        cursos.map((c) => _servicio.resumenAsistencia(c.id, claves)),
       );
       // Otra emisión pudo reemplazar la lista mientras se leía la asistencia.
       if (!identical(claves, _claves)) return;
       _subjects = [
-        for (var i = 0; i < ordenados.length; i++)
-          StudentSubjectModel.desdeCurso(
-            ordenados[i],
-            asistencia: resumenes[i],
-          ),
+        for (var i = 0; i < cursos.length; i++)
+          StudentSubjectModel.desdeCurso(cursos[i], asistencia: resumenes[i]),
       ];
       notifyListeners();
     } on CursoException catch (e) {

@@ -274,6 +274,14 @@ class RadarViewModel extends ChangeNotifier {
   void dispose() {
     _suscripcion?.cancel();
     _ble.detenerEscaneo();
+    // Al salir de la pantalla se cierra la clase igual que con el botón: una
+    // sesión abierta sin nadie escuchando dejaría marcar a quien no está.
+    final curso = _curso;
+    final sesion = _sesion;
+    if (curso != null && sesion != null) {
+      _cursos.cerrarSesion(curso.id, sesion.id).ignore();
+      _sesion = null;
+    }
     super.dispose();
   }
 }
