@@ -82,4 +82,48 @@ void main() {
       }
     });
   });
+
+  group('usuario institucional', () {
+    test('lee el usuario que responde logon.aspx', () {
+      expect(
+        ChairaParser.usuarioDeRespuesta(respuestaUsuario('an.perez')),
+        'an.perez',
+      );
+    });
+
+    test('un mensaje de error no es un usuario', () {
+      expect(
+        ChairaParser.usuarioDeRespuesta(respuestaUsuarioNoEncontrado),
+        isNull,
+      );
+    });
+
+    test('si devolviera el correo completo se queda con el usuario', () {
+      expect(
+        ChairaParser.usuarioDeRespuesta(
+          respuestaUsuario('An.Perez@udla.edu.co'),
+        ),
+        'an.perez',
+      );
+    });
+
+    test('una respuesta sin ese campo no inventa nada', () {
+      expect(
+        ChairaParser.usuarioDeRespuesta('{script:"Window3.show();"}'),
+        isNull,
+      );
+    });
+
+    test('lee los campos ocultos de la página de ingreso', () {
+      expect(ChairaParser.camposOcultos(paginaLogon), {
+        '__VIEWSTATE': 'N4MAS88ZZWI9',
+        '__VIEWSTATEGENERATOR': '1373A9E7',
+        '__EVENTVALIDATION': 'm7/U/3T5gCXt',
+      });
+    });
+
+    test('sin campos ocultos devuelve vacío', () {
+      expect(ChairaParser.camposOcultos('<html></html>'), isEmpty);
+    });
+  });
 }

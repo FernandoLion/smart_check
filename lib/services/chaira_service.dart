@@ -47,6 +47,12 @@ class ChairaService {
     'https://chaira.uniamazonia.edu.co/Administrativo/Vistas/Publico/General/VerificaCarne.aspx',
   );
 
+  /// La pantalla de ingreso a Chairá, donde vive "¿Olvidó su nombre de
+  /// usuario?": es la única fuente del correo institucional de verdad.
+  static final Uri endpointLogon = Uri.parse(
+    'https://chaira.uniamazonia.edu.co/Chaira/logon.aspx',
+  );
+
   final http.Client? _inyectado;
   final Duration timeout;
 
@@ -69,6 +75,18 @@ class ChairaService {
       );
     }
 
+    // Las dos consultas salen a la vez: el carné y el usuario viven en
+    // páginas distintas, y encadenarlas doblaría la espera.
+    final carne = _consultarCarne(doc);
+    final usuario = buscarUsuario(doc);
+    final resultado = await carne;
+    final usuarioChaira = await usuario;
+    return resultado.success
+        ? resultado.copyWith(usuarioChaira: usuarioChaira)
+        : resultado;
+  }
+
+  Future<VerificacionResult> _consultarCarne(String doc) async {
     try {
       final cliente = await _cliente;
       final response = await cliente
@@ -120,6 +138,74 @@ class ChairaService {
     } catch (e) {
       return VerificacionResult.fallido(doc, 'Error al consultar Chairá: $e');
     }
+  }
+
+  /// El usuario institucional que Chairá tiene registrado para ese
+  /// documento, o null si no hay ninguno o la consulta falla.
+  ///
+  /// Es la misma consulta que hace "¿Olvidó su nombre de usuario?" en la
+  /// pantalla de ingreso: un DirectMethod de Ext.NET. A diferencia de
+  /// VerificaCarne, logon.aspx valida los campos ocultos del formulario, así
+  /// que hay que pedir la página primero y devolverle sus tokens y su cookie
+  /// de sesión.
+  ///
+  /// No lanza nunca: si Chairá no contesta, el registro sigue funcionando con
+  /// el usuario deducido del nombre, solo que sin verificar.
+  Future<String?> buscarUsuario(String documento) async {
+    final doc = documento.trim();
+    if (doc.length < 3) return null;
+    try {
+      final cliente = await _cliente;
+      final pagina = await cliente.get(endpointLogon).timeout(timeout);
+      if (pagina.statusCode != 200) return null;
+      final ocultos = ChairaParser.camposOcultos(
+        utf8.decode(pagina.bodyBytes, allowMalformed: true),
+      );
+      if (ocultos.isEmpty) return null;
+      final cookie = _cookieDe(pagina);
+
+      final respuesta = await cliente
+          .post(
+            endpointLogon,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-Ext.Net': 'delta=true',
+              'cookie': ?cookie,
+            },
+            body: {
+              ...ocultos,
+              // El ResourceManager de la página y el método que se invoca,
+              // tal como los arma el JavaScript de Ext.NET.
+              '__EVENTTARGET': 'ResourceManager1',
+              '__EVENTARGUMENT': '-|public|BuscarUsuario',
+              'submitDirectEventConfig': jsonEncode({
+                'config': {
+                  'extraParams': {'documento': doc},
+                },
+              }),
+            },
+          )
+          .timeout(timeout);
+      if (respuesta.statusCode != 200) return null;
+      return ChairaParser.usuarioDeRespuesta(
+        utf8.decode(respuesta.bodyBytes, allowMalformed: true),
+      );
+    } catch (_) {
+      // Un fallo aquí no puede impedir registrarse.
+      return null;
+    }
+  }
+
+  /// La cookie de sesión que hay que devolverle a ASP.NET junto con los
+  /// tokens, porque `http` no guarda cookies por su cuenta.
+  static String? _cookieDe(http.Response respuesta) {
+    final cabecera = respuesta.headers['set-cookie'];
+    if (cabecera == null || cabecera.isEmpty) return null;
+    final galletas = cabecera
+        .split(',')
+        .map((c) => c.split(';').first.trim())
+        .where((c) => c.contains('='));
+    return galletas.isEmpty ? null : galletas.join('; ');
   }
 
   /// La foto es opcional: si no llega a tiempo se muestra el avatar genérico.

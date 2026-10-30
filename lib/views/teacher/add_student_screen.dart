@@ -805,6 +805,13 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 ? () => _agregar(
                       Inscrito(
                         cedula: cedula.replaceAll(RegExp(r'[.\s-]'), ''),
+                        // El correo solo si Chairá lo confirmó: uno deducido
+                        // del nombre podría ser la clave de otra persona, y
+                        // acabaría metiéndola en la lista de la clase.
+                        email: liveResult.correoVerificado
+                            ? '${liveResult.username}'
+                                '${AuthViewModel.dominioInstitucional}'
+                            : null,
                         nombre: nombre,
                       ),
                     )

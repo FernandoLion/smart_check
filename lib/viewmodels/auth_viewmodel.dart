@@ -49,8 +49,6 @@ class AuthViewModel extends ChangeNotifier {
 
   User? get currentUser => _authService.currentUser;
 
-  static final _formatoUsuario = RegExp(r'^[a-z0-9]+([._-][a-z0-9]+)*$');
-
   /// Solo se usan cuentas @udla.edu.co: el usuario escribe "an.perez" (o el
   /// correo completo) y aquí se valida y se completa a "an.perez@udla.edu.co".
   /// Devuelve null si no es un usuario institucional válido; el motivo queda
@@ -68,7 +66,7 @@ class AuthViewModel extends ChangeNotifier {
     if (valor.contains('@') && !valor.endsWith(dominioInstitucional)) {
       return 'Solo se permiten cuentas $dominioInstitucional.';
     }
-    if (!_formatoUsuario.hasMatch(_usuario(valor))) {
+    if (!formatter.formatoUsuario.hasMatch(_usuario(valor))) {
       return 'Escribe solo tu usuario, por ejemplo an.perez.';
     }
     return null;
@@ -208,8 +206,13 @@ class AuthViewModel extends ChangeNotifier {
     final email = (user.email ?? '').toLowerCase();
     final usuarioCorreo = email.split('@').first;
     if (result.username != usuarioCorreo) {
+      // Con el usuario que da Chairá esto es una comprobación de verdad; con
+      // el deducido del nombre es una aproximación, y conviene decirlo.
       return _fallarVinculacion(
-        'El documento no corresponde a la cuenta $email.',
+        result.correoVerificado
+            ? 'Ese documento está registrado en Chairá con otro usuario, no '
+                'con $email.'
+            : 'El documento no corresponde a la cuenta $email.',
       );
     }
 

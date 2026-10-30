@@ -23,3 +23,28 @@ const respuestaNoEncontrado =
     '\\&quot;width\\&quot;:420,\\&quot;autoScroll\\&quot;:true,'
     '\\&quot;bodyStyle\\&quot;:\\&quot; text-align: left;padding:10px;\\&quot;,'
     '\\&quot;iconCls\\&quot;:\\&quot;#Information\\&quot;,\\&quot;showPin\\&quot;:true});&quot;}</textarea>';
+
+/// La página de ingreso, con los campos ocultos que ASP.NET exige para
+/// aceptar un envío.
+const paginaLogon = '<html><body><form method="post" action="./logon.aspx">'
+    '<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" '
+    'value="N4MAS88ZZWI9" />'
+    '<input type="hidden" name="__VIEWSTATEGENERATOR" '
+    'id="__VIEWSTATEGENERATOR" value="1373A9E7" />'
+    '<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" '
+    'value="m7/U/3T5gCXt" />'
+    '</form></body></html>';
+
+/// Lo que responde el DirectMethod `BuscarUsuario` cuando encuentra a alguien.
+/// Ojo: aquí el setter viene sin el prefijo `App.` del carné.
+String respuestaUsuario(String usuario) =>
+    '{script:"Window1.hide();Window2.hide();Window3.show();'
+    'DF_Usuario.setValue(\\"$usuario\\");DF_Usuario.show();"}';
+
+/// Y cuando no hay nadie con ese documento: el mensaje llega en el mismo
+/// campo, en HTML y en rojo.
+const respuestaUsuarioNoEncontrado =
+    '{script:"Window1.hide();Window2.hide();Window3.show();'
+    'DF_Usuario.setValue(\\"<FONT SIZE=3 COLOR=red>No existe ningun usuario '
+    'registrado con el documento proporcionado.</FONT>\\");'
+    'DF_Usuario.show();"}';

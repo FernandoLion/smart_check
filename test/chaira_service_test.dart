@@ -23,6 +23,9 @@ void main() {
       late http.Request enviado;
       final service = ChairaService(
         client: MockClient((request) async {
+          if (request.url == ChairaService.endpointLogon) {
+            return http.Response('', 404);
+          }
           if (request.method == 'GET') return http.Response('', 404);
           enviado = request;
           return _html(respuestaNoEncontrado);
@@ -52,6 +55,9 @@ void main() {
       Uri? urlFoto;
       final service = ChairaService(
         client: MockClient((request) async {
+          if (request.url == ChairaService.endpointLogon) {
+            return http.Response('', 404);
+          }
           if (request.method == 'GET') {
             urlFoto = request.url;
             return http.Response.bytes(
@@ -76,6 +82,9 @@ void main() {
     test('si la foto falla, la verificación sigue siendo exitosa', () async {
       final service = ChairaService(
         client: MockClient((request) async {
+          if (request.url == ChairaService.endpointLogon) {
+            return http.Response('', 404);
+          }
           if (request.method == 'GET') return _html('<html></html>');
           return _html(respuestaExito());
         }),
@@ -125,6 +134,92 @@ void main() {
       expect(r.error, contains('conexión'));
     });
 
+    test('trae el usuario institucional de la página de ingreso', () async {
+      final aLogon = <http.Request>[];
+      final service = ChairaService(
+        client: MockClient((request) async {
+          if (request.url == ChairaService.endpointLogon) {
+            if (request.method == 'GET') {
+              return http.Response(
+                paginaLogon,
+                200,
+                headers: {
+                  'set-cookie': 'ASP.NET_SessionId=abc123; path=/; HttpOnly',
+                },
+              );
+            }
+            aLogon.add(request);
+            return _html(respuestaUsuario('an.perez'));
+          }
+          if (request.method == 'GET') return _html('<html></html>');
+          return _html(respuestaExito());
+        }),
+      );
+
+      final r = await service.verificarDocumento('1117000000');
+
+      expect(r.usuarioChaira, 'an.perez');
+      expect(r.correoVerificado, isTrue);
+      expect(r.username, 'an.perez');
+      // Hay que devolverle a ASP.NET sus tokens y su cookie, o no contesta.
+      final enviado = aLogon.single;
+      expect(enviado.headers['cookie'], 'ASP.NET_SessionId=abc123');
+      final campos = enviado.bodyFields;
+      expect(campos['__EVENTTARGET'], 'ResourceManager1');
+      expect(campos['__EVENTARGUMENT'], '-|public|BuscarUsuario');
+      expect(campos['__VIEWSTATE'], 'N4MAS88ZZWI9');
+      expect(campos['__VIEWSTATEGENERATOR'], '1373A9E7');
+      expect(campos['__EVENTVALIDATION'], 'm7/U/3T5gCXt');
+      expect(
+        jsonDecode(campos['submitDirectEventConfig']!),
+        {
+          'config': {
+            'extraParams': {'documento': '1117000000'},
+          },
+        },
+      );
+    });
+
+    test('sin usuario registrado, el correo se deduce del nombre', () async {
+      final service = ChairaService(
+        client: MockClient((request) async {
+          if (request.url == ChairaService.endpointLogon) {
+            return request.method == 'GET'
+                ? _html(paginaLogon)
+                : _html(respuestaUsuarioNoEncontrado);
+          }
+          if (request.method == 'GET') return _html('<html></html>');
+          return _html(respuestaExito());
+        }),
+      );
+
+      final r = await service.verificarDocumento('1117000000');
+
+      expect(r.success, isTrue);
+      expect(r.usuarioChaira, isNull);
+      expect(r.correoVerificado, isFalse);
+      // El respaldo de siempre.
+      expect(r.username, 'an.perez');
+    });
+
+    test('si la página de ingreso falla, el carné sigue valiendo', () async {
+      final service = ChairaService(
+        client: MockClient((request) async {
+          if (request.url == ChairaService.endpointLogon) {
+            throw http.ClientException('offline');
+          }
+          if (request.method == 'GET') return _html('<html></html>');
+          return _html(respuestaExito());
+        }),
+      );
+
+      final r = await service.verificarDocumento('1117000000');
+
+      expect(r.success, isTrue);
+      expect(r.correoVerificado, isFalse);
+      expect(r.username, 'an.perez');
+    });
+
     test('informa el tiempo de espera agotado', () async {
       final service = ChairaService(
         timeout: const Duration(milliseconds: 10),
@@ -151,6 +246,18 @@ void main() {
       expect(conNombre('ANA MARÍA PÉREZ GÓMEZ').username, 'an.perez');
       expect(conNombre('Carlos Andrés Muñoz Rivera').username, 'ca.munoz');
       expect(conNombre(' NÚÑEZ  ORDÓÑEZ ').username, 'n.ordonez');
+    });
+
+    test('el usuario de Chairá manda sobre el deducido del nombre', () {
+      const r = VerificacionResult(
+        success: true,
+        documentoConsultado: '1',
+        nombre: 'ANA MARÍA PÉREZ GÓMEZ',
+        usuarioChaira: 'anamaria.perez',
+      );
+
+      expect(r.username, 'anamaria.perez');
+      expect(r.correoVerificado, isTrue);
     });
 
     test('reconoce docentes sin importar mayúsculas', () {

@@ -724,14 +724,25 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
   }
 
   Widget _buildEmailField() {
+    // Cuando Chairá da el usuario, el correo no se discute: se muestra tal
+    // cual y no se deja editar. Si no lo dio, se deduce del nombre y el
+    // estudiante puede corregirlo.
+    final verificado =
+        context.watch<AuthViewModel>().verificacionResult?.correoVerificado ??
+            false;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4.0),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
           child: Text(
-            'Correo Institucional Asignado',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            verificado
+                ? 'Correo Institucional (verificado en Chairá)'
+                : 'Correo Institucional Asignado',
+            style: const TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 13,
+            ),
           ),
         ),
         const SizedBox(height: 6),
@@ -746,6 +757,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
               Expanded(
                 child: TextField(
                   controller: _emailController,
+                  readOnly: verificado,
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
                   enableSuggestions: false,

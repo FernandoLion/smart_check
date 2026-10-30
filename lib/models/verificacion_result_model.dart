@@ -14,6 +14,11 @@ class VerificacionResult {
   final Uint8List? imagenBytes;
   final String? error;
 
+  /// El usuario institucional que Chairá tiene registrado para el documento,
+  /// o null si no se pudo consultar. No se guarda en la base: es el dato con
+  /// el que se arma el correo al registrarse.
+  final String? usuarioChaira;
+
   const VerificacionResult({
     required this.success,
     required this.documentoConsultado,
@@ -24,6 +29,7 @@ class VerificacionResult {
     this.fotoUrl,
     this.imagenBytes,
     this.error,
+    this.usuarioChaira,
   });
 
   /// Construye un resultado fallido con el mensaje [error].
@@ -34,7 +40,8 @@ class VerificacionResult {
         programa = null,
         tipoUsuario = null,
         fotoUrl = null,
-        imagenBytes = null;
+        imagenBytes = null,
+        usuarioChaira = null;
 
   /// Lee el JSON que imprime `consulta_carne.py`.
   factory VerificacionResult.fromJson(Map<String, dynamic> json) {
@@ -56,7 +63,10 @@ class VerificacionResult {
     );
   }
 
-  VerificacionResult copyWith({Uint8List? imagenBytes}) {
+  VerificacionResult copyWith({
+    Uint8List? imagenBytes,
+    String? usuarioChaira,
+  }) {
     return VerificacionResult(
       success: success,
       documentoConsultado: documentoConsultado,
@@ -67,15 +77,28 @@ class VerificacionResult {
       fotoUrl: fotoUrl,
       imagenBytes: imagenBytes ?? this.imagenBytes,
       error: error,
+      usuarioChaira: usuarioChaira ?? this.usuarioChaira,
     );
   }
 
   /// Chairá devuelve el tipo en mayúsculas ("DOCENTE", "DOCENTE CATEDRA"...).
   bool get esDocente => tipoUsuario?.toUpperCase().contains('DOCENTE') ?? false;
 
-  /// Genera un nombre de usuario a partir del nombre completo.
+  /// El usuario del correo institucional: el que Chairá tiene registrado si
+  /// se pudo consultar, y si no el que se deduce del nombre.
+  String? get username => usuarioChaira ?? _usuarioDeducido;
+
+  /// Si el usuario viene de Chairá y no de deducirlo del nombre. Solo
+  /// entonces el correo es un dato verificado.
+  bool get correoVerificado => usuarioChaira != null;
+
+  /// Deduce un nombre de usuario a partir del nombre completo.
   /// Ejemplo: "Ana María Pérez Gómez" -> "an.perez"
-  String? get username {
+  ///
+  /// Es el respaldo de cuando Chairá no contesta: se equivoca con los
+  /// homónimos y con algunos nombres compuestos, así que nunca se guarda
+  /// como si fuera un correo verificado.
+  String? get _usuarioDeducido {
     if (nombre == null || nombre!.trim().isEmpty) return null;
     final parts = _sinTildes(nombre!.trim().toLowerCase())
         .split(RegExp(r'\s+'))
