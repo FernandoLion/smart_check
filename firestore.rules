@@ -34,7 +34,32 @@ service cloud.firestore {
         && request.resource.data.roles is list
         && request.resource.data.roles.size() > 0
         && request.resource.data.roles.hasOnly(['docente', 'estudiante']);
-      allow update, delete: if false;
+      // Lo único que el usuario puede cambiar de su perfil es el celular con
+      // el que marca asistencia, y solo eso: el rol sigue siendo intocable.
+      // `dispositivo_desde` tiene que ser la hora del servidor, así que la
+      // app escribe `FieldValue.serverTimestamp()`; si la pusiera el celular,
+      // adelantar el reloj saltaría la espera. Entre cambio y cambio pasan 7
+      // días; a quien se le dañe el celular antes, lo marca el docente a mano.
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['dispositivo_id', 'dispositivo_desde'])
+        && request.resource.data.dispositivo_id is string
+        && request.resource.data.dispositivo_id.size() >= 8
+        && request.resource.data.dispositivo_desde == request.time
+        && (resource.data.get('dispositivo_id', '') == ''
+          || resource.data.dispositivo_desde + duration.value(7, 'd')
+               <= request.time);
+      allow delete: if false;
+
+      // El historial de celulares: se añade, no se corrige ni se borra.
+      match /dispositivos/{registro} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow create: if request.auth != null
+          && request.auth.uid == uid
+          && request.resource.data.desde == request.time;
+        allow update, delete: if false;
+      }
     }
 
     // Cursos: los crea un docente a su nombre; los leen él y sus inscritos.

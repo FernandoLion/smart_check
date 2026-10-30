@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/usuario_perfil_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -27,12 +28,14 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
   static const Color _surfaceHigh = Color(0xFF2A2A2C);
 
   late final AnimationController _pulseController;
-  Timer? _otpTimer;
-  Timer? _scanTimeout;
 
-  int _timerVal = 26;
-  String _currentToken = '8F42-99B1-A013';
-  bool _isScanning = false;
+  /// El identificador del celular en el que corre la app, para compararlo con
+  /// el que tiene atado la cuenta. Null mientras se pregunta, o si la
+  /// plataforma no lo da.
+  String? _esteCelular;
+  bool _preguntando = true;
+  bool _vinculando = false;
+  List<VinculoDispositivo> _historial = const [];
 
   @override
   void initState() {
@@ -44,50 +47,59 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
       duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
 
-    // Temporizador en vivo para el Token Dinámico AES-256 (30s ciclo)
-    _otpTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        if (_timerVal > 1) {
-          _timerVal--;
-        } else {
-          _timerVal = 30;
-          _currentToken = _generateRandomAesToken();
-        }
-      });
-    });
-
-    // Auto-disparo de verificación biométrica a los 400ms (igual que el script de Stitch)
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) _triggerVerification();
-    });
+    _mirarEsteCelular();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
-    _otpTimer?.cancel();
-    _scanTimeout?.cancel();
     super.dispose();
   }
 
-  String _generateRandomAesToken() {
-    const chars = '0123456789ABCDEF';
-    final rand = Random();
-    String block() =>
-        List.generate(4, (_) => chars[rand.nextInt(chars.length)]).join();
-    return '${block()}-${block()}-${block()}';
-  }
-
-  void _triggerVerification() {
-    _scanTimeout?.cancel();
-    setState(() => _isScanning = true);
-
-    _scanTimeout = Timer(const Duration(milliseconds: 1400), () {
-      if (!mounted) return;
-      setState(() => _isScanning = false);
+  Future<void> _mirarEsteCelular() async {
+    final auth = context.read<AuthViewModel>();
+    final id = await auth.identificadorDeEsteDispositivo();
+    final historial = await auth.historialDeDispositivos();
+    if (!mounted) return;
+    setState(() {
+      _esteCelular = id;
+      _historial = historial;
+      _preguntando = false;
     });
   }
+
+  /// Si la cuenta ya está atada a este mismo celular.
+  bool get _esElVinculado {
+    final vinculado = context.read<AuthViewModel>().dispositivoVinculado;
+    return vinculado != null && vinculado == _esteCelular;
+  }
+
+  Future<void> _vincular() async {
+    setState(() => _vinculando = true);
+    final auth = context.read<AuthViewModel>();
+    final listo = await auth.vincularEsteDispositivo();
+    if (listo) _historial = await auth.historialDeDispositivos();
+    if (!mounted) return;
+    setState(() => _vinculando = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          listo
+              ? 'Listo: desde ahora marcas asistencia con este celular.'
+              : auth.errorMessage ?? 'No se pudo vincular este celular.',
+        ),
+      ),
+    );
+  }
+
+  /// Los últimos caracteres del identificador: basta para distinguir un
+  /// celular de otro sin llenar la pantalla de letras.
+  static String _corto(String? id) =>
+      id == null || id.isEmpty ? '—' : id.substring(max(0, id.length - 6));
+
+  static String _fecha(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/'
+      '${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   @override
   Widget build(BuildContext context) {
@@ -506,7 +518,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                       Row(
                         children: [
                           const Icon(
-                            Icons.qr_code_2,
+                            Icons.smartphone,
                             color: _secondaryBlue,
                             size: 22,
                           ),
@@ -515,7 +527,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Token Dinámico AES-256',
+                                'Celular vinculado',
                                 style: TextStyle(
                                   color: AppTheme.textSecondary,
                                   fontSize: 12,
@@ -523,7 +535,9 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                _currentToken,
+                                _corto(context
+                                    .watch<AuthViewModel>()
+                                    .dispositivoVinculado),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 13,
@@ -547,14 +561,18 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                         ),
                         child: Row(
                           children: [
-                            const Icon(
-                              Icons.timer_outlined,
-                              color: _systemAmber,
+                            Icon(
+                              _esElVinculado
+                                  ? Icons.check_circle
+                                  : Icons.timer_outlined,
+                              color: _esElVinculado
+                                  ? _tertiaryGreen
+                                  : _systemAmber,
                               size: 14,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${_timerVal}s',
+                              _esElVinculado ? 'este' : 'otro',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
@@ -605,7 +623,29 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
   }
 
   Widget _buildBiometricScannerSection() {
-    final ringColor = _isScanning ? _primaryIndigo : _tertiaryGreen;
+    final auth = context.watch<AuthViewModel>();
+    final vinculado = auth.dispositivoVinculado;
+    final esEste = _esElVinculado;
+    final ringColor = _preguntando
+        ? _primaryIndigo
+        : esEste
+            ? _tertiaryGreen
+            : _systemAmber;
+    final titulo = _preguntando
+        ? 'Comprobando este celular...'
+        : esEste
+            ? 'Este es tu celular'
+            : vinculado == null
+                ? 'Ningún celular vinculado'
+                : 'Tu cuenta está atada a otro celular';
+    final detalle = _preguntando
+        ? 'Un momento.'
+        : esEste
+            ? 'Con él firmas tu asistencia, y el servidor lo comprueba.'
+            : vinculado == null
+                ? 'Vincula este celular para poder marcar asistencia.'
+                : 'Si cambiaste de teléfono, vincula este. Si no, tu '
+                    'asistencia se marca con el otro.';
 
     return Column(
       children: [
@@ -655,13 +695,15 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                   ],
                 ),
                 child: Center(
-                  child: _isScanning
-                      ? const Icon(
-                          Icons.face,
-                          color: _primaryLight,
-                          size: 36,
-                        )
-                      : const SizedBox.shrink(),
+                  child: Icon(
+                    _preguntando
+                        ? Icons.smartphone
+                        : esEste
+                            ? Icons.verified_user
+                            : Icons.phonelink_erase,
+                    color: _preguntando ? _primaryLight : ringColor,
+                    size: 36,
+                  ),
                 ),
               ),
             ],
@@ -669,11 +711,9 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
         ),
         const SizedBox(height: 12),
 
-        // Título dinámico: "¡Identidad Verificada!" o "Autenticando con Face ID..."
+        // Título dinámico según el celular que tenga atado la cuenta.
         Text(
-          _isScanning
-              ? 'Autenticando con Face ID...'
-              : '¡Identidad Verificada!',
+          titulo,
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Colors.white,
@@ -688,9 +728,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 270),
           child: Text(
-            _isScanning
-                ? 'Verificando rasgos faciales y token criptográfico'
-                : 'Acceso concedido a torniquetes Campus Centro',
+            detalle,
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppTheme.textSecondary,
@@ -701,25 +739,26 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
         ),
         const SizedBox(height: 12),
 
-        // Pill de Ubicación: "Campus Principal • Edificio Central Aulas"
+        // Pill con la fecha: desde cuándo está atado, o cuándo se podrá
+        // cambiar. La espera la impone el servidor, no esta pantalla.
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
             color: _surfaceHigh,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.location_on_outlined,
+              const Icon(
+                Icons.event_outlined,
                 color: _secondaryLight,
                 size: 15,
               ),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Text(
-                'Campus Principal • Edificio Central Aulas',
-                style: TextStyle(
+                _leyendaDeFechas(auth),
+                style: const TextStyle(
                   color: Color(0xFFE4E2E4),
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -732,9 +771,29 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
     );
   }
 
+  /// Desde cuándo está atado el celular, cuántos ha habido, y cuándo se
+  /// podrá cambiar si todavía no se puede.
+  String _leyendaDeFechas(AuthViewModel auth) {
+    final proximo = auth.proximoCambioDeDispositivo;
+    if (proximo != null) return 'Puedes cambiarlo el ${_fecha(proximo)}';
+    final desde = auth.perfil?.dispositivoDesde;
+    if (desde == null) return 'Sin vincular';
+    final veces = _historial.length;
+    final cuenta = veces > 1 ? ' • $veces celulares' : '';
+    return 'Desde el ${_fecha(desde)}$cuenta';
+  }
+
   Widget _buildRevalidateButton() {
+    final auth = context.watch<AuthViewModel>();
+    final puede = auth.puedeVincular && !_preguntando && !_vinculando;
+    final texto = _esElVinculado
+        ? 'Este celular ya está vinculado'
+        : auth.dispositivoVinculado == null
+            ? 'Vincular este celular'
+            : 'Cambiar a este celular';
+
     return ElevatedButton(
-      onPressed: _isScanning ? null : _triggerVerification,
+      onPressed: (!puede || _esElVinculado) ? null : _vincular,
       style: ElevatedButton.styleFrom(
         backgroundColor: _primaryIndigo,
         disabledBackgroundColor: _primaryIndigo.withValues(alpha: 0.6),
@@ -751,12 +810,12 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _isScanning ? Icons.hourglass_top_rounded : Icons.refresh,
+            _vinculando ? Icons.hourglass_top_rounded : Icons.smartphone,
             size: 20,
           ),
           const SizedBox(width: 8),
           Text(
-            _isScanning ? 'Escaneando...' : 'Revalidar Credencial',
+            _vinculando ? 'Vinculando...' : texto,
             style: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
@@ -781,7 +840,8 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
           SizedBox(width: 8),
           Flexible(
             child: Text(
-              'Cifrado integral con Apple Secure Enclave • UDLA IT v4.18',
+              'Tu asistencia se firma desde este celular y la comprueba el '
+              'servidor. Cambiarlo deja constancia.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppTheme.textTertiary,

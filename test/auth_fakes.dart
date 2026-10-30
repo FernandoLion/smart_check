@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:smart_check/models/usuario_perfil_model.dart';
 import 'package:smart_check/services/auth_service.dart';
 import 'package:smart_check/services/chaira_service.dart';
+import 'package:smart_check/services/dispositivo_service.dart';
 import 'package:smart_check/services/perfil_service.dart';
 
 import 'chaira_fixtures.dart';
@@ -49,7 +50,11 @@ class FakeAuthService extends Fake implements AuthService {
 /// Firestore en memoria.
 class FakePerfilService extends Fake implements PerfilService {
   final perfiles = <String, UsuarioPerfil>{};
+  final historial = <String, List<VinculoDispositivo>>{};
   PerfilException? fallo;
+
+  /// La hora que pondría el servidor al vincular un celular.
+  DateTime horaDelServidor = DateTime(2026, 1, 1, 8);
 
   @override
   Future<UsuarioPerfil?> obtener(String uid) async {
@@ -62,6 +67,38 @@ class FakePerfilService extends Fake implements PerfilService {
     if (fallo != null) throw fallo!;
     perfiles[perfil.uid] = perfil;
   }
+
+  @override
+  Future<DateTime> vincularDispositivo(String uid, String dispositivoId) async {
+    if (fallo != null) throw fallo!;
+    final perfil = perfiles[uid];
+    if (perfil == null) throw const PerfilException('No existe ese perfil.');
+    historial.putIfAbsent(uid, () => []).insert(
+          0,
+          VinculoDispositivo(
+            dispositivoId: dispositivoId,
+            desde: horaDelServidor,
+            anterior: perfil.dispositivoId,
+          ),
+        );
+    perfiles[uid] = perfil.conDispositivo(dispositivoId, horaDelServidor);
+    return horaDelServidor;
+  }
+
+  @override
+  Future<List<VinculoDispositivo>> historialDeDispositivos(String uid) async {
+    if (fallo != null) throw fallo!;
+    return historial[uid] ?? const [];
+  }
+}
+
+/// Un celular con un identificador fijo, o ninguno si es null.
+class FakeDispositivoService extends Fake implements DispositivoService {
+  FakeDispositivoService([this.id = 'android-1234567890']);
+  final String? id;
+
+  @override
+  Future<String?> identificador() async => id;
 }
 
 /// Chairá simulado: siempre encuentra a "ANA MARÍA PÉREZ GÓMEZ" con [tipo].

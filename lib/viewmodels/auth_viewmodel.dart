@@ -6,6 +6,7 @@ import '../models/usuario_perfil_model.dart';
 import '../models/verificacion_result_model.dart';
 import '../services/auth_service.dart';
 import '../services/chaira_service.dart';
+import '../services/dispositivo_service.dart';
 import '../services/perfil_service.dart';
 import '../utils/usuario_input_formatter.dart' as formatter;
 
@@ -16,13 +17,23 @@ class AuthViewModel extends ChangeNotifier {
   final ChairaService _chairaService;
   final PerfilService _perfilService;
 
+  final DispositivoService _dispositivos;
+
   AuthViewModel({
     AuthService? authService,
     ChairaService? chairaService,
     PerfilService? perfilService,
+    DispositivoService? dispositivos,
+    DateTime Function()? reloj,
   })  : _authService = authService ?? AuthService(),
         _chairaService = chairaService ?? ChairaService(),
-        _perfilService = perfilService ?? PerfilService();
+        _perfilService = perfilService ?? PerfilService(),
+        _dispositivos = dispositivos ?? DispositivoService(),
+        _ahora = reloj ?? DateTime.now;
+
+  /// Inyectable para poder probar la espera entre celulares sin esperar una
+  /// semana, como en [RadarViewModel].
+  final DateTime Function() _ahora;
 
   bool _isLoading = false;
   bool _isVerifyingChaira = false;
@@ -48,6 +59,84 @@ class AuthViewModel extends ChangeNotifier {
       _perfil?.comoVerificacion(imagenBytes: _fotoPerfil);
 
   User? get currentUser => _authService.currentUser;
+
+  /// El celular atado a esta cuenta, o null si todavía no hay ninguno.
+  String? get dispositivoVinculado => _perfil?.dispositivoId;
+
+  /// Si este celular es el vinculado. Es lo que mira el marcaje antes de
+  /// firmar: el servidor lo vuelve a comprobar, esto solo evita el viaje.
+  Future<bool> esEsteDispositivo() async {
+    final vinculado = _perfil?.dispositivoId;
+    if (vinculado == null || vinculado.isEmpty) return false;
+    return await _dispositivos.identificador() == vinculado;
+  }
+
+  /// El identificador del celular en el que corre la app, o null si la
+  /// plataforma no lo da.
+  Future<String?> identificadorDeEsteDispositivo() =>
+      _dispositivos.identificador();
+
+  /// Si ya se puede vincular otro celular (la primera vez, siempre).
+  bool get puedeVincular => _perfil?.puedeVincular(_ahora()) ?? false;
+
+  /// Cuándo se podrá cambiar de celular, o null si ya se puede.
+  DateTime? get proximoCambioDeDispositivo => _perfil?.proximoCambio(_ahora());
+
+  /// Ata el celular en el que corre la app a la cuenta con sesión iniciada.
+  ///
+  /// La espera de una semana la imponen las reglas; aquí se comprueba antes
+  /// solo para dar un motivo claro en vez de un "permiso denegado".
+  Future<bool> vincularEsteDispositivo() async {
+    final perfil = _perfil;
+    if (perfil == null) {
+      _errorMessage = 'Tu sesión expiró. Vuelve a entrar.';
+      notifyListeners();
+      return false;
+    }
+    if (!perfil.puedeVincular(_ahora())) {
+      _errorMessage = 'Ya cambiaste de celular hace poco. Podrás volver a '
+          'hacerlo el ${_dia(perfil.proximoCambio(_ahora())!)}. Mientras '
+          'tanto, pídele al docente que te marque a mano.';
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final id = await _dispositivos.identificador();
+      if (id == null) {
+        _errorMessage = 'Este dispositivo no da un identificador. La '
+            'asistencia se marca desde el celular.';
+        return false;
+      }
+      final desde = await _perfilService.vincularDispositivo(perfil.uid, id);
+      _perfil = perfil.conDispositivo(id, desde);
+      return true;
+    } on PerfilException catch (e) {
+      _errorMessage = e.mensaje;
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Los celulares por los que ha pasado esta cuenta.
+  Future<List<VinculoDispositivo>> historialDeDispositivos() async {
+    final perfil = _perfil;
+    if (perfil == null) return const [];
+    try {
+      return await _perfilService.historialDeDispositivos(perfil.uid);
+    } on PerfilException {
+      return const [];
+    }
+  }
+
+  static String _dia(DateTime fecha) =>
+      '${fecha.day.toString().padLeft(2, '0')}/'
+      '${fecha.month.toString().padLeft(2, '0')}';
 
   /// Solo se usan cuentas @udla.edu.co: el usuario escribe "an.perez" (o el
   /// correo completo) y aquí se valida y se completa a "an.perez@udla.edu.co".
