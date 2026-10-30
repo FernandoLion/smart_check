@@ -30,6 +30,25 @@ Sesion sesion(String id, int dia, {bool abierta = false}) => Sesion(
       abierta: abierta,
     );
 
+/// Un llamado de diez minutos dentro del bloque de las 8 del día [dia].
+Sesion llamado(
+  String id,
+  int dia,
+  int minuto, {
+  bool abierta = false,
+}) =>
+    Sesion(
+      id: id,
+      inicio: DateTime(2026, 10, dia, 8, minuto),
+      fin: DateTime(2026, 10, dia, 8, minuto + 10),
+      abierta: abierta,
+      bloqueInicio: DateTime(2026, 10, dia, 8),
+    );
+
+/// Media mañana del 26, para que las clases anteriores ya sean pasado y la
+/// del 26 esté en curso.
+DateTime get elLunes26 => DateTime(2026, 10, 26, 9);
+
 void main() {
   late FakeCursoService servicio;
   late CourseDetailViewModel vm;
@@ -40,7 +59,7 @@ void main() {
       'ana': const Inscrito(cedula: 'ana', nombre: 'ANA PÉREZ'),
       'carlos': const Inscrito(cedula: 'carlos', nombre: 'CARLOS MUÑOZ'),
     };
-    vm = CourseDetailViewModel(servicio: servicio);
+    vm = CourseDetailViewModel(servicio: servicio, reloj: () => elLunes26);
   });
 
   tearDown(() => vm.dispose());
@@ -97,8 +116,37 @@ void main() {
     vm.vigilar('c1');
     await pumpEventQueue();
 
-    expect(vm.sesionAbierta?.id, 's2');
+    expect(vm.llamadoVigente?.id, 's2');
     expect(vm.sesionesPasadas.map((s) => s.sesion.id), ['s1']);
+    expect(vm.inscritos.every((i) => i.asistencia.sesiones == 1), isTrue);
+    expect(vm.promedio.porcentaje, 100);
+  });
+
+  test('un llamado abierto que ya venció cuenta como clase pasada', () async {
+    // Quedó abierto el día anterior porque al docente se le murió la app.
+    servicio.sesionesPorCurso['c1'] = [sesion('s1', 25, abierta: true)];
+    servicio.asistenciasPorSesion['s1'] = [presente('ana')];
+
+    vm.vigilar('c1');
+    await pumpEventQueue();
+
+    expect(vm.llamadoVigente, isNull);
+    expect(vm.sesionesPasadas.map((s) => s.sesion.id), ['s1']);
+    expect(vm.promedio.porcentaje, 50);
+  });
+
+  test('dos llamados de la misma franja son una sola clase', () async {
+    // El docente abrió el radar dos veces en el mismo bloque.
+    servicio.sesionesPorCurso['c1'] = [llamado('s1', 20, 2), llamado('s2', 20, 40)];
+    servicio.asistenciasPorSesion['s1'] = [presente('ana')];
+    servicio.asistenciasPorSesion['s2'] = [presente('carlos')];
+
+    vm.vigilar('c1');
+    await pumpEventQueue();
+
+    expect(vm.sesionesPasadas, hasLength(1));
+    // Quien apareció en cualquiera de los dos llamados asistió a la clase.
+    expect(vm.sesionesPasadas.single.asistieron, 2);
     expect(vm.inscritos.every((i) => i.asistencia.sesiones == 1), isTrue);
     expect(vm.promedio.porcentaje, 100);
   });

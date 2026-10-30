@@ -74,9 +74,21 @@ service cloud.firestore {
         }
 
         allow read: if soySuDocente() || estoyInscrito();
+        // El llamado de asistencia dura 10 minutos como máximo y arranca
+        // cuando el docente abre el radar. Se acota contra la hora del
+        // servidor para que no se pueda fabricar una ventana más larga ni a
+        // otra hora; la holgura es por el reloj del celular y la latencia.
+        // `bloque_inicio` es la franja del horario, y es por donde se agrupan
+        // los llamados al contar la asistencia.
         allow create: if soySuDocente()
           && request.resource.data.abierta == true
-          && request.resource.data.fin > request.resource.data.inicio;
+          && request.resource.data.fin > request.resource.data.inicio
+          && request.resource.data.fin
+            <= request.resource.data.inicio + duration.value(10, 'm')
+          && request.resource.data.fin <= request.time + duration.value(13, 'm')
+          && request.resource.data.inicio >= request.time - duration.value(10, 'm')
+          && request.resource.data.bloque_inicio is timestamp
+          && request.resource.data.bloque_inicio <= request.resource.data.inicio;
         // Solo se puede cerrar; no se reabre ni se cambia la franja.
         allow update: if soySuDocente()
           && request.resource.data.abierta == false

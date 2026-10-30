@@ -190,17 +190,16 @@ class CursoService {
     }
   }
 
-  /// Vuelve a abrir una clase que ya se había cerrado, para seguir pasando
-  /// lista en la misma sesión en vez de crear otra.
-  Future<void> reabrirSesion(String cursoId, String sesionId) async {
-    try {
-      await _sesiones(cursoId)
-          .doc(sesionId)
-          .update({'abierta': true}).timeout(_timeout);
-    } catch (e) {
-      throw CursoException(_mensaje(e, 'reabrir la sesión'));
-    }
-  }
+  /// Los llamados marcados como abiertos. Normalmente hay uno o ninguno: el
+  /// radar cierra el suyo al vencer la ventana y, si la app murió antes,
+  /// cierra el que quedó colgado al volver a entrar. Sin `orderBy` a
+  /// propósito: una igualdad sola usa el índice automático de Firestore y así
+  /// no hace falta declarar un índice compuesto.
+  Stream<List<Sesion>> llamadosAbiertos(String cursoId) => _sesiones(cursoId)
+      .where('abierta', isEqualTo: true)
+      .snapshots()
+      .map((s) => s.docs.map((d) => Sesion.fromMap(d.id, d.data())).toList())
+      .handleError((Object e) => throw CursoException(_mensaje(e, 'leer el llamado')));
 
   // --- Asistencias ----------------------------------------------------------
 
@@ -242,18 +241,10 @@ class CursoService {
     final momento = ahora ?? DateTime.now();
     try {
       final docs = await _sesiones(cursoId).get().timeout(_timeout);
-      // Cuenta la clase que ya cerró el docente y la que se pasó de su hora
-      // sin cerrarse; la que sigue en curso todavía no resta.
-      final terminadas = docs.docs
-          .map((d) => Sesion.fromMap(d.id, d.data()))
-          .where((s) => !s.abierta || s.fin.isBefore(momento))
-          .toList();
-      // Una franja es una clase aunque el docente haya abierto el radar
-      // varias veces: se agrupan por hora de inicio para no contarla doble.
-      final porFranja = <DateTime, List<Sesion>>{};
-      for (final s in terminadas) {
-        porFranja.putIfAbsent(s.inicio, () => []).add(s);
-      }
+      final porFranja = franjasTerminadas(
+        docs.docs.map((d) => Sesion.fromMap(d.id, d.data())).toList(),
+        momento,
+      );
       final asistio = await Future.wait(
         porFranja.values.map((sesiones) async {
           final hubo = await Future.wait(
@@ -269,6 +260,25 @@ class CursoService {
     } catch (e) {
       throw CursoException(_mensaje(e, 'leer tu asistencia'));
     }
+  }
+
+  /// Agrupa por franja de clase los llamados que ya terminaron. Está fuera de
+  /// la consulta para poder probarlo: es la cuenta que decide el porcentaje
+  /// de asistencia del estudiante.
+  ///
+  /// Una franja es una clase aunque el docente haya abierto el radar varias
+  /// veces dentro del bloque. El llamado que sigue vigente todavía no resta;
+  /// el que se pasó de su hora sin cerrarse, sí.
+  static Map<DateTime, List<Sesion>> franjasTerminadas(
+    List<Sesion> sesiones,
+    DateTime momento,
+  ) {
+    final porFranja = <DateTime, List<Sesion>>{};
+    for (final s in sesiones) {
+      if (s.abierta && !s.vencida(momento)) continue;
+      porFranja.putIfAbsent(s.franja, () => []).add(s);
+    }
+    return porFranja;
   }
 
   /// Las asistencias de cada sesión, por id de sesión. Con esto el panel

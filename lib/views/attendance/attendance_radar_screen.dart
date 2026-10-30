@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -44,6 +45,10 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
   late final RadarViewModel _vm;
   int _selectedFilter = 0; // 0: Todos, 1: Detectados, 2: Ausentes
 
+  /// Repinta la cuenta atrás del llamado. El viewmodel solo avisa cuando pasa
+  /// algo (una baliza, un cierre), no cada vez que corre el segundero.
+  Timer? _cuentaAtras;
+
   bool get _isRadarActive => _vm.escaneando;
 
   @override
@@ -63,10 +68,16 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
       vsync: this,
       duration: const Duration(milliseconds: 3200),
     )..repeat(reverse: true);
+
+    _cuentaAtras = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _vm.sesion == null) return;
+      setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _cuentaAtras?.cancel();
     _vm.removeListener(_alCambiarElRadar);
     _vm.dispose();
     _sweepController.dispose();
@@ -99,7 +110,8 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
     );
   }
 
-  /// Detener cierra la clase: es lo que hace que cuente en los porcentajes.
+  /// Detener cierra el llamado: es lo que hace que cuente en los
+  /// porcentajes. Con el llamado ya vencido, el botón abre otro.
   Future<void> _toggleRadarState() async {
     if (_vm.ocupado) return;
     if (_isRadarActive) {
@@ -118,11 +130,11 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
       builder: (_) => AlertDialog(
         backgroundColor: _surfaceElevated,
         title: const Text(
-          '¿Cerrar la clase?',
+          '¿Cerrar el llamado?',
           style: TextStyle(color: Colors.white),
         ),
         content: Text(
-          'Se deja de escuchar y la sesión queda cerrada. '
+          'Se deja de escuchar y el llamado queda cerrado antes de tiempo. '
           '${_vm.detectados} de ${_vm.totalInscritos} quedarán como '
           'asistencia; el resto cuenta como falta.',
           style: const TextStyle(color: AppTheme.textSecondary),
@@ -135,7 +147,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
-              'Cerrar la clase',
+              'Cerrar el llamado',
               style: TextStyle(color: _systemRed),
             ),
           ),
@@ -868,9 +880,29 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
     );
   }
 
-  /// Estado de la clase abierta: hasta cuándo se puede marcar y cuántos van.
+  /// Qué dice la tira de estado: que no hay llamado, lo que queda de ventana,
+  /// o que ya se cerró y lo único que queda es el llamado manual.
+  String get _estadoDelLlamado {
+    final sesion = _vm.sesion;
+    if (sesion == null) return 'La clase no está abierta.';
+    if (_vm.llamadoVencido) {
+      return 'El llamado se cerró. Marca a mano a quien falte.';
+    }
+    final restante = _vm.restanteDelLlamado ?? Duration.zero;
+    return 'Quedan ${_mmss(restante)} de llamado, hasta las '
+        '${_hora(sesion.fin)}';
+  }
+
+  /// La cuenta atrás, en "07:32". El llamado nunca pasa de diez minutos, así
+  /// que no hace falta contemplar las horas.
+  static String _mmss(Duration d) =>
+      '${d.inMinutes.toString().padLeft(2, '0')}:'
+      '${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+
+  /// Estado del llamado: lo que queda de ventana y cuántos van.
   Widget _buildAlternativeMethodsStrip() {
     final sesion = _vm.sesion;
+    final vencido = _vm.llamadoVencido;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
       decoration: BoxDecoration(
@@ -881,16 +913,22 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
       child: Row(
         children: [
           Icon(
-            sesion == null ? Icons.lock_clock : Icons.schedule,
-            color: sesion == null ? AppTheme.textTertiary : _tertiaryGreen,
+            sesion == null
+                ? Icons.lock_clock
+                : vencido
+                    ? Icons.timer_off_outlined
+                    : Icons.schedule,
+            color: sesion == null
+                ? AppTheme.textTertiary
+                : vencido
+                    ? _systemAmber
+                    : _tertiaryGreen,
             size: 18,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              sesion == null
-                  ? 'La clase no está abierta.'
-                  : 'Se puede marcar hasta las ${_hora(sesion.fin)}',
+              _estadoDelLlamado,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 13,
@@ -1213,6 +1251,13 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
     );
   }
 
+  /// Con el llamado vencido el botón no "reanuda" nada: abre otro llamado de
+  /// diez minutos, y el radar empieza de cero.
+  String get _textoDelBotonPrincipal {
+    if (_isRadarActive) return 'Detener Radar';
+    return _vm.sesion == null ? 'Abrir el llamado' : 'Abrir otro llamado';
+  }
+
   Widget _buildFloatingBottomDock() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -1302,7 +1347,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _isRadarActive ? 'Detener Radar' : 'Reanudar Radar',
+                      _textoDelBotonPrincipal,
                       style: TextStyle(
                         color: _isRadarActive ? Colors.white : _tertiaryGreen,
                         fontSize: 16,

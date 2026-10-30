@@ -42,8 +42,13 @@ class SesionResumen {
 class CourseDetailViewModel extends ChangeNotifier {
   final CursoService _servicio;
 
-  CourseDetailViewModel({CursoService? servicio})
-      : _servicio = servicio ?? CursoService();
+  /// Inyectable para poder probar qué cuenta como clase pasada sin depender
+  /// de la hora a la que se corran los tests.
+  final DateTime Function() _ahora;
+
+  CourseDetailViewModel({CursoService? servicio, DateTime Function()? reloj})
+      : _servicio = servicio ?? CursoService(),
+        _ahora = reloj ?? DateTime.now;
 
   StreamSubscription<List<Inscrito>>? _subInscritos;
   StreamSubscription<List<Sesion>>? _subSesiones;
@@ -62,35 +67,49 @@ class CourseDetailViewModel extends ChangeNotifier {
   /// Las sesiones de la más reciente a la más antigua.
   List<Sesion> get sesiones => _sesiones;
 
-  /// La sesión que el docente dejó abierta, si hay alguna.
-  Sesion? get sesionAbierta {
+  /// El llamado que sigue vigente, si hay alguno. Uno marcado como abierto
+  /// cuya ventana ya pasó es una clase pasada, no una clase en curso: pasa
+  /// cuando al docente se le muere la app sin cerrar el radar.
+  Sesion? get llamadoVigente {
+    final ahora = _ahora();
     for (final s in _sesiones) {
-      if (s.abierta) return s;
+      if (s.abierta && !s.vencida(ahora)) return s;
     }
     return null;
   }
 
-  List<SesionResumen> get sesionesPasadas => _sesiones
-      .where((s) => !s.abierta)
-      .map(
-        (s) => SesionResumen(
-          s,
-          _asistencias[s.id]?.where((a) => a.cuentaComoAsistio).length ?? 0,
-          _inscritos.length,
-        ),
-      )
-      .toList();
+  /// Una fila por franja de clase, no por llamado: el docente pudo abrir el
+  /// radar dos veces en el mismo bloque y eso sigue siendo una sola clase,
+  /// igual que en el porcentaje que ve el estudiante.
+  List<SesionResumen> get sesionesPasadas {
+    final filas = CursoService.franjasTerminadas(_sesiones, _ahora())
+        .values
+        .map(
+          (sesiones) => SesionResumen(
+            sesiones.first,
+            _asistieronEnLaFranja(sesiones).length,
+            _inscritos.length,
+          ),
+        )
+        .toList();
+    filas.sort((a, b) => b.sesion.franja.compareTo(a.sesion.franja));
+    return filas;
+  }
+
+  /// Quiénes quedaron marcados en alguno de los llamados de una franja.
+  Set<String> _asistieronEnLaFranja(List<Sesion> sesiones) => {
+        for (final sesion in sesiones)
+          for (final a in _asistencias[sesion.id] ?? const <Asistencia>[])
+            if (a.cuentaComoAsistio) a.claveInscrito,
+      };
 
   /// Los inscritos con su asistencia, los de mayor riesgo primero.
   List<InscritoAsistencia> get inscritos {
-    final terminadas = _sesiones.where((s) => !s.abierta).toList();
+    final franjas = CursoService.franjasTerminadas(_sesiones, _ahora());
     final asistidasPor = <String, int>{};
-    for (final sesion in terminadas) {
-      for (final a in _asistencias[sesion.id] ?? const <Asistencia>[]) {
-        if (a.cuentaComoAsistio) {
-          asistidasPor[a.claveInscrito] =
-              (asistidasPor[a.claveInscrito] ?? 0) + 1;
-        }
+    for (final sesiones in franjas.values) {
+      for (final clave in _asistieronEnLaFranja(sesiones)) {
+        asistidasPor[clave] = (asistidasPor[clave] ?? 0) + 1;
       }
     }
     final lista = _inscritos
@@ -98,7 +117,7 @@ class CourseDetailViewModel extends ChangeNotifier {
           (i) => InscritoAsistencia(
             i,
             AsistenciaResumen(
-              sesiones: terminadas.length,
+              sesiones: franjas.length,
               asistidas: asistidasPor[i.clave] ?? 0,
             ),
           ),
@@ -117,7 +136,7 @@ class CourseDetailViewModel extends ChangeNotifier {
       .where((i) => i.asistencia.nivel == NivelAsistencia.riesgo)
       .length;
 
-  /// Asistencia media del curso sobre todas las sesiones ya cerradas.
+  /// Asistencia media del curso sobre todas las clases que ya pasaron.
   AsistenciaResumen get promedio {
     final todos = inscritos;
     return AsistenciaResumen(

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/inscrito_model.dart';
@@ -130,6 +131,61 @@ void main() {
       expect(leida.inicio, sesion.inicio);
       expect(leida.fin, sesion.fin);
       expect(leida.abierta, isTrue);
+    });
+
+    test('el llamado dura diez minutos desde que lo abre el docente', () {
+      final llamado = Sesion.llamado(
+        ahora: DateTime(2026, 10, 20, 8, 30),
+        bloqueInicio: DateTime(2026, 10, 20, 8),
+        bloqueFin: DateTime(2026, 10, 20, 10),
+      );
+
+      expect(llamado.inicio, DateTime(2026, 10, 20, 8, 30));
+      expect(llamado.fin, DateTime(2026, 10, 20, 8, 40));
+      expect(llamado.franja, DateTime(2026, 10, 20, 8));
+      expect(llamado.abierta, isTrue);
+    });
+
+    test('el llamado no pasa del final del bloque', () {
+      final llamado = Sesion.llamado(
+        ahora: DateTime(2026, 10, 20, 9, 56),
+        bloqueInicio: DateTime(2026, 10, 20, 8),
+        bloqueFin: DateTime(2026, 10, 20, 10),
+      );
+
+      expect(llamado.fin, DateTime(2026, 10, 20, 10));
+    });
+
+    test('guarda y lee la franja del bloque', () {
+      final llamado = Sesion.llamado(
+        ahora: DateTime(2026, 10, 20, 8, 30),
+        bloqueInicio: DateTime(2026, 10, 20, 8),
+        bloqueFin: DateTime(2026, 10, 20, 10),
+      );
+
+      expect(Sesion.fromMap('s1', llamado.toMap()).franja, llamado.franja);
+    });
+
+    test('una sesión sin bloque_inicio usa su inicio como franja', () {
+      // Las que se escribieron antes de que el llamado durara diez minutos.
+      final vieja = Sesion.fromMap('s1', {
+        'inicio': Timestamp.fromDate(DateTime(2026, 10, 20, 8)),
+        'fin': Timestamp.fromDate(DateTime(2026, 10, 20, 10)),
+        'abierta': false,
+      });
+
+      expect(vieja.bloqueInicio, isNull);
+      expect(vieja.franja, DateTime(2026, 10, 20, 8));
+    });
+
+    test('lo que queda de llamado nunca es negativo', () {
+      expect(
+        sesion.restante(DateTime(2026, 10, 20, 9)),
+        const Duration(hours: 1),
+      );
+      expect(sesion.restante(DateTime(2026, 10, 20, 11)), Duration.zero);
+      expect(sesion.vencida(DateTime(2026, 10, 20, 9, 59)), isFalse);
+      expect(sesion.vencida(DateTime(2026, 10, 20, 10)), isTrue);
     });
   });
 

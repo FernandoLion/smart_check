@@ -14,9 +14,6 @@ class FakeCursoService extends Fake implements CursoService {
 
   final sesionesPorCurso = <String, List<Sesion>>{};
 
-  /// Imita la regla de Firestore que solo deja cerrar una sesión.
-  bool reabrirProhibido = false;
-
   /// Asistencias por id de sesión.
   final asistenciasPorSesion = <String, List<Asistencia>>{};
 
@@ -107,38 +104,24 @@ class FakeCursoService extends Fake implements CursoService {
   }
 
   @override
-  Future<String> abrirSesion(String cursoId, Sesion sesion) async {
-    if (fallo != null) throw fallo!;
-    final id = 'sesion-${_siguienteId++}';
-    sesionesPorCurso
-        .putIfAbsent(cursoId, () => [])
-        .add(Sesion(
-          id: id,
-          inicio: sesion.inicio,
-          fin: sesion.fin,
-          abierta: sesion.abierta,
-        ));
-    _cambios.add(null);
-    return id;
+  Stream<List<Sesion>> llamadosAbiertos(String cursoId) async* {
+    List<Sesion> abiertos() =>
+        (sesionesPorCurso[cursoId] ?? const <Sesion>[])
+            .where((s) => s.abierta)
+            .toList();
+    yield abiertos();
+    await for (final _ in _cambios.stream) {
+      yield abiertos();
+    }
   }
 
   @override
-  Future<void> reabrirSesion(String cursoId, String sesionId) async {
+  Future<String> abrirSesion(String cursoId, Sesion sesion) async {
     if (fallo != null) throw fallo!;
-    if (reabrirProhibido) {
-      throw const CursoException('permiso denegado en la base de datos');
-    }
-    final lista = sesionesPorCurso[cursoId] ?? [];
-    for (var i = 0; i < lista.length; i++) {
-      if (lista[i].id != sesionId) continue;
-      lista[i] = Sesion(
-        id: sesionId,
-        inicio: lista[i].inicio,
-        fin: lista[i].fin,
-        abierta: true,
-      );
-    }
+    final id = 'sesion-${_siguienteId++}';
+    sesionesPorCurso.putIfAbsent(cursoId, () => []).add(sesion.copyWith(id: id));
     _cambios.add(null);
+    return id;
   }
 
   @override
@@ -147,15 +130,14 @@ class FakeCursoService extends Fake implements CursoService {
     final lista = sesionesPorCurso[cursoId] ?? [];
     for (var i = 0; i < lista.length; i++) {
       if (lista[i].id != sesionId) continue;
-      lista[i] = Sesion(
-        id: sesionId,
-        inicio: lista[i].inicio,
-        fin: lista[i].fin,
-        abierta: false,
-      );
+      lista[i] = lista[i].copyWith(abierta: false);
     }
     _cambios.add(null);
   }
+
+  /// La sesión tal como quedó guardada, para comprobarla en los tests.
+  Sesion sesion(String cursoId, String sesionId) =>
+      sesionesPorCurso[cursoId]!.firstWhere((s) => s.id == sesionId);
 
   @override
   Stream<List<Asistencia>> asistencias(String cursoId, String sesionId) async* {

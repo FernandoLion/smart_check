@@ -1,103 +1,31 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/inscrito_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/services/ble_service.dart';
 import 'package:smart_check/services/ubicacion_service.dart';
 import 'package:smart_check/viewmodels/radar_viewmodel.dart';
 
+import 'ble_fakes.dart';
 import 'curso_fakes.dart';
-
-/// Aula de prueba en Florencia, Caquetá.
-const aula = Geocerca(latitud: 1.62, longitud: -75.605, radioMetros: 50);
-
-Position posicionEn(double lat, double lng) => Position(
-      latitude: lat,
-      longitude: lng,
-      timestamp: DateTime(2026),
-      accuracy: 5,
-      altitude: 0,
-      altitudeAccuracy: 0,
-      heading: 0,
-      headingAccuracy: 0,
-      speed: 0,
-      speedAccuracy: 0,
-    );
-
-class FakeUbicacionService implements UbicacionService {
-  Position posicion = posicionEn(aula.latitud, aula.longitud);
-  UbicacionException? fallo;
-
-  @override
-  Future<Position> posicionActual() async {
-    if (fallo != null) throw fallo!;
-    return posicion;
-  }
-}
-
-class FakeBleService implements BleService {
-  final _balizas = StreamController<BalizaDetectada>.broadcast();
-  bool escaneando = false;
-  BleException? fallo;
-
-  /// Simula que el celular del docente oye al estudiante de esa clave.
-  void oir(String clave, {int rssi = -55}) => _balizas.add(
-        BalizaDetectada(huella: BleService.huellaDe(clave), rssi: rssi),
-      );
-
-  @override
-  Stream<BalizaDetectada> escanear() {
-    if (fallo != null) throw fallo!;
-    escaneando = true;
-    return _balizas.stream;
-  }
-
-  @override
-  Future<void> detenerEscaneo() async => escaneando = false;
-
-  @override
-  Future<void> anunciar(String clave) async {}
-
-  @override
-  Future<void> dejarDeAnunciar() async {}
-}
-
-/// Un curso cuyo bloque de clase está en curso ahora mismo.
-Curso cursoEnClase({Geocerca? geocerca, DateTime? ahora}) {
-  final momento = ahora ?? DateTime.now();
-  final inicio = momento.subtract(const Duration(minutes: 5));
-  final fin = momento.add(const Duration(hours: 1));
-  return Curso(
-    id: 'c1',
-    codigo: 'SIS-402',
-    nombre: 'Arquitectura de Software',
-    grupo: '302-B',
-    aula: 'Aula 204',
-    periodo: '2026-2',
-    docenteUid: 'uid-docente',
-    docenteNombre: 'ANA MARÍA PÉREZ GÓMEZ',
-    horarios: [
-      Horario(
-        dia: momento.weekday,
-        inicio: _hhmm(inicio),
-        fin: _hhmm(fin),
-      ),
-    ],
-    geocerca: geocerca,
-  );
-}
-
-String _hhmm(DateTime d) =>
-    '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
 void main() {
   late FakeCursoService cursos;
   late FakeBleService ble;
   late FakeUbicacionService ubicacion;
   late RadarViewModel vm;
+
+  /// Otro radar sobre los mismos fakes, para los casos en los que el docente
+  /// vuelve a entrar a la pantalla.
+  RadarViewModel otroRadar({DateTime Function()? reloj}) {
+    final otro = RadarViewModel(
+      cursos: cursos,
+      ble: ble,
+      ubicacion: ubicacion,
+      reloj: reloj,
+    );
+    addTearDown(otro.dispose);
+    return otro;
+  }
 
   setUp(() {
     cursos = FakeCursoService();
@@ -139,24 +67,8 @@ void main() {
   group('condiciones para abrir el radar', () {
     test('fuera del horario no abre la clase', () async {
       final ahora = DateTime.now();
-      final curso = Curso(
-        id: 'c1',
-        codigo: 'SIS-402',
-        nombre: 'Arquitectura',
-        grupo: '302-B',
-        aula: 'Aula 204',
-        periodo: '2026-2',
-        docenteUid: 'uid-docente',
-        docenteNombre: 'ANA',
-        // Mismo día, pero una franja que ya pasó o aún no llega.
-        horarios: [
-          Horario(
-            dia: ahora.weekday == 1 ? 2 : 1,
-            inicio: '08:00',
-            fin: '10:00',
-          ),
-        ],
-      );
+      // Mismo curso, pero con la franja en otro día de la semana.
+      final curso = cursoEnClase(dia: ahora.weekday == 1 ? 2 : 1);
 
       expect(await vm.iniciar(curso, 'uid-docente'), isFalse);
       expect(vm.error, contains('Fuera del horario'));
@@ -192,6 +104,113 @@ void main() {
 
       expect(await vm.iniciar(cursoEnClase(), 'uid-docente'), isTrue);
       expect(vm.escaneando, isTrue);
+    });
+
+    test('a una clase que se está acabando no le abre llamado', () async {
+      final curso = cursoEnClase(termina: const Duration(minutes: 1));
+
+      expect(await vm.iniciar(curso, 'uid-docente'), isFalse);
+      expect(vm.error, contains('a mano'));
+      expect(cursos.sesionesPorCurso['c1'], anyOf(isNull, isEmpty));
+    });
+  });
+
+  group('ventana del llamado', () {
+    test('el llamado dura diez minutos y guarda la franja', () async {
+      final ahora = DateTime(2026, 10, 29, 9, 17);
+      final radar = otroRadar(reloj: () => ahora);
+
+      expect(await radar.iniciar(cursoEnClase(ahora: ahora), 'uid-docente'),
+          isTrue);
+
+      expect(radar.sesion!.inicio, ahora);
+      expect(radar.sesion!.fin, ahora.add(Sesion.duracionLlamado));
+      // La franja es el bloque de clase, que arrancó cinco minutos antes.
+      expect(radar.sesion!.bloqueInicio, DateTime(2026, 10, 29, 9, 12));
+      expect(radar.restanteDelLlamado, Sesion.duracionLlamado);
+      expect(radar.llamadoVencido, isFalse);
+    });
+
+    test('el llamado no pasa del final del bloque', () async {
+      final ahora = DateTime(2026, 10, 29, 9, 17);
+      final radar = otroRadar(reloj: () => ahora);
+      final curso = cursoEnClase(
+        ahora: ahora,
+        termina: const Duration(minutes: 4),
+      );
+
+      await radar.iniciar(curso, 'uid-docente');
+
+      expect(radar.sesion!.fin, DateTime(2026, 10, 29, 9, 21));
+    });
+
+    test('cerrar el llamado apaga el escaneo pero deja marcar a mano',
+        () async {
+      await vm.iniciar(cursoEnClase(), 'uid-docente');
+      final sesionId = vm.sesion!.id;
+
+      await vm.cerrarLlamado();
+
+      expect(vm.escaneando, isFalse);
+      expect(ble.escaneando, isFalse);
+      expect(cursos.sesion('c1', sesionId).abierta, isFalse);
+      // La sesión sigue en memoria: el llamado manual del docente se hace
+      // justo cuando se cierra la ventana.
+      expect(vm.sesion, isNotNull);
+      final carlos = cursos.inscritosPorCurso['c1']!['ca.munoz@udla.edu.co']!;
+      expect(await vm.marcarManual(carlos), isTrue);
+    });
+
+    test('volver a entrar al radar con el llamado abierto reusa el mismo',
+        () async {
+      final curso = cursoEnClase();
+      await vm.iniciar(curso, 'uid-docente');
+      final sesionId = vm.sesion!.id;
+
+      final otro = otroRadar();
+      expect(await otro.iniciar(curso, 'uid-docente'), isTrue);
+
+      expect(otro.sesion!.id, sesionId);
+      expect(cursos.sesionesPorCurso['c1']!.length, 1);
+    });
+
+    test('tras cerrar, el radar abre otro llamado en la misma franja',
+        () async {
+      final curso = cursoEnClase();
+      await vm.iniciar(curso, 'uid-docente');
+      final sesionId = vm.sesion!.id;
+      final franja = vm.sesion!.franja;
+      await vm.detener();
+
+      final otro = otroRadar();
+      expect(await otro.iniciar(curso, 'uid-docente'), isTrue);
+
+      // Dos llamados, pero una sola clase: la asistencia cuenta por franja.
+      expect(otro.sesion!.id, isNot(sesionId));
+      expect(otro.sesion!.franja, franja);
+      expect(cursos.sesionesPorCurso['c1']!.length, 2);
+    });
+
+    test('un llamado colgado y vencido se cierra y se abre otro', () async {
+      final ahora = DateTime(2026, 10, 29, 9, 30);
+      // Un llamado de hace veinte minutos que quedó abierto porque al docente
+      // se le murió la app sin cerrarlo.
+      cursos.sesionesPorCurso['c1'] = [
+        Sesion(
+          id: 'colgado',
+          inicio: ahora.subtract(const Duration(minutes: 20)),
+          fin: ahora.subtract(const Duration(minutes: 10)),
+          bloqueInicio: DateTime(2026, 10, 29, 9, 25),
+        ),
+      ];
+      final radar = otroRadar(reloj: () => ahora);
+
+      expect(await radar.iniciar(cursoEnClase(ahora: ahora), 'uid-docente'),
+          isTrue);
+
+      expect(cursos.sesion('c1', 'colgado').abierta, isFalse);
+      expect(radar.sesion!.id, isNot('colgado'));
+      expect(cursos.sesionesPorCurso['c1']!.length, 2);
     });
   });
 
@@ -234,33 +253,33 @@ void main() {
       expect(vm.lista.first.rssi, -70);
     });
 
-    test('pasados 15 minutos del inicio se marca tarde', () async {
-      final ahora = DateTime.now();
-      final curso = Curso(
-        id: 'c1',
-        codigo: 'SIS-402',
-        nombre: 'Arquitectura',
-        grupo: '302-B',
-        aula: 'Aula 204',
-        periodo: '2026-2',
-        docenteUid: 'uid-docente',
-        docenteNombre: 'ANA',
-        horarios: [
-          Horario(
-            dia: ahora.weekday,
-            inicio: _hhmm(ahora.subtract(
-              Duration(minutes: RadarViewModel.minutosParaTarde + 5),
-            )),
-            fin: _hhmm(ahora.add(const Duration(hours: 1))),
-          ),
-        ],
+    test('reconoce al inscrito por su correo aunque tenga cédula', () async {
+      // El docente lo inscribió con los dos datos, pero el celular del
+      // estudiante emite la huella de su correo.
+      cursos.inscritosPorCurso['c1']!['1117000002'] = const Inscrito(
+        cedula: '1117000002',
+        email: 'lu.rojas@udla.edu.co',
+        nombre: 'LUISA ROJAS',
       );
+      await vm.iniciar(cursoEnClase(), 'uid-docente');
+
+      ble.oir('lu.rojas@udla.edu.co');
+      await pumpEventQueue();
+
+      final luisa = vm.lista.firstWhere((i) => i.inscrito.clave == '1117000002');
+      expect(luisa.detectado, isTrue);
+    });
+
+    test('dentro del llamado todos quedan presentes', () async {
+      // Aunque la clase arrancó hace cuarenta minutos: lo que cuenta es la
+      // ventana del llamado, no cuánto lleva la clase.
+      final curso = cursoEnClase(empezoHace: const Duration(minutes: 40));
       await vm.iniciar(curso, 'uid-docente');
 
       ble.oir('1117000000');
       await pumpEventQueue();
 
-      expect(vm.lista.first.asistencia!.estado, EstadoAsistencia.tarde);
+      expect(vm.lista.first.asistencia!.estado, EstadoAsistencia.presente);
     });
 
     test('el llamado manual marca ausente a quien no vino', () async {
@@ -269,8 +288,7 @@ void main() {
 
       expect(await vm.marcarManual(carlos, presente: false), isTrue);
 
-      final fila =
-          vm.lista.firstWhere((i) => i.inscrito.clave == carlos.clave);
+      final fila = vm.lista.firstWhere((i) => i.inscrito.clave == carlos.clave);
       expect(fila.asistencia!.estado, EstadoAsistencia.ausente);
       expect(fila.asistencia!.metodo, MetodoAsistencia.manual);
     });
@@ -284,42 +302,7 @@ void main() {
 
     expect(vm.escaneando, isFalse);
     expect(ble.escaneando, isFalse);
-    expect(
-      cursos.sesionesPorCurso['c1']!.firstWhere((s) => s.id == sesionId).abierta,
-      isFalse,
-    );
-  });
-
-  test('volver a abrir el radar reusa la sesión de la franja', () async {
-    final curso = cursoEnClase();
-    await vm.iniciar(curso, 'uid-docente');
-    final sesionId = vm.sesion!.id;
-    await vm.detener();
-
-    final otro = RadarViewModel(cursos: cursos, ble: ble, ubicacion: ubicacion);
-    expect(await otro.iniciar(curso, 'uid-docente'), isTrue);
-
-    // La misma sesión, reabierta: dos del mismo bloque contarían la clase
-    // dos veces en la asistencia del estudiante.
-    expect(otro.sesion!.id, sesionId);
-    expect(cursos.sesionesPorCurso['c1']!.length, 1);
-    expect(cursos.sesionesPorCurso['c1']!.single.abierta, isTrue);
-    await otro.detener();
-  });
-
-  test('si no se puede reabrir, el radar abre otra sesión igual', () async {
-    final curso = cursoEnClase();
-    await vm.iniciar(curso, 'uid-docente');
-    final sesionId = vm.sesion!.id;
-    await vm.detener();
-    cursos.reabrirProhibido = true;
-
-    final otro = RadarViewModel(cursos: cursos, ble: ble, ubicacion: ubicacion);
-    expect(await otro.iniciar(curso, 'uid-docente'), isTrue);
-
-    expect(otro.error, isNull);
-    expect(otro.sesion!.id, isNot(sesionId));
-    expect(otro.sesion!.inicio, cursos.sesionesPorCurso['c1']!.first.inicio);
-    await otro.detener();
+    expect(vm.sesion, isNull);
+    expect(cursos.sesion('c1', sesionId).abierta, isFalse);
   });
 }

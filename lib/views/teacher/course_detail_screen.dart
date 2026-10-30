@@ -485,10 +485,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  /// Tarjeta de arriba: la sesión abierta, la clase de hoy, o nada.
+  /// Tarjeta de arriba: el llamado abierto, la clase de hoy, o nada.
   Widget _buildClaseDeHoy() {
     final ahora = DateTime.now();
-    final abierta = _vm.sesionAbierta;
+    final abierta = _vm.llamadoVigente;
     final bloqueHoy = widget.curso.horarios
         .where((h) => h.dia == ahora.weekday)
         .toList()
@@ -498,10 +498,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     final String insignia;
     final String horario;
     if (abierta != null) {
-      titulo = 'CLASE EN CURSO';
+      titulo = 'LLAMADO ABIERTO';
       insignia = 'Radar abierto';
-      horario = '${_horaDe(abierta.inicio)} - ${_horaDe(abierta.fin)} • '
-          '${_fechaLarga(abierta.inicio)}';
+      // La hora es la de la ventana del llamado; la fecha, la de la clase.
+      horario = 'Llamado ${_horaDe(abierta.inicio)} - '
+          '${_horaDe(abierta.fin)} • ${_fechaLarga(abierta.franja)}';
     } else if (bloqueHoy.isNotEmpty) {
       titulo = 'CLASE DE HOY';
       final minuto = ahora.hour * 60 + ahora.minute;
@@ -788,9 +789,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               courseName: widget.curso.nombre,
               courseCodeAndGroup:
                   '${widget.curso.codigo} • Grupo ${widget.curso.grupo}',
-              sessionDateTitle: _fechaLarga(sesion.inicio),
+              sessionDateTitle: _fechaLarga(sesion.franja),
               sessionTimeRange:
-                  '${_horaDe(sesion.inicio)} - ${_horaDe(sesion.fin)}',
+                  'Llamado ${_horaDe(sesion.inicio)} - ${_horaDe(sesion.fin)}',
               presentCount: resumen.asistieron,
               totalCount: resumen.inscritos,
             ),
@@ -820,7 +821,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          _dias[sesion.inicio.weekday - 1],
+                          _dias[sesion.franja.weekday - 1],
                           style: const TextStyle(
                             color: AppTheme.textTertiary,
                             fontSize: 9,
@@ -828,7 +829,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           ),
                         ),
                         Text(
-                          '${sesion.inicio.day}',
+                          '${sesion.franja.day}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -848,7 +849,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           children: [
                             Flexible(
                               child: Text(
-                                _fechaLarga(sesion.inicio),
+                                _fechaLarga(sesion.franja),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 15,
@@ -908,7 +909,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                             ),
                             Flexible(
                               child: Text(
-                                '${_horaDe(sesion.inicio)} - '
+                                'Llamado ${_horaDe(sesion.inicio)} - '
                                 '${_horaDe(sesion.fin)}',
                                 style: const TextStyle(
                                   color: AppTheme.textSecondary,

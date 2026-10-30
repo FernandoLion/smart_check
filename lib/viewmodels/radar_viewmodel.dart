@@ -22,29 +22,41 @@ class InscritoEnRadar {
   bool get detectado => asistencia != null;
 }
 
-/// ViewModel del radar del docente: abre la sesión de la clase, escucha las
-/// balizas de los estudiantes y escribe la asistencia.
+/// ViewModel del radar del docente: abre el llamado de asistencia de la clase
+/// de ahora, escucha las balizas de los estudiantes y escribe la asistencia.
 ///
-/// La asistencia solo se puede registrar si se cumplen las tres condiciones
-/// que pidió el docente: estar en el horario de la clase, estar dentro de la
-/// geocerca del aula, y que el celular del estudiante se oiga por BLE.
+/// La asistencia solo se registra si se cumplen las condiciones que pidió el
+/// docente: estar en el horario y el día de la clase, estar dentro de la
+/// geocerca del aula, que el celular del estudiante se oiga por BLE, y que
+/// todo eso ocurra dentro de la ventana del llamado.
 class RadarViewModel extends ChangeNotifier {
-  /// Pasados estos minutos desde que arranca la clase, se marca "tarde".
-  static const minutosParaTarde = 15;
+  /// Si al bloque de clase le queda menos que esto, no se abre el llamado:
+  /// una ventana de treinta segundos solo alcanza para confundir.
+  static const minimoLlamado = Duration(minutes: 2);
 
   final CursoService _cursos;
   final BleService _ble;
   final UbicacionService _ubicacion;
 
+  /// Inyectable para poder probar la ventana del llamado sin esperar diez
+  /// minutos de reloj de verdad.
+  final DateTime Function() _ahora;
+
   RadarViewModel({
     CursoService? cursos,
     BleService? ble,
     UbicacionService? ubicacion,
+    DateTime Function()? reloj,
   })  : _cursos = cursos ?? CursoService(),
         _ble = ble ?? BleService(),
-        _ubicacion = ubicacion ?? UbicacionService();
+        _ubicacion = ubicacion ?? UbicacionService(),
+        _ahora = reloj ?? DateTime.now;
 
   StreamSubscription<BalizaDetectada>? _suscripcion;
+
+  /// Cierra el llamado cuando se acaba la ventana, para que el docente no
+  /// tenga que estar pendiente del reloj.
+  Timer? _cierre;
 
   Curso? _curso;
   Sesion? _sesion;
@@ -66,6 +78,16 @@ class RadarViewModel extends ChangeNotifier {
   int get detectados => _asistencias.length;
   int get faltantes => _inscritos.length - _asistencias.length;
 
+  /// Lo que queda de ventana del llamado, para la cuenta atrás de la
+  /// pantalla.
+  Duration? get restanteDelLlamado => _sesion?.restante(_ahora());
+
+  /// La ventana ya pasó: desde aquí solo se puede marcar a mano.
+  bool get llamadoVencido {
+    final sesion = _sesion;
+    return sesion != null && sesion.vencida(_ahora());
+  }
+
   List<InscritoEnRadar> get lista {
     final lista = _inscritos
         .map((i) => InscritoEnRadar(i, _asistencias[i.clave], _rssi[i.clave]))
@@ -81,8 +103,8 @@ class RadarViewModel extends ChangeNotifier {
     return lista;
   }
 
-  /// Abre la sesión de la clase de ahora y empieza a escuchar. Devuelve false
-  /// si no se pudo (el motivo queda en [error]).
+  /// Abre el llamado de la clase de ahora y empieza a escuchar. Devuelve
+  /// false si no se pudo (el motivo queda en [error]).
   Future<bool> iniciar(Curso curso, String docenteUid) async {
     if (_escaneando) return true;
     _curso = curso;
@@ -90,7 +112,7 @@ class RadarViewModel extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final ahora = DateTime.now();
+      final ahora = _ahora();
       final bloque = curso.horarioEn(ahora);
       if (bloque == null) {
         throw const _RadarException(
@@ -101,14 +123,18 @@ class RadarViewModel extends ChangeNotifier {
       await _comprobarGeocerca(curso);
 
       _inscritos = await _cursos.inscritos(curso.id).first;
-      _porHuella
-        ..clear()
-        ..addEntries(
-          _inscritos.map((i) => MapEntry(BleService.huellaDe(i.clave), i.clave)),
-        );
+      // Cada inscrito se indexa por cédula y por correo: el docente pudo
+      // inscribirlo por uno y el estudiante emitir con el otro.
+      _porHuella.clear();
+      for (final inscrito in _inscritos) {
+        for (final clave in inscrito.claves) {
+          _porHuella[BleService.huellaDe(clave)] = inscrito.clave;
+        }
+      }
 
       _sesion = await _sesionDeLaClase(curso, bloque, ahora);
       await _cargarAsistencias(curso.id, _sesion!.id);
+      _programarCierre(_sesion!);
 
       _suscripcion = _ble.escanear().listen(
         _alOirBaliza,
@@ -139,57 +165,51 @@ class RadarViewModel extends ChangeNotifier {
   }
 
   Future<void> _comprobarGeocerca(Curso curso) async {
-    final geocerca = curso.geocerca;
-    if (geocerca == null) return;
-    final posicion = await _ubicacion.posicionActual();
-    if (!geocerca.contiene(posicion.latitude, posicion.longitude)) {
-      final metros =
-          geocerca.distanciaA(posicion.latitude, posicion.longitude).round();
+    final metros = await metrosFueraDelAula(_ubicacion, curso.geocerca);
+    if (metros != null) {
       throw _RadarException(
         'Estás a $metros m del aula. Acércate para abrir el radar.',
       );
     }
   }
 
-  /// Reusa la sesión que ya esté abierta para esta clase; si no hay, la crea.
+  /// Reusa el llamado que siga vigente para esta clase; si no hay, abre otro.
   Future<Sesion> _sesionDeLaClase(
     Curso curso,
     Horario bloque,
     DateTime ahora,
   ) async {
-    final inicio = DateTime(
-      ahora.year,
-      ahora.month,
-      ahora.day,
-      bloque.inicioMinutos ~/ 60,
-      bloque.inicioMinutos % 60,
-    );
-    final fin = DateTime(
-      ahora.year,
-      ahora.month,
-      ahora.day,
-      bloque.finMinutos ~/ 60,
-      bloque.finMinutos % 60,
-    );
-    final existentes = await _cursos.sesiones(curso.id).first;
-    for (final s in existentes) {
-      if (s.inicio != inicio) continue;
-      // La franja ya tiene sesión. Si el docente la había cerrado se intenta
-      // reabrir la misma, para no partir la clase en dos.
-      if (s.abierta) return s;
-      try {
-        await _cursos.reabrirSesion(curso.id, s.id);
-        return Sesion(id: s.id, inicio: s.inicio, fin: s.fin);
-      } on CursoException {
-        // Las reglas pueden prohibir reabrir. Entonces se abre otra y la
-        // asistencia las junta, porque cuenta por franja y no por sesión.
-        break;
-      }
+    final bloqueInicio = _conHora(ahora, bloque.inicioMinutos);
+    final bloqueFin = _conHora(ahora, bloque.finMinutos);
+    if (bloqueFin.difference(ahora) < minimoLlamado) {
+      throw _RadarException(
+        'A la clase le quedan menos de ${minimoLlamado.inMinutes} minutos. '
+        'Pasa la lista a mano.',
+      );
     }
-    final nueva = Sesion(inicio: inicio, fin: fin);
-    final id = await _cursos.abrirSesion(curso.id, nueva);
-    return Sesion(id: id, inicio: inicio, fin: fin);
+    for (final abierto in await _cursos.llamadosAbiertos(curso.id).first) {
+      // El docente volvió al radar sin que se cerrara la ventana: es el mismo
+      // llamado, no uno nuevo.
+      if (!abierto.vencida(ahora) && abierto.franja == bloqueInicio) {
+        return abierto;
+      }
+      // Quedó abierto de un llamado anterior porque se le murió la app. Se
+      // cierra para que nunca haya dos abiertos a la vez: el celular del
+      // estudiante decide si puede marcar mirando justo eso.
+      await _cursos.cerrarSesion(curso.id, abierto.id);
+    }
+    final nuevo = Sesion.llamado(
+      ahora: ahora,
+      bloqueInicio: bloqueInicio,
+      bloqueFin: bloqueFin,
+    );
+    return nuevo.copyWith(id: await _cursos.abrirSesion(curso.id, nuevo));
   }
+
+  /// La hora [minutos] del mismo día que [dia]: así el horario del curso, que
+  /// se guarda como "HH:mm", se convierte en una fecha concreta.
+  static DateTime _conHora(DateTime dia, int minutos) =>
+      DateTime(dia.year, dia.month, dia.day, minutos ~/ 60, minutos % 60);
 
   Future<void> _cargarAsistencias(String cursoId, String sesionId) async {
     final ya = await _cursos.asistencias(cursoId, sesionId).first;
@@ -226,12 +246,13 @@ class RadarViewModel extends ChangeNotifier {
     final curso = _curso;
     final sesion = _sesion;
     if (curso == null || sesion == null) return false;
-    final ahora = DateTime.now();
-    final tarde = ahora.difference(sesion.inicio).inMinutes >= minutosParaTarde;
+    final ahora = _ahora();
     final asistencia = Asistencia(
       claveInscrito: clave,
-      estado: forzarEstado ??
-          (tarde ? EstadoAsistencia.tarde : EstadoAsistencia.presente),
+      // Dentro de la ventana del llamado todos quedan presentes: la ventana
+      // misma es el criterio de puntualidad. "Tarde" lo pone el docente a
+      // mano si quiere matizarlo.
+      estado: forzarEstado ?? EstadoAsistencia.presente,
       metodo: metodo,
       hora: ahora,
       registradoPor: curso.docenteUid,
@@ -250,35 +271,65 @@ class RadarViewModel extends ChangeNotifier {
     }
   }
 
-  /// Cierra la clase: deja de escuchar y marca la sesión como cerrada, que es
-  /// lo que la hace contar en los porcentajes de asistencia.
-  Future<void> detener({bool cerrarSesion = true}) async {
+  void _programarCierre(Sesion sesion) {
+    _cierre?.cancel();
+    _cierre = Timer(sesion.restante(_ahora()), cerrarLlamado);
+  }
+
+  /// Se acabó la ventana: deja de escuchar balizas y cierra el llamado, pero
+  /// se queda con la sesión en memoria. El llamado manual del docente se hace
+  /// justo en este momento, y las reglas lo permiten también después de la
+  /// ventana porque es una corrección suya.
+  Future<void> cerrarLlamado() async {
+    _cierre?.cancel();
+    _cierre = null;
     await _suscripcion?.cancel();
     _suscripcion = null;
     await _ble.detenerEscaneo();
     _escaneando = false;
-    final curso = _curso;
-    final sesion = _sesion;
-    if (cerrarSesion && curso != null && sesion != null) {
-      try {
-        await _cursos.cerrarSesion(curso.id, sesion.id);
-        _sesion = null;
-      } on CursoException catch (e) {
-        _error = e.mensaje;
-      }
+    await _cerrarEnLaBase();
+    notifyListeners();
+  }
+
+  /// Sale del radar: cierra el llamado y olvida la sesión.
+  Future<void> detener({bool cerrarSesion = true}) async {
+    _cierre?.cancel();
+    _cierre = null;
+    await _suscripcion?.cancel();
+    _suscripcion = null;
+    await _ble.detenerEscaneo();
+    _escaneando = false;
+    if (cerrarSesion) {
+      await _cerrarEnLaBase();
+      _sesion = null;
     }
     notifyListeners();
   }
 
-  @override
-  void dispose() {
-    _suscripcion?.cancel();
-    _ble.detenerEscaneo();
-    // Al salir de la pantalla se cierra la clase igual que con el botón: una
-    // sesión abierta sin nadie escuchando dejaría marcar a quien no está.
+  /// Marca la sesión como cerrada, que es lo que la hace contar en los
+  /// porcentajes de asistencia. Si ya estaba cerrada no escribe nada.
+  Future<void> _cerrarEnLaBase() async {
     final curso = _curso;
     final sesion = _sesion;
-    if (curso != null && sesion != null) {
+    if (curso == null || sesion == null || !sesion.abierta) return;
+    try {
+      await _cursos.cerrarSesion(curso.id, sesion.id);
+      _sesion = sesion.copyWith(abierta: false);
+    } on CursoException catch (e) {
+      _error = e.mensaje;
+    }
+  }
+
+  @override
+  void dispose() {
+    _cierre?.cancel();
+    _suscripcion?.cancel();
+    _ble.detenerEscaneo();
+    // Al salir de la pantalla se cierra el llamado igual que con el botón: una
+    // ventana abierta sin nadie escuchando dejaría marcar a quien no está.
+    final curso = _curso;
+    final sesion = _sesion;
+    if (curso != null && sesion != null && sesion.abierta) {
       _cursos.cerrarSesion(curso.id, sesion.id).ignore();
       _sesion = null;
     }

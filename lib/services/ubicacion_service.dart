@@ -1,5 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 
+import '../models/curso_model.dart';
+
 /// Error de ubicación con un mensaje listo para mostrar.
 class UbicacionException implements Exception {
   final String mensaje;
@@ -46,4 +48,20 @@ class UbicacionService {
       throw UbicacionException('No se pudo leer tu ubicación: $e');
     }
   }
+}
+
+/// Metros que faltan para estar dentro de la geocerca, o null si ya se está
+/// dentro o si el curso no tiene aula fijada.
+///
+/// Lo preguntan el radar del docente antes de abrir el llamado y la baliza
+/// del estudiante antes de emitir, así que vive junto al servicio y no dentro
+/// de uno de los dos viewmodels.
+Future<int?> metrosFueraDelAula(
+  UbicacionService ubicacion,
+  Geocerca? geocerca,
+) async {
+  if (geocerca == null) return null;
+  final posicion = await ubicacion.posicionActual();
+  if (geocerca.contiene(posicion.latitude, posicion.longitude)) return null;
+  return geocerca.distanciaA(posicion.latitude, posicion.longitude).round();
 }
