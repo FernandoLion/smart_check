@@ -57,8 +57,14 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
     super.dispose();
   }
 
+  /// El celular que esta cuenta tiene vinculado, o un guion si todavia no
+  /// hay ninguno. Es el mismo que comprueba el servidor al firmar la
+  /// asistencia, no un identificador de adorno.
+  String get _idDelDispositivo =>
+      context.read<AuthViewModel>().dispositivoVinculado ?? 'sin vincular';
+
   Future<void> _handleCopyDeviceId() async {
-    await Clipboard.setData(const ClipboardData(text: 'BLE-UDLA-9923'));
+    await Clipboard.setData(ClipboardData(text: _idDelDispositivo));
     if (!mounted) return;
     setState(() => _isCopied = true);
     Future.delayed(const Duration(milliseconds: 1800), () {
@@ -222,22 +228,22 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                               children: [
                                 _buildIconBox(Icons.badge_outlined),
                                 const SizedBox(width: 12),
-                                const Expanded(
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        'ID de mi dispositivo',
+                                      const Text(
+                                        'Celular vinculado',
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 16,
                                         ),
                                       ),
-                                      SizedBox(height: 2),
+                                      const SizedBox(height: 2),
                                       Text(
-                                        'ID: BLE-UDLA-9923',
-                                        style: TextStyle(
+                                        'ID: $_idDelDispositivo',
+                                        style: const TextStyle(
                                           color: AppTheme.textSecondary,
                                           fontSize: 12,
                                           fontFamily: 'monospace',

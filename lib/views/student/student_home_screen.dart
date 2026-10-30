@@ -9,7 +9,6 @@ import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/student_viewmodel.dart';
 import '../teacher/teacher_home_screen.dart';
 import '../attendance/ble_beacon_screen.dart';
-import '../attendance/face_verification_screen.dart';
 import 'attendance_detail_screen.dart';
 import 'student_settings_screen.dart';
 
@@ -771,19 +770,11 @@ Future<void> _onRegisterAttendanceTap(BuildContext context) async {
   final vigente = estudiante.llamadoVigente;
   if (vigente == null) return;
 
-  // La ubicación primero porque es inmediata: sería cruel hacerle el gesto
-  // de la cara para después decirle que está a trescientos metros del aula.
+  // La ubicación primero porque es inmediata: sería cruel pedirle la huella
+  // para después decirle que está a trescientos metros del aula. Las otras
+  // tres puertas —el celular vinculado, la biometría y la firma de la
+  // presencia— las lleva la pantalla de la baliza, que es donde se marca.
   if (!await _estaEnElAula(context, vigente.$1) || !context.mounted) return;
-
-  // Y la cara antes de la baliza: emitir sin estar delante del celular es
-  // justo el fraude que esto cierra.
-  final verificado = await Navigator.push<bool>(
-    context,
-    MaterialPageRoute(
-      builder: (_) => FaceVerificationScreen(curso: vigente.$1),
-    ),
-  );
-  if (verificado != true || !context.mounted) return;
 
   await Navigator.push(
     context,

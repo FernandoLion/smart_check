@@ -777,6 +777,11 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
   String _detalleSenal(InscritoEnRadar fila) {
     final asistencia = fila.asistencia;
     if (asistencia == null) {
+      // Se le oye, pero el servidor todavía no deja registrarlo porque él no
+      // ha firmado su presencia. Se reintenta solo con cada anuncio suyo.
+      if (_vm.esperandoFirma(fila.inscrito.clave)) {
+        return 'Se le oye, falta que firme en su celular';
+      }
       return _isRadarActive ? 'Buscando baliza BLE...' : 'Sin detectar';
     }
     if (asistencia.metodo == MetodoAsistencia.manual) {
