@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:geolocator/geolocator.dart';
 import 'package:smart_check/models/curso_model.dart';
+import 'package:smart_check/services/biometria_service.dart';
 import 'package:smart_check/services/ble_service.dart';
 import 'package:smart_check/services/ubicacion_service.dart';
 
@@ -100,3 +101,17 @@ Curso cursoEnClase({
 
 String hhmm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+/// Un teléfono que contesta siempre lo mismo cuando se le pregunta por su
+/// dueño. Por defecto, que sí.
+class FakeBiometriaService implements BiometriaService {
+  FakeBiometriaService([this.resultado = ResultadoBiometria.biometrica]);
+  ResultadoBiometria resultado;
+  int veces = 0;
+
+  @override
+  Future<ResultadoBiometria> comprobar() async {
+    veces++;
+    return resultado;
+  }
+}

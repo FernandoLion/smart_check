@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
+import 'package:smart_check/services/biometria_service.dart';
 import 'package:smart_check/services/ubicacion_service.dart';
 import 'package:smart_check/viewmodels/beacon_viewmodel.dart';
 
@@ -11,6 +12,7 @@ void main() {
   late FakeCursoService cursos;
   late FakeBleService ble;
   late FakeUbicacionService ubicacion;
+  late FakeBiometriaService biometria;
   late BeaconViewModel vm;
   late Curso enAula;
 
@@ -40,7 +42,13 @@ void main() {
     enAula = cursoEnClase(geocerca: aula);
     ble = FakeBleService();
     ubicacion = FakeUbicacionService();
-    vm = BeaconViewModel(cursos: cursos, ble: ble, ubicacion: ubicacion);
+    biometria = FakeBiometriaService();
+    vm = BeaconViewModel(
+      cursos: cursos,
+      ble: ble,
+      ubicacion: ubicacion,
+      biometria: biometria,
+    );
   });
 
   tearDown(() => vm.dispose());
@@ -135,5 +143,43 @@ void main() {
 
     expect(vm.curso!.id, 'c2');
     expect(vm.sesion!.id, 'llamado-2');
+  });
+
+  test('si el celular no reconoce a su dueño, no anuncia', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+    biometria.resultado = ResultadoBiometria.rechazada;
+
+    expect(await vm.marcar([enAula], '1117000000'), isFalse);
+
+    expect(vm.error, contains('confirmar que eres tú'));
+    expect(ble.anunciando, isNull);
+  });
+
+  test('un celular sin huella ni PIN sí marca, pero queda dicho', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+    biometria.resultado = ResultadoBiometria.noDisponible;
+
+    expect(await vm.marcar([enAula], '1117000000'), isTrue);
+
+    expect(ble.anunciando, '1117000000');
+    expect(vm.biometriaUsada, ResultadoBiometria.noDisponible);
+    expect(vm.biometriaUsada!.comoDato, 'no_disponible');
+  });
+
+  test('no se le pide la huella a quien está lejos del aula', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+    ubicacion.posicion = posicionEn(aula.latitud + 0.01, aula.longitud);
+
+    await vm.marcar([enAula], '1117000000');
+
+    // Sería cruel pedirle el dedo para después decirle que está a un
+    // kilómetro: la ubicación va antes porque es inmediata.
+    expect(biometria.veces, 0);
+  });
+
+  test('tampoco si no hay ningún llamado abierto', () async {
+    await vm.marcar([enAula], '1117000000');
+
+    expect(biometria.veces, 0);
   });
 }

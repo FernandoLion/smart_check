@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/curso_model.dart';
 import '../models/sesion_model.dart';
+import '../services/biometria_service.dart';
 import '../services/ble_service.dart';
 import '../services/curso_service.dart';
 import '../services/ubicacion_service.dart';
@@ -15,14 +16,17 @@ class BeaconViewModel extends ChangeNotifier {
   final CursoService _cursos;
   final BleService _ble;
   final UbicacionService _ubicacion;
+  final BiometriaService _biometria;
 
   BeaconViewModel({
     CursoService? cursos,
     BleService? ble,
     UbicacionService? ubicacion,
+    BiometriaService? biometria,
   })  : _cursos = cursos ?? CursoService(),
         _ble = ble ?? BleService(),
-        _ubicacion = ubicacion ?? UbicacionService();
+        _ubicacion = ubicacion ?? UbicacionService(),
+        _biometria = biometria ?? BiometriaService();
 
   Curso? _curso;
   Sesion? _sesion;
@@ -33,6 +37,12 @@ class BeaconViewModel extends ChangeNotifier {
 
   /// Deja de anunciar en cuanto se acaba la ventana del llamado.
   Timer? _ventana;
+
+  /// Con qué comprobó el teléfono a su dueño en este marcaje. Va a la
+  /// presencia firmada, para que quede dicho cuando no había nada que
+  /// comprobar.
+  ResultadoBiometria? _biometriaUsada;
+  ResultadoBiometria? get biometriaUsada => _biometriaUsada;
 
   Curso? get curso => _curso;
   Sesion? get sesion => _sesion;
@@ -72,6 +82,18 @@ class BeaconViewModel extends ChangeNotifier {
             'asistencia.';
         return false;
       }
+      // Y el teléfono pregunta por su dueño antes de emitir nada. Lo que
+      // prueba es que alguien registrado en este celular lo autorizó; quién
+      // es ese celular lo comprueba el servidor al firmar la presencia.
+      final biometria = await _biometria.comprobar();
+      if (!biometria.deja) {
+        _error = 'No se pudo confirmar que eres tú. Vuelve a intentarlo '
+            'mientras quede llamado, o pídele al docente que te marque a '
+            'mano.';
+        return false;
+      }
+      _biometriaUsada = biometria;
+
       _curso = abierto.$1;
       _sesion = abierto.$2;
       await _ble.anunciar(clave);

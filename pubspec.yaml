@@ -47,6 +47,10 @@ dependencies:
   flutter_ble_peripheral: ^3.1.0
   geolocator: ^14.0.3
 
+  # La huella (o la cara) que el dueno registro en el propio telefono: la
+  # comparacion la hace el hardware seguro del celular, no un modelo nuestro.
+  local_auth: ^3.0.1
+
   # Verificacion facial antes de emitir la baliza: la camara frontal da los
   # fotogramas y ML Kit dice si hay un rostro y si parpadeo (prueba de vida).
   camera: ^0.12.2
