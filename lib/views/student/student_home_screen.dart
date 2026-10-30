@@ -123,7 +123,7 @@ class StudentHomeScreen extends StatelessWidget {
               bottom: 24,
               left: 16,
               right: 16,
-              child: _buildFloatingAttendanceButton(context),
+              child: _buildFloatingAttendanceButton(context, studentVM),
             ),
           ],
         ),
@@ -705,29 +705,47 @@ class StudentHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFloatingAttendanceButton(BuildContext context) {
+  /// Solo se puede marcar mientras el docente tenga el llamado abierto. El
+  /// botón apagado no es un error: es que todavía no hay nada que marcar.
+  Widget _buildFloatingAttendanceButton(
+    BuildContext context,
+    StudentViewModel estudiante,
+  ) {
+    final vigente = estudiante.llamadoVigente;
     return ElevatedButton(
-      onPressed: () => _onRegisterAttendanceTap(context),
+      onPressed:
+          vigente == null ? null : () => _onRegisterAttendanceTap(context),
       style: ElevatedButton.styleFrom(
         backgroundColor: _primaryIndigo,
         foregroundColor: Colors.white,
+        disabledBackgroundColor: AppTheme.surfaceControl,
+        disabledForegroundColor: AppTheme.textSecondary,
         minimumSize: const Size.fromHeight(52),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(26),
         ),
-        elevation: 10,
+        elevation: vigente == null ? 0 : 10,
         shadowColor: _primaryIndigo.withValues(alpha: 0.5),
       ),
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.contactless, size: 22),
-          SizedBox(width: 8),
-          Text(
-            'Registrar Asistencia',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+          Icon(
+            vigente == null ? Icons.lock_clock : Icons.contactless,
+            size: 22,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              vigente == null
+                  ? 'Esperando el llamado del docente'
+                  : 'Registrar asistencia · ${vigente.$1.codigo}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

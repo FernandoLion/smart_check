@@ -70,6 +70,7 @@ class FakeBleService implements BleService {
 
 /// Un curso cuyo bloque de clase está en curso ahora mismo.
 Curso cursoEnClase({
+  String id = 'c1',
   Geocerca? geocerca,
   DateTime? ahora,
   Duration empezoHace = const Duration(minutes: 5),
@@ -78,7 +79,7 @@ Curso cursoEnClase({
 }) {
   final momento = ahora ?? DateTime.now();
   return Curso(
-    id: 'c1',
+    id: id,
     codigo: 'SIS-402',
     nombre: 'Arquitectura de Software',
     grupo: '302-B',

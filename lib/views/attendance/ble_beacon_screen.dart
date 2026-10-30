@@ -50,16 +50,12 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   bool _isDisconnecting = false;
   bool _isStopped = false;
 
-  String get _courseName => _vm.curso?.nombre ?? 'Buscando clase abierta...';
+  String get _courseName =>
+      _vm.curso?.nombre ?? 'Buscando el llamado abierto...';
   String get _classroom => _vm.curso?.aula ?? '—';
 
-  /// Lo que queda de la franja en la que se puede marcar.
-  int get _totalSeconds {
-    final sesion = _vm.sesion;
-    if (sesion == null) return 0;
-    final restan = sesion.fin.difference(DateTime.now()).inSeconds;
-    return restan < 0 ? 0 : restan;
-  }
+  /// Lo que queda de ventana para marcar.
+  int get _totalSeconds => _vm.restante.inSeconds;
 
   @override
   void initState() {
@@ -86,7 +82,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
     _vm = BeaconViewModel()..addListener(_alCambiar);
     WidgetsBinding.instance.addPostFrameCallback((_) => _empezar());
 
-    // Refresca la cuenta atrás hasta que se cierre la franja de la clase.
+    // Solo repinta la cuenta atrás; de cortar la emisión se encarga el
+    // viewmodel, que tiene su propio temporizador hasta el fin de la ventana.
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       setState(() {});
@@ -101,7 +98,23 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   }
 
   void _alCambiar() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // Si la ventana se cerró sola, la pantalla queda en reposo y se le dice
+    // al estudiante cuál es la única salida que le queda.
+    if (_vm.ventanaVencida && !_isStopped) {
+      setState(() => _isStopped = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Se cerró el llamado de asistencia. Si no apareciste en el radar '
+            'del docente, pídele que te marque a mano.',
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+    setState(() {});
   }
 
   @override
@@ -120,7 +133,9 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   String get _huella =>
       '0x${BleService.huellaDe(widget.clave).toRadixString(16).toUpperCase().padLeft(8, '0')}';
 
-  String get _franja {
+  /// De cuándo a cuándo se puede marcar, que es la ventana que abrió el
+  /// docente y no el bloque entero de la clase.
+  String get _ventanaDelLlamado {
     final sesion = _vm.sesion;
     if (sesion == null) return '--:-- - --:--';
     return '${_hora(sesion.inicio)} - ${_hora(sesion.fin)}';
@@ -129,8 +144,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   static String _hora(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
-  /// Lo que queda de clase. Pasada la hora se muestra h:mm:ss, porque una
-  /// franja de dos horas en minutos ("90:58") no se entiende.
+  /// Lo que queda de ventana. El llamado no pasa de diez minutos, pero se
+  /// contemplan las horas por si alguna vez se alarga.
   String get _formattedTime {
     if (_isStopped) return '--:--';
     final horas = _totalSeconds ~/ 3600;
@@ -535,7 +550,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                       ),
                       const SizedBox(height: 2),
                       const Text(
-                        'VENTANA TOKEN',
+                        'VENTANA DEL LLAMADO',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 11,
@@ -818,7 +833,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Franja de la clase',
+                        'Ventana del llamado',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 11,
@@ -826,7 +841,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _franja,
+                        _ventanaDelLlamado,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -842,8 +857,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
           ),
           const SizedBox(height: 12),
 
-          // El aula de la clase. Quien comprueba la geocerca es el docente
-          // al abrir el radar, no este celular.
+          // El aula de la clase. La geocerca la comprueban los dos celulares:
+          // el del docente al abrir el radar y este antes de emitir.
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/asistencia_resumen.dart';
 import 'package:smart_check/models/curso_model.dart';
+import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/services/curso_service.dart';
 import 'package:smart_check/viewmodels/student_viewmodel.dart';
 
@@ -18,6 +19,18 @@ Curso cursoCon(String nombre, List<String> claves, {List<Horario> horarios = con
       horarios: horarios,
       clavesInscritos: claves,
     );
+
+/// Un llamado abierto de diez minutos, como el que acaba de abrir el
+/// docente.
+Sesion llamadoAbierto({String id = 'llamado-1'}) {
+  final ahora = DateTime.now();
+  return Sesion(
+    id: id,
+    inicio: ahora.subtract(const Duration(minutes: 1)),
+    fin: ahora.add(const Duration(minutes: 9)),
+    bloqueInicio: ahora.subtract(const Duration(minutes: 5)),
+  );
+}
 
 void main() {
   late FakeCursoService servicio;
@@ -80,6 +93,63 @@ void main() {
     expect(vm.subjects.single.statusLabel, 'Sin registro');
     expect(vm.globalAttendance, isNull);
     expect(vm.globalAttendanceStatus, 'Sin clases aún');
+  });
+
+  group('el botón de registrar asistencia', () {
+    test('sin llamado abierto no se puede registrar', () async {
+      servicio.cursos['a'] = cursoCon('Arquitectura', ['1117000000']);
+
+      vm.vigilarCursos(cedula: '1117000000');
+      await pumpEventQueue();
+
+      expect(vm.puedeRegistrar, isFalse);
+      expect(vm.llamadoVigente, isNull);
+    });
+
+    test('con un llamado abierto se puede registrar en esa materia', () async {
+      servicio.cursos['a'] = cursoCon('Arquitectura', ['1117000000']);
+      servicio.cursos['b'] = cursoCon('Redes', ['1117000000']);
+      servicio.sesionesPorCurso['b'] = [llamadoAbierto()];
+
+      vm.vigilarCursos(cedula: '1117000000');
+      await pumpEventQueue();
+
+      expect(vm.puedeRegistrar, isTrue);
+      expect(vm.llamadoVigente!.$1.nombre, 'Redes');
+      expect(vm.llamadoVigente!.$2.id, 'llamado-1');
+    });
+
+    test('un llamado marcado como abierto pero vencido no cuenta', () async {
+      final ahora = DateTime.now();
+      servicio.cursos['a'] = cursoCon('Arquitectura', ['1117000000']);
+      // Quedó abierto porque al docente se le murió la app.
+      servicio.sesionesPorCurso['a'] = [
+        Sesion(
+          id: 'colgado',
+          inicio: ahora.subtract(const Duration(minutes: 20)),
+          fin: ahora.subtract(const Duration(minutes: 10)),
+        ),
+      ];
+
+      vm.vigilarCursos(cedula: '1117000000');
+      await pumpEventQueue();
+
+      expect(vm.puedeRegistrar, isFalse);
+    });
+
+    test('al cerrarse el llamado el botón se apaga solo', () async {
+      servicio.cursos['a'] = cursoCon('Arquitectura', ['1117000000']);
+      servicio.sesionesPorCurso['a'] = [llamadoAbierto()];
+
+      vm.vigilarCursos(cedula: '1117000000');
+      await pumpEventQueue();
+      expect(vm.puedeRegistrar, isTrue);
+
+      await servicio.cerrarSesion('a', 'llamado-1');
+      await pumpEventQueue();
+
+      expect(vm.puedeRegistrar, isFalse);
+    });
   });
 
   test('informa el error si no se puede leer la asistencia', () async {
