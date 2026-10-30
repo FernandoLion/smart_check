@@ -35,11 +35,15 @@ const paginaLogon = '<html><body><form method="post" action="./logon.aspx">'
     'value="m7/U/3T5gCXt" />'
     '</form></body></html>';
 
-/// Lo que responde el DirectMethod `BuscarUsuario` cuando encuentra a alguien.
-/// Ojo: aquí el setter viene sin el prefijo `App.` del carné.
+/// Lo que responde el DirectMethod `BuscarUsuario` cuando encuentra a alguien,
+/// tal como se comprobó contra el servidor. Dos cosas que no se ven en el
+/// JavaScript del portal: el setter viene sin el prefijo `App.` del carné, y
+/// el usuario llega envuelto en HTML de presentación, igual que el mensaje de
+/// error, así que hay que limpiarlo antes de darlo por bueno.
 String respuestaUsuario(String usuario) =>
     '{script:"Window1.hide();Window2.hide();Window3.show();'
-    'DF_Usuario.setValue(\\"$usuario\\");DF_Usuario.show();"}';
+    'DF_Usuario.setValue(\\"<BR/><BR/><FONT SIZE=6 COLOR=black>$usuario'
+    '</FONT>\\");DF_Usuario.show();"}';
 
 /// Y cuando no hay nadie con ese documento: el mensaje llega en el mismo
 /// campo, en HTML y en rojo.
