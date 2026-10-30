@@ -1,18 +1,27 @@
 import 'dart:async';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+
+import '../../models/curso_model.dart';
+import '../../services/rostro_service.dart';
 import '../../utils/app_theme.dart';
+import '../../viewmodels/face_verification_viewmodel.dart';
 
+/// Comprueba con la cámara frontal que delante del celular hay una persona
+/// de verdad, antes de dejarla emitir la baliza.
+///
+/// Devuelve `true` por [Navigator.pop] si se verificó, y null si se canceló
+/// o no se pudo.
 class FaceVerificationScreen extends StatefulWidget {
-  final String courseTitle;
-  final String professorName;
-  final String classroom;
+  final Curso curso;
 
-  const FaceVerificationScreen({
-    super.key,
-    this.courseTitle = 'Ing. de Software II - Grupo 302-B',
-    this.professorName = 'Docente: Ana M. Pérez',
-    this.classroom = 'Aula 301',
-  });
+  const FaceVerificationScreen({super.key, required this.curso});
+
+  String get courseTitle => '${curso.nombre} - Grupo ${curso.grupo}';
+  String get professorName => 'Docente: ${curso.docenteNombre}';
+  String get classroom => curso.aula;
 
   @override
   State<FaceVerificationScreen> createState() => _FaceVerificationScreenState();
@@ -33,11 +42,19 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
 
   late final AnimationController _laserController;
   late final AnimationController _pulseController;
-  Timer? _progressTimer;
 
-  int _progress = 82;
-  bool _isValidated = false;
-  bool _flashlightOn = false;
+  final _rostros = RostroService();
+  final _vm = FaceVerificationViewModel();
+
+  CameraController? _camara;
+
+  /// Se descartan los fotogramas que llegan mientras ML Kit trabaja: si se
+  /// encolan, la vista se traba y acaba cayéndose.
+  bool _procesando = false;
+  bool _saliendo = false;
+  String? _errorDeCamara;
+
+  bool get _isValidated => _vm.verificado;
 
   @override
   void initState() {
@@ -55,23 +72,106 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
 
-    // Simulación del reconocimiento facial del 82% al 100% cada 400ms (igual que el script de Stitch)
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
+    _vm.addListener(_alCambiar);
+    _encenderLaCamara();
+  }
+
+  void _alCambiar() {
+    if (!mounted) return;
+    setState(() {});
+    if (_vm.verificado) _salirVerificado();
+  }
+
+  Future<void> _encenderLaCamara() async {
+    try {
+      final camaras = await availableCameras();
+      if (camaras.isEmpty) {
+        throw CameraException('sin-camara', 'Este celular no tiene cámara.');
+      }
+      final frontal = camaras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.front,
+        orElse: () => camaras.first,
+      );
+      final control = CameraController(
+        frontal,
+        ResolutionPreset.medium,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.nv21,
+      );
+      await control.initialize();
+      if (!mounted) {
+        await control.dispose();
+        return;
+      }
+      setState(() => _camara = control);
+      _vm.empezar();
+      await control.startImageStream(_alLlegarFotograma);
+    } on CameraException catch (e) {
       if (!mounted) return;
-      setState(() {
-        if (_progress < 100) {
-          _progress += 2;
-        } else {
-          _isValidated = true;
-          timer.cancel();
-        }
-      });
-    });
+      setState(() => _errorDeCamara = _mensajeDeCamara(e));
+    }
+  }
+
+  static String _mensajeDeCamara(CameraException e) {
+    if (e.code.toLowerCase().contains('denied')) {
+      return 'Sin permiso de cámara no se puede verificar tu rostro. '
+          'Dáselo a SmartCheck desde los ajustes del celular.';
+    }
+    return 'No se pudo abrir la cámara: ${e.description ?? e.code}';
+  }
+
+  Future<void> _alLlegarFotograma(CameraImage imagen) async {
+    if (_procesando || _vm.terminado || !mounted) return;
+    _procesando = true;
+    try {
+      final entrada = _comoEntradaDeMlKit(imagen);
+      if (entrada != null) {
+        final tamano = Size(
+          imagen.width.toDouble(),
+          imagen.height.toDouble(),
+        );
+        _vm.alVer(await _rostros.analizar(entrada, tamano));
+      }
+    } catch (_) {
+      // Un fotograma ilegible no es motivo para tumbar la pantalla.
+    } finally {
+      _procesando = false;
+    }
+  }
+
+  InputImage? _comoEntradaDeMlKit(CameraImage imagen) {
+    final camara = _camara;
+    if (camara == null || imagen.planes.isEmpty) return null;
+    final rotacion = InputImageRotationValue.fromRawValue(
+      camara.description.sensorOrientation,
+    );
+    final formato = InputImageFormatValue.fromRawValue(imagen.format.raw);
+    if (rotacion == null || formato == null) return null;
+    return InputImage.fromBytes(
+      bytes: imagen.planes.first.bytes,
+      metadata: InputImageMetadata(
+        size: Size(imagen.width.toDouble(), imagen.height.toDouble()),
+        rotation: rotacion,
+        format: formato,
+        bytesPerRow: imagen.planes.first.bytesPerRow,
+      ),
+    );
+  }
+
+  /// Se deja ver un momento el "Listo, eres tú" antes de seguir a la baliza.
+  Future<void> _salirVerificado() async {
+    if (_saliendo) return;
+    _saliendo = true;
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    if (mounted) Navigator.pop(context, true);
   }
 
   @override
   void dispose() {
-    _progressTimer?.cancel();
+    _vm.removeListener(_alCambiar);
+    _vm.dispose();
+    _camara?.dispose();
+    _rostros.cerrar();
     _laserController.dispose();
     _pulseController.dispose();
     super.dispose();
@@ -163,26 +263,23 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Botón Linterna frontal
+              // Volver a empezar con otro gesto. (Aquí había una linterna,
+              // pero la cámara frontal del celular no tiene flash.)
               GestureDetector(
-                onTap: () => setState(() => _flashlightOn = !_flashlightOn),
+                onTap: _camara == null ? null : _vm.empezar,
                 child: Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: _flashlightOn
-                        ? _primaryIndigo.withValues(alpha: 0.3)
-                        : _surfaceElevated.withValues(alpha: 0.8),
+                    color: _surfaceElevated.withValues(alpha: 0.8),
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.08),
                     ),
                   ),
                   child: Icon(
-                    _flashlightOn
-                        ? Icons.flashlight_on
-                        : Icons.flashlight_on_outlined,
-                    color: _flashlightOn ? _primaryLight : Colors.white,
+                    Icons.refresh,
+                    color: _camara == null ? AppTheme.textTertiary : Colors.white,
                     size: 20,
                   ),
                 ),
@@ -357,59 +454,14 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
+                    // Lo que ve la cámara frontal, recortado al círculo.
+                    Positioned.fill(child: _buildVistaDeLaCamara()),
+
                     // Malla de puntos 3D TrueDepth
                     Positioned.fill(
                       child: CustomPaint(
                         painter: _FaceIdMeshPainter(),
                       ),
-                    ),
-
-                    // Silueta sutil de rostro de fondo
-                    Icon(
-                      Icons.person,
-                      size: 150,
-                      color: _primaryLight.withValues(alpha: 0.12),
-                    ),
-
-                    // Nodos de seguimiento facial (Ojos, Nariz y Boca)
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Nodos de los ojos
-                        SizedBox(
-                          width: 112,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildEyeNode(),
-                              _buildEyeNode(),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        // Nodo de la nariz
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: _tertiaryGreen,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(color: _tertiaryGreen, blurRadius: 8),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        // Barra de alineación de boca
-                        Container(
-                          width: 40,
-                          height: 2.5,
-                          decoration: BoxDecoration(
-                            color: _primaryLight.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ],
                     ),
 
                     // Barra horizontal de escaneo láser (animate-laser)
@@ -451,9 +503,9 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
               // Badge Flotante Inferior: Analizando % -> ¡Identidad Validada Con Éxito!
               Positioned(
                 bottom: -6,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: AnimatedContainer(
+                left: 10,
+                right: 10,
+                child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -485,20 +537,20 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                           size: 15,
                         ),
                         const SizedBox(width: 6),
-                        Text(
-                          _isValidated
-                              ? '¡Identidad Validada Con Éxito!'
-                              : 'Analizando rasgos biométricos $_progress%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            _vm.instruccion,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
               ),
             ],
           ),
@@ -512,18 +564,28 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildTelemetryPill(
-                icon: Icons.check_circle,
-                label: 'Distancia óptima',
+                icon: _vm.paso == PasoVerificacion.encuadrando
+                    ? Icons.zoom_out_map
+                    : Icons.check_circle,
+                label: _vm.paso == PasoVerificacion.encuadrando
+                    ? 'Acércate'
+                    : 'Distancia óptima',
               ),
               const SizedBox(width: 8),
               _buildTelemetryPill(
-                icon: Icons.check_circle,
-                label: 'Iluminación adecuada',
+                icon: _vm.reto == Reto.parpadeo
+                    ? Icons.remove_red_eye_outlined
+                    : Icons.screen_rotation_alt_outlined,
+                label: _vm.reto == Reto.parpadeo
+                    ? 'Gesto: parpadear'
+                    : 'Gesto: girar la cabeza',
               ),
               const SizedBox(width: 8),
               _buildTelemetryPill(
-                icon: Icons.verified,
-                label: 'Prueba de vida: OK',
+                icon: _isValidated ? Icons.verified : Icons.timelapse,
+                label: _isValidated
+                    ? 'Prueba de vida: OK'
+                    : 'Prueba de vida: ${(_vm.progreso * 100).round()}%',
               ),
             ],
           ),
@@ -532,14 +594,40 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     );
   }
 
-  Widget _buildEyeNode() {
-    return Container(
-      width: 10,
-      height: 10,
-      decoration: BoxDecoration(
-        color: _primaryLight.withValues(alpha: 0.8),
-        shape: BoxShape.circle,
-        border: Border.all(color: _primaryIndigo, width: 1.5),
+  /// Lo que ve la cámara, o el motivo por el que no se ve nada.
+  Widget _buildVistaDeLaCamara() {
+    final camara = _camara;
+    if (camara == null || !camara.value.isInitialized) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: _errorDeCamara == null
+              ? Icon(
+                  Icons.person,
+                  size: 150,
+                  color: _primaryLight.withValues(alpha: 0.12),
+                )
+              : Text(
+                  _errorDeCamara!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+        ),
+      );
+    }
+    final vista = camara.value.previewSize;
+    // La vista viene en horizontal: se gira y se recorta para llenar el
+    // círculo sin deformar la cara, que es lo que mide ML Kit.
+    return FittedBox(
+      fit: BoxFit.cover,
+      child: SizedBox(
+        width: vista?.height ?? 1,
+        height: vista?.width ?? 1,
+        child: CameraPreview(camara),
       ),
     );
   }
@@ -706,7 +794,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                           SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              'Ventana de tolerancia: 4 min restantes',
+                              'Sin verificar el rostro no se emite baliza',
                               style: TextStyle(
                                 color: _systemAmber,
                                 fontSize: 12,

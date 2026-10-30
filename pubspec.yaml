@@ -47,6 +47,11 @@ dependencies:
   flutter_ble_peripheral: ^3.1.0
   geolocator: ^14.0.3
 
+  # Verificacion facial antes de emitir la baliza: la camara frontal da los
+  # fotogramas y ML Kit dice si hay un rostro y si parpadeo (prueba de vida).
+  camera: ^0.12.2
+  google_mlkit_face_detection: ^0.15.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

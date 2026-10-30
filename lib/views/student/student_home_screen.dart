@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/asistencia_resumen.dart';
+import '../../models/curso_model.dart';
 import '../../models/student_subject_model.dart';
+import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/student_viewmodel.dart';
 import '../teacher/teacher_home_screen.dart';
 import '../attendance/ble_beacon_screen.dart';
+import '../attendance/face_verification_screen.dart';
 import 'attendance_detail_screen.dart';
 import 'student_settings_screen.dart';
 
@@ -753,6 +756,8 @@ class StudentHomeScreen extends StatelessWidget {
     );
   }
 
+/// Marcar asistencia son tres puertas, en este orden: estar en el aula,
+/// estar delante del celular y que el docente oiga la baliza.
 Future<void> _onRegisterAttendanceTap(BuildContext context) async {
   final perfil = context.read<AuthViewModel>().perfil;
   final clave = perfil?.cedula ?? perfil?.email;
@@ -763,6 +768,23 @@ Future<void> _onRegisterAttendanceTap(BuildContext context) async {
     return;
   }
   final estudiante = context.read<StudentViewModel>();
+  final vigente = estudiante.llamadoVigente;
+  if (vigente == null) return;
+
+  // La ubicación primero porque es inmediata: sería cruel hacerle el gesto
+  // de la cara para después decirle que está a trescientos metros del aula.
+  if (!await _estaEnElAula(context, vigente.$1) || !context.mounted) return;
+
+  // Y la cara antes de la baliza: emitir sin estar delante del celular es
+  // justo el fraude que esto cierra.
+  final verificado = await Navigator.push<bool>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => FaceVerificationScreen(curso: vigente.$1),
+    ),
+  );
+  if (verificado != true || !context.mounted) return;
+
   await Navigator.push(
     context,
     MaterialPageRoute(
@@ -771,6 +793,24 @@ Future<void> _onRegisterAttendanceTap(BuildContext context) async {
   );
   // Al volver de marcar, la asistencia ya cambió: hay que releerla.
   await estudiante.refrescar();
+}
+
+/// Si el estudiante está dentro de la geocerca del curso. La baliza lo
+/// vuelve a comprobar antes de emitir; esto es solo para avisar a tiempo.
+Future<bool> _estaEnElAula(BuildContext context, Curso curso) async {
+  String mensaje;
+  try {
+    final metros = await metrosFueraDelAula(UbicacionService(), curso.geocerca);
+    if (metros == null) return true;
+    mensaje = 'Estás a $metros m del aula. Acércate para registrar tu '
+        'asistencia.';
+  } on UbicacionException catch (e) {
+    mensaje = e.mensaje;
+  }
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
+  }
+  return false;
 }
 
   void _onSubjectTap(BuildContext context, StudentSubjectModel subject) {
