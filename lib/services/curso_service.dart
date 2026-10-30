@@ -5,12 +5,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/asistencia_resumen.dart';
 import '../models/curso_model.dart';
 import '../models/inscrito_model.dart';
+import '../models/presencia_model.dart';
 import '../models/sesion_model.dart';
 
 /// Error al leer o guardar cursos, con un mensaje listo para mostrar.
 class CursoException implements Exception {
   final String mensaje;
-  const CursoException(this.mensaje);
+
+  /// El código de Firestore, cuando lo hay (`permission-denied`,
+  /// `unavailable`...). Quien llama suele mostrar solo [mensaje], pero el
+  /// radar necesita distinguir "el servidor dijo que no" de "no hubo red".
+  final String? codigo;
+
+  const CursoException(this.mensaje, [this.codigo]);
+
+  /// Si el servidor rechazó la escritura. En las asistencias por BLE esto
+  /// significa, casi siempre, que el estudiante todavía no ha firmado.
+  bool get denegado => codigo == 'permission-denied';
 
   @override
   String toString() => mensaje;
@@ -42,6 +53,12 @@ class CursoService {
     String sesionId,
   ) =>
       _sesiones(cursoId).doc(sesionId).collection('asistencias');
+
+  CollectionReference<Map<String, dynamic>> _presencias(
+    String cursoId,
+    String sesionId,
+  ) =>
+      _sesiones(cursoId).doc(sesionId).collection('presencias');
 
   // --- Cursos ---------------------------------------------------------------
 
@@ -77,7 +94,7 @@ class CursoService {
     }
   }
 
-  /// Borra el curso con sus inscritos, sesiones y asistencias.
+  /// Borra el curso con sus inscritos, sesiones, asistencias y presencias.
   ///
   /// Firestore no borra las subcolecciones junto con el documento, así que se
   /// borran primero (las reglas consultan el curso para autorizarlas) y el
@@ -90,9 +107,15 @@ class CursoService {
           (s) => _asistencias(cursoId, s.id).get().timeout(_timeout),
         ),
       );
+      final presencias = await Future.wait(
+        sesiones.docs.map(
+          (s) => _presencias(cursoId, s.id).get().timeout(_timeout),
+        ),
+      );
       final inscritos = await _inscritos(cursoId).get().timeout(_timeout);
       final hijos = [
         for (final lote in asistencias) ...lote.docs.map((d) => d.reference),
+        for (final lote in presencias) ...lote.docs.map((d) => d.reference),
         ...sesiones.docs.map((d) => d.reference),
         ...inscritos.docs.map((d) => d.reference),
       ];
@@ -223,7 +246,37 @@ class CursoService {
           .set(asistencia.toMap())
           .timeout(_timeout);
     } catch (e) {
-      throw CursoException(_mensaje(e, 'registrar la asistencia'));
+      throw CursoException(_mensaje(e, 'registrar la asistencia'), _codigo(e));
+    }
+  }
+
+  // --- Presencias (la firma del estudiante) ---------------------------------
+
+  /// Las firmas que los estudiantes dejaron en este llamado.
+  Stream<List<Presencia>> presencias(String cursoId, String sesionId) =>
+      _presencias(cursoId, sesionId)
+          .snapshots()
+          .map((s) =>
+              s.docs.map((d) => Presencia.fromMap(d.id, d.data())).toList())
+          .handleError((Object e) =>
+              throw CursoException(_mensaje(e, 'leer las presencias')));
+
+  /// El estudiante firma que está aquí, desde su celular vinculado.
+  ///
+  /// Sin esto el servidor rechaza la asistencia por BLE, así que si falla no
+  /// hay que emitir la baliza: el docente no podría registrarla.
+  Future<void> firmarPresencia(
+    String cursoId,
+    String sesionId,
+    Presencia presencia,
+  ) async {
+    try {
+      await _presencias(cursoId, sesionId)
+          .doc(presencia.claveInscrito)
+          .set(presencia.toMap())
+          .timeout(_timeout);
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'firmar tu asistencia'), _codigo(e));
     }
   }
 
@@ -330,4 +383,8 @@ class CursoService {
     }
     return 'No se pudo $accion: $e';
   }
+
+  /// El código de Firestore, para que quien llama pueda distinguir un
+  /// rechazo de las reglas de un fallo de red.
+  static String? _codigo(Object e) => e is FirebaseException ? e.code : null;
 }

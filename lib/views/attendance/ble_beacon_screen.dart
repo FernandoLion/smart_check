@@ -92,7 +92,15 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   }
 
   Future<void> _empezar() async {
-    final ok = await _vm.marcar(widget.cursos, widget.clave);
+    // El celular vinculado sale del perfil, que es lo que el servidor
+    // comprobará al firmar la presencia.
+    final perfil = context.read<AuthViewModel>().perfil;
+    final ok = await _vm.marcar(
+      widget.cursos,
+      widget.clave,
+      dispositivoVinculado: perfil?.dispositivoId,
+      vinculadoEn: perfil?.dispositivoDesde,
+    );
     if (!mounted || ok) return;
     setState(() => _isStopped = true);
   }

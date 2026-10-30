@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/services/biometria_service.dart';
+import 'package:smart_check/services/curso_service.dart';
 import 'package:smart_check/services/ubicacion_service.dart';
 import 'package:smart_check/viewmodels/beacon_viewmodel.dart';
 
@@ -14,6 +15,8 @@ void main() {
   late FakeUbicacionService ubicacion;
   late FakeBiometriaService biometria;
   late BeaconViewModel vm;
+  // El celular que la cuenta tiene atado, y desde cuándo.
+  final atado = DateTime(2026, 3, 1, 8);
   late Curso enAula;
 
   /// Un llamado abierto de diez minutos, como el que acaba de abrir el
@@ -48,13 +51,23 @@ void main() {
       ble: ble,
       ubicacion: ubicacion,
       biometria: biometria,
+      dispositivos: FakeDispositivoService(),
     );
   });
 
   tearDown(() => vm.dispose());
 
+  /// Marcar con la cuenta atada a este mismo celular, que es el caso normal.
+  Future<bool> marcar(List<Curso> lista, {String? vinculado = celularDePrueba}) =>
+      vm.marcar(
+        lista,
+        '1117000000',
+        dispositivoVinculado: vinculado,
+        vinculadoEn: vinculado == null ? null : atado,
+      );
+
   test('sin llamado abierto avisa y no anuncia nada', () async {
-    expect(await vm.marcar([enAula], '1117000000'), isFalse);
+    expect(await marcar([enAula]), isFalse);
 
     expect(vm.error, contains('llamado abierto'));
     expect(ble.anunciando, isNull);
@@ -64,7 +77,7 @@ void main() {
   test('un llamado que ya venció tampoco sirve', () async {
     cursos.sesionesPorCurso['c1'] = [llamadoVencido()];
 
-    expect(await vm.marcar([enAula], '1117000000'), isFalse);
+    expect(await marcar([enAula]), isFalse);
 
     expect(ble.anunciando, isNull);
   });
@@ -72,7 +85,7 @@ void main() {
   test('con el llamado abierto anuncia su clave', () async {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
 
-    expect(await vm.marcar([enAula], '1117000000'), isTrue);
+    expect(await marcar([enAula]), isTrue);
 
     expect(vm.anunciando, isTrue);
     expect(ble.anunciando, '1117000000');
@@ -86,7 +99,7 @@ void main() {
     // ~1.1 km al norte del aula.
     ubicacion.posicion = posicionEn(aula.latitud + 0.01, aula.longitud);
 
-    expect(await vm.marcar([enAula], '1117000000'), isFalse);
+    expect(await marcar([enAula]), isFalse);
 
     expect(vm.error, contains('del aula'));
     expect(ble.anunciando, isNull);
@@ -96,14 +109,14 @@ void main() {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
     ubicacion.fallo = const UbicacionException('sin permiso');
 
-    expect(await vm.marcar([cursoEnClase()], '1117000000'), isTrue);
+    expect(await marcar([cursoEnClase()]), isTrue);
 
     expect(ble.anunciando, '1117000000');
   });
 
   test('parar deja de anunciar', () async {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
-    await vm.marcar([enAula], '1117000000');
+    await marcar([enAula]);
 
     await vm.parar();
 
@@ -123,7 +136,7 @@ void main() {
         fin: ahora.add(const Duration(milliseconds: 40)),
       ),
     ];
-    await vm.marcar([enAula], '1117000000');
+    await marcar([enAula]);
     expect(ble.anunciando, '1117000000');
 
     await Future<void>.delayed(const Duration(milliseconds: 150));
@@ -139,7 +152,7 @@ void main() {
     cursos.sesionesPorCurso['c1'] = [llamadoVencido()];
     cursos.sesionesPorCurso['c2'] = [llamadoAbierto(id: 'llamado-2')];
 
-    expect(await vm.marcar([enAula, otra], '1117000000'), isTrue);
+    expect(await marcar([enAula, otra]), isTrue);
 
     expect(vm.curso!.id, 'c2');
     expect(vm.sesion!.id, 'llamado-2');
@@ -149,7 +162,7 @@ void main() {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
     biometria.resultado = ResultadoBiometria.rechazada;
 
-    expect(await vm.marcar([enAula], '1117000000'), isFalse);
+    expect(await marcar([enAula]), isFalse);
 
     expect(vm.error, contains('confirmar que eres tú'));
     expect(ble.anunciando, isNull);
@@ -159,7 +172,7 @@ void main() {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
     biometria.resultado = ResultadoBiometria.noDisponible;
 
-    expect(await vm.marcar([enAula], '1117000000'), isTrue);
+    expect(await marcar([enAula]), isTrue);
 
     expect(ble.anunciando, '1117000000');
     expect(vm.biometriaUsada, ResultadoBiometria.noDisponible);
@@ -170,7 +183,7 @@ void main() {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
     ubicacion.posicion = posicionEn(aula.latitud + 0.01, aula.longitud);
 
-    await vm.marcar([enAula], '1117000000');
+    await marcar([enAula]);
 
     // Sería cruel pedirle el dedo para después decirle que está a un
     // kilómetro: la ubicación va antes porque es inmediata.
@@ -178,8 +191,69 @@ void main() {
   });
 
   test('tampoco si no hay ningún llamado abierto', () async {
-    await vm.marcar([enAula], '1117000000');
+    await marcar([enAula]);
 
     expect(biometria.veces, 0);
+  });
+
+  test('sin celular vinculado no anuncia', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+
+    expect(await marcar([enAula], vinculado: null), isFalse);
+
+    expect(vm.error, contains('vincúlalo'));
+    expect(ble.anunciando, isNull);
+    expect(biometria.veces, 0);
+  });
+
+  test('desde el celular de otro no anuncia', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+
+    // La cuenta está atada a otro teléfono: este es prestado.
+    expect(await marcar([enAula], vinculado: 'android-del-amigo'), isFalse);
+
+    expect(vm.error, contains('otro celular'));
+    expect(ble.anunciando, isNull);
+    expect(cursos.presenciasPorSesion, isEmpty);
+  });
+
+  test('firma su presencia antes de anunciarse', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+
+    expect(await marcar([enAula]), isTrue);
+
+    final firma = cursos.presenciasPorSesion['llamado-1']!.single;
+    expect(firma.claveInscrito, '1117000000');
+    expect(firma.dispositivo, celularDePrueba);
+    expect(firma.vinculadoEn, atado);
+    expect(firma.biometria, 'biometrica');
+    // El orden importa: cuando el radar oiga la baliza, la firma ya está, y
+    // sin ella el servidor le rechazaría la asistencia al docente.
+    expect(ble.anunciando, '1117000000');
+  });
+
+  test('si el servidor rechaza la firma, no se anuncia', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+    cursos.falloAlFirmar = const CursoException(
+      'No se pudo firmar tu asistencia: permiso denegado en la base de datos.',
+      'permission-denied',
+    );
+
+    expect(await marcar([enAula]), isFalse);
+
+    expect(ble.anunciando, isNull);
+    expect(vm.error, contains('firmar tu asistencia'));
+  });
+
+  test('sin huella ni PIN la firma lo deja dicho', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+    biometria.resultado = ResultadoBiometria.noDisponible;
+
+    expect(await marcar([enAula]), isTrue);
+
+    expect(
+      cursos.presenciasPorSesion['llamado-1']!.single.biometria,
+      'no_disponible',
+    );
   });
 }

@@ -7,7 +7,6 @@ import 'package:http/testing.dart';
 import 'package:smart_check/models/usuario_perfil_model.dart';
 import 'package:smart_check/services/auth_service.dart';
 import 'package:smart_check/services/chaira_service.dart';
-import 'package:smart_check/services/dispositivo_service.dart';
 import 'package:smart_check/services/perfil_service.dart';
 
 import 'chaira_fixtures.dart';
@@ -90,15 +89,6 @@ class FakePerfilService extends Fake implements PerfilService {
     if (fallo != null) throw fallo!;
     return historial[uid] ?? const [];
   }
-}
-
-/// Un celular con un identificador fijo, o ninguno si es null.
-class FakeDispositivoService extends Fake implements DispositivoService {
-  FakeDispositivoService([this.id = 'android-1234567890']);
-  final String? id;
-
-  @override
-  Future<String?> identificador() async => id;
 }
 
 /// Chairá simulado: siempre encuentra a "ANA MARÍA PÉREZ GÓMEZ" con [tipo].

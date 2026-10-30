@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/asistencia_resumen.dart';
 import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/inscrito_model.dart';
+import 'package:smart_check/models/presencia_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/services/curso_service.dart';
 
@@ -16,6 +17,12 @@ class FakeCursoService extends Fake implements CursoService {
 
   /// Asistencias por id de sesión.
   final asistenciasPorSesion = <String, List<Asistencia>>{};
+
+  /// Presencias firmadas por id de sesión, en el orden en que llegaron.
+  final presenciasPorSesion = <String, List<Presencia>>{};
+
+  /// Para probar que el servidor rechaza la asistencia de quien no firmó.
+  CursoException? falloAlFirmar;
 
   /// Asistencia ya calculada por curso, como la devolvería Firestore.
   final resumenes = <String, AsistenciaResumen>{};
@@ -158,6 +165,26 @@ class FakeCursoService extends Fake implements CursoService {
       ..removeWhere((a) => a.claveInscrito == asistencia.claveInscrito);
     lista.add(asistencia);
     _cambios.add(null);
+  }
+
+  @override
+  Future<void> firmarPresencia(
+    String cursoId,
+    String sesionId,
+    Presencia presencia,
+  ) async {
+    if (falloAlFirmar != null) throw falloAlFirmar!;
+    if (fallo != null) throw fallo!;
+    presenciasPorSesion.putIfAbsent(sesionId, () => []).add(presencia);
+    _cambios.add(null);
+  }
+
+  @override
+  Stream<List<Presencia>> presencias(String cursoId, String sesionId) async* {
+    yield presenciasPorSesion[sesionId] ?? const [];
+    await for (final _ in _cambios.stream) {
+      yield presenciasPorSesion[sesionId] ?? const [];
+    }
   }
 
   @override

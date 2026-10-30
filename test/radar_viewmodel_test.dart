@@ -3,6 +3,7 @@ import 'package:smart_check/models/inscrito_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/services/ble_service.dart';
 import 'package:smart_check/services/ubicacion_service.dart';
+import 'package:smart_check/services/curso_service.dart';
 import 'package:smart_check/viewmodels/radar_viewmodel.dart';
 
 import 'ble_fakes.dart';
@@ -228,6 +229,48 @@ void main() {
       expect(ana.asistencia!.metodo, MetodoAsistencia.ble);
       expect(ana.asistencia!.estado, EstadoAsistencia.presente);
       expect(ana.rssi, -55);
+    });
+
+    test('a quien aun no ha firmado se le espera, sin dar error', () async {
+      await vm.iniciar(cursoEnClase(), 'uid-docente');
+      // Asi responde el servidor cuando el estudiante todavia no firmo su
+      // presencia: la regla exige que exista antes de aceptar la asistencia.
+      cursos.fallo = const CursoException(
+        'No se pudo registrar la asistencia: permiso denegado en la base de '
+        'datos.',
+        'permission-denied',
+      );
+
+      ble.oir('1117000000');
+      await pumpEventQueue();
+
+      expect(vm.detectados, 0);
+      expect(vm.esperandoFirma('1117000000'), isTrue);
+      // Al docente no se le saca un error por esto: el celular del
+      // estudiante sigue anunciandose y el siguiente anuncio lo reintenta.
+      expect(vm.error, isNull);
+
+      cursos.fallo = null;
+      ble.oir('1117000000');
+      await pumpEventQueue();
+
+      expect(vm.detectados, 1);
+      expect(vm.esperandoFirma('1117000000'), isFalse);
+    });
+
+    test('otros errores del servidor si se le cuentan al docente', () async {
+      await vm.iniciar(cursoEnClase(), 'uid-docente');
+      cursos.fallo = const CursoException(
+        'No se pudo registrar la asistencia: sin conexion con la base de '
+        'datos.',
+        'unavailable',
+      );
+
+      ble.oir('1117000000');
+      await pumpEventQueue();
+
+      expect(vm.error, contains('sin conexion'));
+      expect(vm.esperandoFirma('1117000000'), isFalse);
     });
 
     test('ignora balizas que no son de sus inscritos', () async {

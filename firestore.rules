@@ -132,7 +132,35 @@ service cloud.firestore {
             && (request.resource.data.metodo == 'manual'
               || (sesion().abierta
                 && request.time >= sesion().inicio
-                && request.time < sesion().fin));
+                && request.time < sesion().fin
+                // La otra llave: sin la firma del estudiante no hay
+                // asistencia por BLE. A mano sigue pudiendo el docente, que
+                // es la corrección de siempre y queda marcada como tal.
+                && exists(/databases/$(database)/documents/cursos/$(cursoId)/sesiones/$(sesionId)/presencias/$(clave))));
+          // Solo al eliminar el curso completo.
+          allow delete: if soySuDocente();
+        }
+
+        // La firma del estudiante: la escribe él, desde el celular que tiene
+        // vinculado y dentro de la ventana. Es lo único que el servidor sabe
+        // de su lado; la geocerca y la huella las comprueba su celular, y de
+        // esas no hay prueba posible sin un backend propio.
+        match /presencias/{clave} {
+          allow read: if soySuDocente() || clave in misClaves();
+          allow create: if autenticado()
+            && clave in misClaves()
+            && clave in curso().claves_inscritos
+            && sesion().abierta
+            && request.time >= sesion().inicio
+            && request.time < sesion().fin
+            && request.resource.data.creado_en == request.time
+            && request.resource.data.dispositivo != ''
+            && request.resource.data.dispositivo
+                 == miPerfil().get('dispositivo_id', '')
+            && request.resource.data.vinculado_en
+                 == miPerfil().get('dispositivo_desde', request.time);
+          // Se firma una vez y no se retoca.
+          allow update: if false;
           // Solo al eliminar el curso completo.
           allow delete: if soySuDocente();
         }

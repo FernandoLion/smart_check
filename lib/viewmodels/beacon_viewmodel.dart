@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/curso_model.dart';
+import '../models/presencia_model.dart';
 import '../models/sesion_model.dart';
 import '../services/biometria_service.dart';
 import '../services/ble_service.dart';
 import '../services/curso_service.dart';
+import '../services/dispositivo_service.dart';
 import '../services/ubicacion_service.dart';
 
 /// ViewModel del celular del estudiante mientras marca asistencia: busca el
@@ -17,16 +19,19 @@ class BeaconViewModel extends ChangeNotifier {
   final BleService _ble;
   final UbicacionService _ubicacion;
   final BiometriaService _biometria;
+  final DispositivoService _dispositivos;
 
   BeaconViewModel({
     CursoService? cursos,
     BleService? ble,
     UbicacionService? ubicacion,
     BiometriaService? biometria,
+    DispositivoService? dispositivos,
   })  : _cursos = cursos ?? CursoService(),
         _ble = ble ?? BleService(),
         _ubicacion = ubicacion ?? UbicacionService(),
-        _biometria = biometria ?? BiometriaService();
+        _biometria = biometria ?? BiometriaService(),
+        _dispositivos = dispositivos ?? DispositivoService();
 
   Curso? _curso;
   Sesion? _sesion;
@@ -62,7 +67,12 @@ class BeaconViewModel extends ChangeNotifier {
   /// Busca entre [cursos] uno con el llamado abierto ahora mismo y empieza a
   /// anunciar [clave]. Devuelve false si no hay llamado, si el estudiante no
   /// está en el aula o si falla el BLE.
-  Future<bool> marcar(List<Curso> cursos, String clave) async {
+  Future<bool> marcar(
+    List<Curso> cursos,
+    String clave, {
+    String? dispositivoVinculado,
+    DateTime? vinculadoEn,
+  }) async {
     _buscando = true;
     _error = null;
     _vencida = false;
@@ -82,6 +92,21 @@ class BeaconViewModel extends ChangeNotifier {
             'asistencia.';
         return false;
       }
+      // El celular tiene que ser el que la cuenta tiene atado. El servidor lo
+      // vuelve a comprobar al firmar; esto solo evita el viaje y da un motivo
+      // claro en vez de un "permiso denegado".
+      if (dispositivoVinculado == null || vinculadoEn == null) {
+        _error = 'Todavía no has registrado este celular. Entra a Ajustes y '
+            'vincúlalo para poder marcar asistencia.';
+        return false;
+      }
+      final esteCelular = await _dispositivos.identificador();
+      if (esteCelular != dispositivoVinculado) {
+        _error = 'Tu asistencia está atada a otro celular. Márcala con él, o '
+            'vincula este desde Ajustes.';
+        return false;
+      }
+
       // Y el teléfono pregunta por su dueño antes de emitir nada. Lo que
       // prueba es que alguien registrado en este celular lo autorizó; quién
       // es ese celular lo comprueba el servidor al firmar la presencia.
@@ -93,6 +118,21 @@ class BeaconViewModel extends ChangeNotifier {
         return false;
       }
       _biometriaUsada = biometria;
+
+      // Firmar va antes de emitir, y no después, por dos razones: si la firma
+      // falla no sirve de nada anunciarse, porque el servidor le rechazará la
+      // asistencia al docente; y cuando el radar oiga la baliza, la firma ya
+      // está puesta, así que no hay carrera entre los dos celulares.
+      await _cursos.firmarPresencia(
+        abierto.$1.id,
+        abierto.$2.id,
+        Presencia(
+          claveInscrito: clave,
+          dispositivo: esteCelular!,
+          vinculadoEn: vinculadoEn,
+          biometria: biometria.comoDato,
+        ),
+      );
 
       _curso = abierto.$1;
       _sesion = abierto.$2;

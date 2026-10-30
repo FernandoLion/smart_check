@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/services/biometria_service.dart';
 import 'package:smart_check/services/ble_service.dart';
+import 'package:smart_check/services/dispositivo_service.dart';
 import 'package:smart_check/services/ubicacion_service.dart';
 
 /// Fakes del hardware (BLE y GPS), que comparten el radar del docente y la
@@ -115,3 +116,15 @@ class FakeBiometriaService implements BiometriaService {
     return resultado;
   }
 }
+
+/// Un celular con un identificador fijo, o ninguno si la plataforma no lo da.
+class FakeDispositivoService implements DispositivoService {
+  FakeDispositivoService([this.id = celularDePrueba]);
+  final String? id;
+
+  @override
+  Future<String?> identificador() async => id;
+}
+
+/// El celular que tiene vinculado la cuenta en los tests.
+const celularDePrueba = 'android-1234567890';

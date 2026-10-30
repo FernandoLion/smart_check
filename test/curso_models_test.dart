@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/inscrito_model.dart';
+import 'package:smart_check/models/presencia_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
 
 void main() {
@@ -214,6 +215,43 @@ void main() {
         registradoPor: 'uid',
       );
       expect(ausente.cuentaComoAsistio, isFalse);
+    });
+  });
+
+  group('Presencia', () {
+    final atado = DateTime(2026, 3, 1, 8);
+
+    Presencia leer({DateTime? vinculadoEn, String biometria = 'biometrica'}) =>
+        Presencia.fromMap('1117000000', {
+          'creado_en': Timestamp.fromDate(DateTime(2026, 3, 1, 9)),
+          'dispositivo': 'android-1234567890',
+          'vinculado_en': Timestamp.fromDate(vinculadoEn ?? atado),
+          'biometria': biometria,
+        });
+
+    test('se lee lo que el estudiante firmó', () {
+      final firma = leer();
+
+      expect(firma.claveInscrito, '1117000000');
+      expect(firma.dispositivo, 'android-1234567890');
+      expect(firma.vinculadoEn, atado);
+      expect(firma.creadoEn, DateTime(2026, 3, 1, 9));
+      expect(firma.sinBiometria, isFalse);
+    });
+
+    test('avisa del celular recién vinculado', () {
+      // Cambiar de teléfono es normal; lo que el docente querría mirar dos
+      // veces es que lo haya cambiado justo antes de esta clase.
+      expect(leer().celularReciente(DateTime(2026, 3, 1, 9)), isTrue);
+      expect(leer().celularReciente(DateTime(2026, 3, 5)), isFalse);
+    });
+
+    test('un documento a medias no revienta', () {
+      final firma = Presencia.fromMap('1117000000', const {});
+
+      expect(firma.dispositivo, '');
+      expect(firma.sinBiometria, isTrue);
+      expect(firma.creadoEn, isNull);
     });
   });
 }

@@ -4,6 +4,7 @@ import 'package:smart_check/services/perfil_service.dart';
 import 'package:smart_check/viewmodels/auth_viewmodel.dart';
 
 import 'auth_fakes.dart';
+import 'ble_fakes.dart';
 
 void main() {
   late FakeAuthService auth;

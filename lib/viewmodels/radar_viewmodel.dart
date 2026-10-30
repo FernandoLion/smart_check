@@ -65,6 +65,13 @@ class RadarViewModel extends ChangeNotifier {
   final _asistencias = <String, Asistencia>{};
   final _rssi = <String, int>{};
 
+  /// A quién se oyó por BLE pero el servidor todavía no deja registrar
+  /// porque no ha firmado su presencia. Se reintenta con cada anuncio suyo.
+  final _sinFirma = <String>{};
+
+  /// Si a este inscrito se le oye pero aún falta su firma.
+  bool esperandoFirma(String clave) => _sinFirma.contains(clave);
+
   bool _ocupado = false;
   bool _escaneando = false;
   String? _error;
@@ -262,10 +269,19 @@ class RadarViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       await _cursos.registrarAsistencia(curso.id, sesion.id, asistencia);
+      _sinFirma.remove(clave);
       return true;
     } on CursoException catch (e) {
       _asistencias.remove(clave);
-      _error = e.mensaje;
+      // Si el servidor rechaza una asistencia por BLE es, casi siempre,
+      // porque el estudiante todavía no ha firmado su presencia: su celular
+      // sigue anunciándose, así que el siguiente anuncio lo reintenta solo.
+      // Sacarle un error al docente por eso sería ruido.
+      if (metodo == MetodoAsistencia.ble && e.denegado) {
+        _sinFirma.add(clave);
+      } else {
+        _error = e.mensaje;
+      }
       notifyListeners();
       return false;
     }
