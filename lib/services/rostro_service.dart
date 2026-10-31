@@ -1,4 +1,4 @@
-import 'dart:ui' show Size;
+import 'dart:ui' show Offset, Rect, Size;
 
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
@@ -20,12 +20,26 @@ class RostroVisto {
   /// hacia dónde mire, así que quien lo usa mira el valor absoluto.
   final double? giroHorizontal;
 
+  /// Id con el que ML Kit sigue a la misma cara de un fotograma al
+  /// siguiente. Si cambia a mitad del gesto, es otra persona.
+  final int? seguimiento;
+
+  /// Dónde está la cara en el fotograma ya enderezado, y sus ojos (para
+  /// enderezarla antes de reconocerla).
+  final Rect? caja;
+  final Offset? centroOjoIzquierdo;
+  final Offset? centroOjoDerecho;
+
   const RostroVisto({
     this.rostros = 0,
     this.tamano = 0,
     this.ojoIzquierdo,
     this.ojoDerecho,
     this.giroHorizontal,
+    this.seguimiento,
+    this.caja,
+    this.centroOjoIzquierdo,
+    this.centroOjoDerecho,
   });
 
   /// Un fotograma donde no hay nadie.
@@ -47,6 +61,8 @@ class RostroService {
     // prueba de vida: sin esto una foto impresa pasaría igual.
     enableClassification: true,
     enableTracking: true,
+    // Los ojos sirven para enderezar la cara antes de reconocerla.
+    enableLandmarks: true,
     minFaceSize: 0.2,
   );
 
@@ -66,7 +82,16 @@ class RostroService {
       ojoIzquierdo: cara.leftEyeOpenProbability,
       ojoDerecho: cara.rightEyeOpenProbability,
       giroHorizontal: cara.headEulerAngleY,
+      seguimiento: cara.trackingId,
+      caja: cara.boundingBox,
+      centroOjoIzquierdo: _punto(cara, FaceLandmarkType.leftEye),
+      centroOjoDerecho: _punto(cara, FaceLandmarkType.rightEye),
     );
+  }
+
+  static Offset? _punto(Face cara, FaceLandmarkType tipo) {
+    final p = cara.landmarks[tipo]?.position;
+    return p == null ? null : Offset(p.x.toDouble(), p.y.toDouble());
   }
 
   Future<void> cerrar() => _detector.close();

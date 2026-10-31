@@ -3,10 +3,13 @@ import 'package:provider/provider.dart';
 import '../../models/asistencia_resumen.dart';
 import '../../models/curso_model.dart';
 import '../../models/student_subject_model.dart';
+import '../../services/identidad_facial_service.dart';
 import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/face_verification_viewmodel.dart';
 import '../../viewmodels/student_viewmodel.dart';
+import '../attendance/face_verification_screen.dart';
 import '../teacher/teacher_home_screen.dart';
 import '../attendance/ble_beacon_screen.dart';
 import 'attendance_detail_screen.dart';
@@ -90,14 +93,19 @@ class StudentHomeScreen extends StatelessWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                'Semáforo de Asistencia',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
+                              const Flexible(
+                                child: Text(
+                                  'Semáforo de Asistencia',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               const Text(
                                 'Mínimo ${AsistenciaResumen.minimo}%',
                                 style: TextStyle(
@@ -340,32 +348,41 @@ class StudentHomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SEMESTRE ACADÉMICO',
-                  style: TextStyle(
-                    color: _primaryIndigo,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.8,
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'SEMESTRE ACADÉMICO',
+                    style: TextStyle(
+                      color: _primaryIndigo,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8,
+                    ),
                   ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Portal Estudiante',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.5,
+                  SizedBox(height: 2),
+                  // Con la letra grande del celular, el título se encoge en
+                  // vez de salirse de la pantalla.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Portal Estudiante',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             Text(
-              '$totalSubjects Asignaturas',
+              totalSubjects == 1 ? '1 Asignatura' : '$totalSubjects Asignaturas',
               style: const TextStyle(
                 color: AppTheme.textSecondary,
                 fontSize: 13,
@@ -487,8 +504,11 @@ class StudentHomeScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // Con la letra grande del celular no cabe: se encoge.
+                  const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.how_to_reg,
@@ -505,6 +525,7 @@ class StudentHomeScreen extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -543,8 +564,11 @@ class StudentHomeScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // Con la letra grande del celular no cabe: se encoge.
+                  const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.menu_book_outlined,
@@ -561,6 +585,7 @@ class StudentHomeScreen extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -597,8 +622,11 @@ class StudentHomeScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // Con la letra grande del celular no cabe: se encoge.
+                  const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.warning_amber_rounded,
@@ -615,6 +643,7 @@ class StudentHomeScreen extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -770,20 +799,71 @@ Future<void> _onRegisterAttendanceTap(BuildContext context) async {
   final vigente = estudiante.llamadoVigente;
   if (vigente == null) return;
 
-  // La ubicación primero porque es inmediata: sería cruel pedirle la huella
-  // para después decirle que está a trescientos metros del aula. Las otras
-  // tres puertas —el celular vinculado, la biometría y la firma de la
-  // presencia— las lleva la pantalla de la baliza, que es donde se marca.
+  // La ubicación primero porque es inmediata: sería cruel pedirle la cara
+  // para después decirle que está a trescientos metros del aula.
   if (!await _estaEnElAula(context, vigente.$1) || !context.mounted) return;
 
+  // Después, que sea el dueño de la cuenta y no un compañero con su
+  // celular: prueba de vida y comparación con su cara.
+  if (!await IdentidadEnCelular.tieneReferencia(perfil!.uid)) {
+    if (!context.mounted || !await _aceptaEnrolarse(context)) return;
+  }
+  if (!context.mounted) return;
+  final rostro = await Navigator.push<VerificacionFacial>(
+    context,
+    MaterialPageRoute(builder: (_) => FaceVerificationScreen(curso: vigente.$1)),
+  );
+  if (rostro == null || !context.mounted) return;
+
+  // Las otras puertas —el celular vinculado, la huella y la firma de la
+  // presencia— las lleva la pantalla de la baliza, que es donde se marca.
   await Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (_) => BleBeaconScreen(cursos: estudiante.cursos, clave: clave),
+      builder: (_) => BleBeaconScreen(
+        cursos: estudiante.cursos,
+        clave: clave,
+        rostro: rostro,
+      ),
     ),
   );
   // Al volver de marcar, la asistencia ya cambió: hay que releerla.
   await estudiante.refrescar();
+}
+
+/// La primera vez que verifica su cara en este celular: qué se hace con ella
+/// y su consentimiento (los datos biométricos son sensibles, Ley 1581 de
+/// 2012).
+Future<bool> _aceptaEnrolarse(BuildContext context) async {
+  final acepta = await showDialog<bool>(
+    context: context,
+    builder: (dialogo) => AlertDialog(
+      backgroundColor: AppTheme.surfaceElevated,
+      title: const Text(
+        'Registrar tu rostro',
+        style: TextStyle(color: Colors.white),
+      ),
+      content: const Text(
+        'Para que nadie pueda marcar tu asistencia con tu celular, vamos a '
+        'comparar tu cara con tu foto de Chairá.\n\n'
+        'Si coinciden, guardaremos una huella numérica de tu rostro, cifrada '
+        'y solo en este celular. No se guarda ninguna foto ni sale nada de '
+        'tu teléfono. Puedes borrarla cuando quieras desde Ajustes.',
+        style: TextStyle(color: AppTheme.textSecondary, height: 1.4),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogo, false),
+          child: const Text('Ahora no'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogo, true),
+          child: const Text('Acepto'),
+        ),
+      ],
+    ),
+  );
+  return acepta ?? false;
 }
 
 /// Si el estudiante está dentro de la geocerca del curso. La baliza lo

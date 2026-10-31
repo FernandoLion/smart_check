@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/curso_model.dart';
 import '../models/inscrito_model.dart';
+import '../models/presencia_model.dart';
 import '../models/sesion_model.dart';
 import '../services/ble_service.dart';
 import '../services/curso_service.dart';
@@ -71,6 +72,16 @@ class RadarViewModel extends ChangeNotifier {
 
   /// Si a este inscrito se le oye pero aún falta su firma.
   bool esperandoFirma(String clave) => _sinFirma.contains(clave);
+
+  /// Las firmas del llamado, por clave. Dicen, entre otras cosas, si el
+  /// estudiante registró su rostro en este mismo momento.
+  StreamSubscription<List<Presencia>>? _subFirmas;
+  var _firmas = <String, Presencia>{};
+
+  /// Si este inscrito registró su rostro hoy (no tenía referencia en su
+  /// celular): no es fraude por sí solo, pero el docente debería mirarlo.
+  bool rostroRecienRegistrado(String clave) =>
+      _firmas[clave]?.rostroRecienEnrolado ?? false;
 
   bool _ocupado = false;
   bool _escaneando = false;
@@ -142,6 +153,7 @@ class RadarViewModel extends ChangeNotifier {
       _sesion = await _sesionDeLaClase(curso, bloque, ahora);
       await _cargarAsistencias(curso.id, _sesion!.id);
       _programarCierre(_sesion!);
+      _vigilarFirmas(curso.id, _sesion!.id);
 
       _suscripcion = _ble.escanear().listen(
         _alOirBaliza,
@@ -223,6 +235,18 @@ class RadarViewModel extends ChangeNotifier {
     _asistencias
       ..clear()
       ..addEntries(ya.map((a) => MapEntry(a.claveInscrito, a)));
+  }
+
+  void _vigilarFirmas(String cursoId, String sesionId) {
+    _subFirmas?.cancel();
+    _subFirmas = _cursos.presencias(cursoId, sesionId).listen(
+      (firmas) {
+        _firmas = {for (final f in firmas) f.claveInscrito: f};
+        notifyListeners();
+      },
+      // Es información extra para el docente: si no llega, el radar sigue.
+      onError: (Object _) {},
+    );
   }
 
   void _alOirBaliza(BalizaDetectada baliza) {
@@ -317,6 +341,8 @@ class RadarViewModel extends ChangeNotifier {
     _escaneando = false;
     if (cerrarSesion) {
       await _cerrarEnLaBase();
+      await _subFirmas?.cancel();
+      _subFirmas = null;
       _sesion = null;
     }
     notifyListeners();
@@ -340,6 +366,7 @@ class RadarViewModel extends ChangeNotifier {
   void dispose() {
     _cierre?.cancel();
     _suscripcion?.cancel();
+    _subFirmas?.cancel();
     _ble.detenerEscaneo();
     // Al salir de la pantalla se cierra el llamado igual que con el botón: una
     // ventana abierta sin nadie escuchando dejaría marcar a quien no está.

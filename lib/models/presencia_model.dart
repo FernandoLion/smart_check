@@ -33,12 +33,25 @@ class Presencia {
   /// `no_disponible`.
   final String biometria;
 
+  /// Cómo se comprobó su cara antes de firmar: `coincide` (con la que tenía
+  /// guardada el celular) o `enrolado` (era la primera vez y se comparó con
+  /// la foto de Chairá). Null si no pasó por la verificación facial.
+  ///
+  /// Como la huella, lo dice la app del estudiante: el servidor no lo puede
+  /// comprobar, pero le sirve al docente para mirar dos veces.
+  final String? rostro;
+
+  /// La similitud de esa comparación (de -1 a 1), para calibrar umbrales.
+  final double? similitudRostro;
+
   const Presencia({
     required this.claveInscrito,
     required this.dispositivo,
     required this.vinculadoEn,
     required this.biometria,
     this.creadoEn,
+    this.rostro,
+    this.similitudRostro,
   });
 
   /// `creado_en` va como hora del servidor porque la regla exige que sea
@@ -49,6 +62,10 @@ class Presencia {
         'dispositivo': dispositivo,
         'vinculado_en': Timestamp.fromDate(vinculadoEn),
         'biometria': biometria,
+        if (rostro != null) 'rostro': rostro,
+        if (similitudRostro != null)
+          'similitud_rostro':
+              double.parse(similitudRostro!.toStringAsFixed(3)),
       };
 
   factory Presencia.fromMap(String clave, Map<String, dynamic> map) =>
@@ -59,7 +76,12 @@ class Presencia {
         vinculadoEn:
             (map['vinculado_en'] as Timestamp?)?.toDate() ?? DateTime(0),
         biometria: map['biometria'] as String? ?? 'no_disponible',
+        rostro: map['rostro'] as String?,
+        similitudRostro: (map['similitud_rostro'] as num?)?.toDouble(),
       );
+
+  /// Si era la primera vez que verificaba su cara en este celular.
+  bool get rostroRecienEnrolado => rostro == 'enrolado';
 
   /// Si el celular con el que firmó se vinculó hace nada. No prueba nada por
   /// sí solo —cambiar de teléfono es normal—, pero es lo que el docente

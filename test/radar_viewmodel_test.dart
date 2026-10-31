@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/inscrito_model.dart';
+import 'package:smart_check/models/presencia_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/services/ble_service.dart';
 import 'package:smart_check/services/ubicacion_service.dart';
@@ -229,6 +230,42 @@ void main() {
       expect(ana.asistencia!.metodo, MetodoAsistencia.ble);
       expect(ana.asistencia!.estado, EstadoAsistencia.presente);
       expect(ana.rssi, -55);
+    });
+
+    test('avisa de quien registró su rostro en este llamado', () async {
+      // Con un reloj fijo a media mañana: con la hora real, cerca de la
+      // medianoche la clase de prueba cruzaría al día siguiente.
+      final fijo = DateTime(2026, 10, 28, 10, 0);
+      final vm = otroRadar(reloj: () => fijo);
+      expect(await vm.iniciar(cursoEnClase(ahora: fijo), 'uid-docente'), isTrue);
+      expect(vm.rostroRecienRegistrado('1117000000'), isFalse);
+
+      await cursos.firmarPresencia(
+        'c1',
+        vm.sesion!.id,
+        Presencia(
+          claveInscrito: '1117000000',
+          dispositivo: 'android-1',
+          vinculadoEn: DateTime(2026, 10, 1),
+          biometria: 'biometrica',
+          rostro: 'enrolado',
+        ),
+      );
+      await cursos.firmarPresencia(
+        'c1',
+        vm.sesion!.id,
+        Presencia(
+          claveInscrito: 'ca.munoz@udla.edu.co',
+          dispositivo: 'android-2',
+          vinculadoEn: DateTime(2026, 10, 1),
+          biometria: 'biometrica',
+          rostro: 'coincide',
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(vm.rostroRecienRegistrado('1117000000'), isTrue);
+      expect(vm.rostroRecienRegistrado('ca.munoz@udla.edu.co'), isFalse);
     });
 
     test('a quien aun no ha firmado se le espera, sin dar error', () async {

@@ -3,7 +3,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../services/identidad_facial_service.dart';
 import '../services/rostro_service.dart';
+import '../utils/rostro_vectores.dart';
 
 /// En qué va la verificación facial.
 enum PasoVerificacion {
@@ -16,10 +18,13 @@ enum PasoVerificacion {
   /// Toca hacer el gesto que se pidió.
   reto,
 
+  /// Hizo el gesto: se toma una foto y se compara con la del dueño.
+  comparando,
+
   /// Hecho: el estudiante ya puede emitir la baliza.
   verificado,
 
-  /// No se pudo, porque se acabó el tiempo.
+  /// No se pudo: se acabó el tiempo o la cara no es la del dueño.
   fallido,
 }
 
@@ -27,15 +32,41 @@ enum PasoVerificacion {
 /// un vídeo de antemano.
 enum Reto { parpadeo, giro }
 
-/// ViewModel de la verificación facial: decide si delante de la cámara hay
-/// una persona de verdad antes de dejar emitir la baliza.
+/// Cómo se confirmó que es el dueño de la cuenta.
+enum ResultadoIdentidad {
+  /// Su cara coincide con la referencia guardada en este celular.
+  coincide,
+
+  /// No había referencia: su cara coincidió con la foto de Chairá y desde
+  /// ahora es la referencia. El docente debería mirarlo dos veces.
+  enrolado,
+}
+
+/// Lo que la verificación facial le devuelve a quien la abrió.
+typedef VerificacionFacial = ({ResultadoIdentidad resultado, double? similitud});
+
+/// ViewModel de la verificación facial: decide si delante de la cámara está
+/// el dueño de la cuenta, vivo, antes de dejar emitir la baliza.
 ///
-/// No sabe nada de cámaras ni de ML Kit: recibe lo que ya vio
-/// [RostroService] y lleva la cuenta del gesto. Lo que cierra el fraude no es
-/// ver una cara, que una foto también la tiene, sino verla **moverse** cuando
-/// se le pide: por eso el parpadeo exige la secuencia completa de
-/// abierto-cerrado-abierto y no un solo fotograma.
+/// No sabe nada de cámaras ni de ML Kit. Son dos pruebas seguidas:
+/// - **De vida**, con lo que ya vio [RostroService]: lo que cierra el fraude
+///   no es ver una cara, que una foto también la tiene, sino verla
+///   **moverse** cuando se le pide. Por eso el parpadeo exige la secuencia
+///   completa de abierto-cerrado-abierto y no un solo fotograma.
+/// - **De identidad**, con [IdentidadFacial]: al terminar el gesto la
+///   pantalla toma una foto y su cara se compara con la del dueño. Sin esto,
+///   un compañero con el celular del ausente pasaría la prueba de vida con
+///   su propia cara.
 class FaceVerificationViewModel extends ChangeNotifier {
+  /// Similitud mínima con la referencia guardada en el celular. Las dos
+  /// caras salen de esta misma cámara, así que se puede exigir más.
+  /// PENDIENTE: calibrar con pruebas en celulares reales.
+  static const umbralIdentidad = 0.50;
+
+  /// Similitud mínima con la foto de Chairá para enrolarse. Es más laxo
+  /// porque esa foto puede tener años y otra luz.
+  static const umbralEnrolamiento = 0.35;
+
   /// Fracción del ancho del cuadro que tiene que ocupar la cara. Más lejos,
   /// ni ML Kit ni nadie distingue un parpadeo.
   static const tamanoMinimo = 0.25;
@@ -55,10 +86,21 @@ class FaceVerificationViewModel extends ChangeNotifier {
   /// fallido. Se puede acortar en los tests.
   final Duration limite;
 
+  /// Con quién se compara la cara. null solo en [soloPruebaDeVida].
+  final IdentidadFacial? identidad;
+
   FaceVerificationViewModel({
+    required IdentidadFacial this.identidad,
     Random? azar,
     this.limite = const Duration(seconds: 20),
   }) : _azar = azar ?? Random();
+
+  /// Solo el gesto, sin comparar la cara (para probar la prueba de vida).
+  FaceVerificationViewModel.soloPruebaDeVida({
+    Random? azar,
+    this.limite = const Duration(seconds: 20),
+  })  : identidad = null,
+        _azar = azar ?? Random();
 
   Timer? _cuentaAtras;
   PasoVerificacion _paso = PasoVerificacion.buscando;
@@ -70,14 +112,30 @@ class FaceVerificationViewModel extends ChangeNotifier {
   bool _vioCerrado = false;
   bool _vioGirado = false;
 
+  /// La cara que está haciendo el gesto, según el seguimiento de ML Kit.
+  int? _seguimiento;
+
+  bool _comparandoFoto = false;
+  ResultadoIdentidad? _resultado;
+  double? _similitud;
+
   PasoVerificacion get paso => _paso;
   Reto get reto => _reto;
   bool get verificado => _paso == PasoVerificacion.verificado;
   bool get terminado => verificado || _paso == PasoVerificacion.fallido;
 
+  /// Si la pantalla tiene que tomar la foto para comparar.
+  bool get quiereFoto =>
+      _paso == PasoVerificacion.comparando && !_comparandoFoto;
+
+  ResultadoIdentidad? get resultado => _resultado;
+
+  /// La última similitud calculada (para calibrar los umbrales).
+  double? get similitudCalculada => _similitud;
+
   /// Qué parte del gesto lleva hecha, para la barra de la pantalla.
   double get progreso {
-    if (verificado) return 1;
+    if (verificado || _paso == PasoVerificacion.comparando) return 1;
     if (_reto == Reto.parpadeo) {
       if (_vioCerrado) return 0.66;
       return _vioAbierto ? 0.33 : 0;
@@ -101,8 +159,12 @@ class FaceVerificationViewModel extends ChangeNotifier {
         return _vioGirado
             ? 'Vuelve a mirar de frente.'
             : 'Gira la cabeza hacia un lado.';
+      case PasoVerificacion.comparando:
+        return 'Comparando tu rostro...';
       case PasoVerificacion.verificado:
-        return 'Listo, eres tú.';
+        return _resultado == ResultadoIdentidad.enrolado
+            ? 'Listo, registramos tu rostro en este celular.'
+            : 'Listo, eres tú.';
       case PasoVerificacion.fallido:
         return _aviso ?? 'No se pudo verificar tu rostro.';
     }
@@ -113,6 +175,9 @@ class FaceVerificationViewModel extends ChangeNotifier {
     _paso = PasoVerificacion.buscando;
     _reto = _azar.nextBool() ? Reto.parpadeo : Reto.giro;
     _aviso = null;
+    _resultado = null;
+    _similitud = null;
+    _comparandoFoto = false;
     _olvidarElGesto();
     _cuentaAtras?.cancel();
     _cuentaAtras = Timer(limite, _alAgotarseElTiempo);
@@ -122,7 +187,7 @@ class FaceVerificationViewModel extends ChangeNotifier {
   /// Lo que se vio en un fotograma. Se llama muchas veces por segundo, así
   /// que solo avisa a la pantalla cuando algo cambia de verdad.
   void alVer(RostroVisto visto) {
-    if (terminado) return;
+    if (terminado || _paso == PasoVerificacion.comparando) return;
     final pasoAntes = _paso;
     final avisoAntes = _aviso;
     final progresoAntes = progreso;
@@ -143,6 +208,13 @@ class FaceVerificationViewModel extends ChangeNotifier {
     } else {
       _paso = PasoVerificacion.reto;
       _aviso = null;
+      // Si ML Kit dice que la cara es otra, el gesto empieza de cero: no se
+      // vale que uno parpadee y otro se ponga para la foto.
+      final id = visto.seguimiento;
+      if (id != null && _seguimiento != null && id != _seguimiento) {
+        _olvidarElGesto();
+      }
+      _seguimiento = id ?? _seguimiento;
       _avanzarElGesto(visto);
     }
 
@@ -184,14 +256,78 @@ class FaceVerificationViewModel extends ChangeNotifier {
   void _darPorVerificado() {
     _cuentaAtras?.cancel();
     _cuentaAtras = null;
+    _aviso = null;
+    // Sin identidad con qué comparar (solo en las pruebas de la prueba de
+    // vida), el gesto basta.
+    _paso = identidad == null
+        ? PasoVerificacion.verificado
+        : PasoVerificacion.comparando;
+  }
+
+  /// Compara la cara de la foto que la pantalla tomó al terminar el gesto
+  /// con la del dueño de la cuenta.
+  ///
+  /// Si este celular ya tiene su referencia, se compara con ella. Si no, se
+  /// compara con la foto de Chairá y, si coincide, esta cara pasa a ser la
+  /// referencia: así un compañero no puede enrolarse en lugar del dueño.
+  Future<void> compararFoto(String ruta) async {
+    final identidad = this.identidad;
+    if (identidad == null || !quiereFoto) return;
+    _comparandoFoto = true;
+    notifyListeners();
+    try {
+      final vivo = await identidad.embeddingDeFoto(ruta);
+      if (vivo == null) {
+        return _fallar('No se vio bien tu cara. Vuelve a intentarlo con '
+            'buena luz y sin nadie más en la imagen.');
+      }
+
+      final referencia = await identidad.referencia();
+      if (referencia != null) {
+        _similitud = similitud(vivo, referencia);
+        if (_similitud! >= umbralIdentidad) {
+          return _confirmar(ResultadoIdentidad.coincide);
+        }
+        return _fallar('No pudimos confirmar que eres tú. Solo el dueño de '
+            'la cuenta puede registrar su asistencia.');
+      }
+
+      final chaira = await identidad.embeddingDeChaira();
+      if (chaira == null) {
+        return _fallar('No hay una foto tuya en Chairá con la que comparar '
+            'tu rostro. Pide al docente que te marque a mano.');
+      }
+      _similitud = similitud(vivo, chaira);
+      if (_similitud! < umbralEnrolamiento) {
+        return _fallar('Tu rostro no coincide con tu foto de Chairá. Si eres '
+            'tú, pide al docente que te marque a mano.');
+      }
+      await identidad.guardarReferencia(vivo);
+      _confirmar(ResultadoIdentidad.enrolado);
+    } catch (_) {
+      _fallar('No se pudo comparar tu rostro. Vuelve a intentarlo.');
+    } finally {
+      _comparandoFoto = false;
+      notifyListeners();
+    }
+  }
+
+  void _confirmar(ResultadoIdentidad resultado) {
+    _resultado = resultado;
     _paso = PasoVerificacion.verificado;
     _aviso = null;
+  }
+
+  void _fallar(String motivo) {
+    _paso = PasoVerificacion.fallido;
+    _aviso = motivo;
   }
 
   void _olvidarElGesto() {
     _vioAbierto = false;
     _vioCerrado = false;
     _vioGirado = false;
+    _seguimiento = null;
   }
 
   void _alAgotarseElTiempo() {

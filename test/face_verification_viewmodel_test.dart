@@ -1,8 +1,44 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_check/services/identidad_facial_service.dart';
 import 'package:smart_check/services/rostro_service.dart';
 import 'package:smart_check/viewmodels/face_verification_viewmodel.dart';
+
+/// Caras de mentira: cada "foto" es un vector fijo según su ruta.
+class _IdentidadFalsa implements IdentidadFacial {
+  final Map<String, List<double>?> fotos;
+  List<double>? guardada;
+  List<double>? chaira;
+  bool falla = false;
+
+  _IdentidadFalsa({required this.fotos, this.guardada, this.chaira});
+
+  @override
+  Future<List<double>?> embeddingDeFoto(String ruta) async {
+    if (falla) throw Exception('sin modelo');
+    return fotos[ruta];
+  }
+
+  @override
+  Future<List<double>?> referencia() async => guardada;
+
+  @override
+  Future<void> guardarReferencia(List<double> embedding) async =>
+      guardada = embedding;
+
+  @override
+  Future<List<double>?> embeddingDeChaira() async => chaira;
+
+  @override
+  Future<void> cerrar() async {}
+}
+
+// Vectores con similitudes conocidas: el coseno entre dueno y casiDueno es
+// 0.8, y entre dueno y otro es 0.
+const dueno = [1.0, 0.0];
+const casiDueno = [0.8, 0.6];
+const otro = [0.0, 1.0];
 
 /// Un `Random` que siempre contesta lo mismo, para elegir el gesto en los
 /// tests en vez de dejarlo al azar.
@@ -38,7 +74,7 @@ RostroVisto cara({
 void main() {
   /// El viewmodel con el gesto ya elegido: `nextBool` true es parpadeo.
   FaceVerificationViewModel conReto(Reto reto, {Duration? limite}) {
-    final vm = FaceVerificationViewModel(
+    final vm = FaceVerificationViewModel.soloPruebaDeVida(
       azar: _AzarFijo(reto == Reto.parpadeo),
       limite: limite ?? const Duration(seconds: 20),
     );
@@ -185,6 +221,150 @@ void main() {
     // Y ya no reacciona a nada hasta que se reintente.
     vm.alVer(cara(ojos: 0.95));
     expect(vm.paso, PasoVerificacion.fallido);
+  });
+
+  test('si otra cara toma el lugar a media prueba, el gesto empieza de nuevo',
+      () {
+    final vm = conReto(Reto.parpadeo);
+
+    vm.alVer(const RostroVisto(
+      rostros: 1, tamano: 0.4, ojoIzquierdo: 0.95, ojoDerecho: 0.95,
+      seguimiento: 1,
+    ));
+    vm.alVer(const RostroVisto(
+      rostros: 1, tamano: 0.4, ojoIzquierdo: 0.05, ojoDerecho: 0.05,
+      seguimiento: 1,
+    ));
+    // Otra persona (otro id de seguimiento) abre los ojos.
+    vm.alVer(const RostroVisto(
+      rostros: 1, tamano: 0.4, ojoIzquierdo: 0.95, ojoDerecho: 0.95,
+      seguimiento: 2,
+    ));
+
+    expect(vm.verificado, isFalse);
+    expect(vm.instruccion, 'Parpadea.');
+  });
+
+  group('identidad', () {
+    FaceVerificationViewModel conIdentidad(_IdentidadFalsa identidad) {
+      final vm = FaceVerificationViewModel(
+        identidad: identidad,
+        azar: _AzarFijo(true),
+      );
+      addTearDown(vm.dispose);
+      vm.empezar();
+      // El parpadeo completo.
+      vm.alVer(cara(ojos: 0.95));
+      vm.alVer(cara(ojos: 0.05));
+      vm.alVer(cara(ojos: 0.95));
+      return vm;
+    }
+
+    test('tras el gesto pide la foto en vez de dar por verificado', () {
+      final vm = conIdentidad(_IdentidadFalsa(fotos: {}));
+
+      expect(vm.paso, PasoVerificacion.comparando);
+      expect(vm.quiereFoto, isTrue);
+      expect(vm.verificado, isFalse);
+      // Mientras compara, los fotogramas ya no cuentan.
+      vm.alVer(RostroVisto.nadie);
+      expect(vm.paso, PasoVerificacion.comparando);
+    });
+
+    test('el dueño con referencia pasa', () async {
+      final identidad =
+          _IdentidadFalsa(fotos: {'foto': casiDueno}, guardada: dueno);
+      final vm = conIdentidad(identidad);
+
+      await vm.compararFoto('foto');
+
+      expect(vm.verificado, isTrue);
+      expect(vm.resultado, ResultadoIdentidad.coincide);
+      expect(vm.similitudCalculada, closeTo(0.8, 1e-9));
+    });
+
+    test('otra persona con el celular del dueño no pasa', () async {
+      final identidad =
+          _IdentidadFalsa(fotos: {'foto': otro}, guardada: dueno);
+      final vm = conIdentidad(identidad);
+
+      await vm.compararFoto('foto');
+
+      expect(vm.paso, PasoVerificacion.fallido);
+      expect(vm.instruccion, contains('No pudimos confirmar que eres tú'));
+      // Fallar no toca la referencia.
+      expect(identidad.guardada, dueno);
+    });
+
+    test('sin referencia se enrola si coincide con Chairá', () async {
+      final identidad =
+          _IdentidadFalsa(fotos: {'foto': casiDueno}, chaira: dueno);
+      final vm = conIdentidad(identidad);
+
+      await vm.compararFoto('foto');
+
+      expect(vm.verificado, isTrue);
+      expect(vm.resultado, ResultadoIdentidad.enrolado);
+      expect(identidad.guardada, casiDueno);
+      expect(vm.instruccion, contains('registramos tu rostro'));
+    });
+
+    test('un compañero no se puede enrolar en lugar del dueño', () async {
+      final identidad = _IdentidadFalsa(fotos: {'foto': otro}, chaira: dueno);
+      final vm = conIdentidad(identidad);
+
+      await vm.compararFoto('foto');
+
+      expect(vm.paso, PasoVerificacion.fallido);
+      expect(vm.instruccion, contains('no coincide con tu foto de Chairá'));
+      expect(identidad.guardada, isNull);
+    });
+
+    test('sin foto de Chairá no se puede enrolar', () async {
+      final identidad = _IdentidadFalsa(fotos: {'foto': dueno});
+      final vm = conIdentidad(identidad);
+
+      await vm.compararFoto('foto');
+
+      expect(vm.paso, PasoVerificacion.fallido);
+      expect(vm.instruccion, contains('marque a mano'));
+      expect(identidad.guardada, isNull);
+    });
+
+    test('si en la foto no hay una sola cara, falla', () async {
+      final identidad = _IdentidadFalsa(fotos: {'foto': null}, guardada: dueno);
+      final vm = conIdentidad(identidad);
+
+      await vm.compararFoto('foto');
+
+      expect(vm.paso, PasoVerificacion.fallido);
+      expect(vm.instruccion, contains('No se vio bien tu cara'));
+    });
+
+    test('un error del modelo falla sin romper la pantalla', () async {
+      final identidad =
+          _IdentidadFalsa(fotos: {'foto': dueno}, guardada: dueno)
+            ..falla = true;
+      final vm = conIdentidad(identidad);
+
+      await vm.compararFoto('foto');
+
+      expect(vm.paso, PasoVerificacion.fallido);
+      expect(vm.instruccion, contains('No se pudo comparar'));
+    });
+
+    test('reintentar después de fallar vuelve a pedir el gesto', () async {
+      final identidad =
+          _IdentidadFalsa(fotos: {'foto': otro}, guardada: dueno);
+      final vm = conIdentidad(identidad);
+      await vm.compararFoto('foto');
+
+      vm.empezar();
+
+      expect(vm.paso, PasoVerificacion.buscando);
+      expect(vm.resultado, isNull);
+      expect(vm.quiereFoto, isFalse);
+    });
   });
 
   test('reintentar vuelve a empezar', () async {

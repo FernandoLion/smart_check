@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../models/verificacion_result_model.dart';
+import '../../services/identidad_facial_service.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../login_screen.dart';
@@ -508,6 +509,13 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                       title: 'Cerrar sesión en otros dispositivos',
                       onTap: () {},
                     ),
+                    _buildDivider(),
+                    _buildNavRow(
+                      icon: Icons.face_retouching_off,
+                      title: 'Borrar mi rostro de este celular',
+                      subtitle: 'Se volverá a comparar con tu foto de Chairá',
+                      onTap: _borrarRostro,
+                    ),
                   ]),
                   const SizedBox(height: 24),
 
@@ -912,6 +920,52 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
           fontWeight: FontWeight.w500,
         ),
       ),
+    );
+  }
+
+  /// Borra la huella numérica del rostro guardada en este celular. La
+  /// próxima vez que marque asistencia se volverá a registrar contra Chairá.
+  Future<void> _borrarRostro() async {
+    final uid = context.read<AuthViewModel>().perfil?.uid;
+    if (uid == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    if (!await IdentidadEnCelular.tieneReferencia(uid)) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('No hay un rostro tuyo en este celular.')),
+      );
+      return;
+    }
+    if (!mounted) return;
+    final confirma = await showDialog<bool>(
+      context: context,
+      builder: (dialogo) => AlertDialog(
+        backgroundColor: AppTheme.surfaceElevated,
+        title: const Text(
+          '¿Borrar tu rostro?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'La próxima vez que marques asistencia tendrás que registrarlo de '
+          'nuevo, comparándolo con tu foto de Chairá.',
+          style: TextStyle(color: AppTheme.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogo, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogo, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.error),
+            child: const Text('Borrar'),
+          ),
+        ],
+      ),
+    );
+    if (confirma != true) return;
+    await IdentidadEnCelular.olvidar(uid);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Tu rostro se borró de este celular.')),
     );
   }
 

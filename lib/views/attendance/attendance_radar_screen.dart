@@ -791,7 +791,12 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
     }
     final tarde = asistencia.estado == EstadoAsistencia.tarde;
     final senal = fila.rssi == null ? '' : ' • ${_calidad(fila.rssi!)} señal';
-    return '${tarde ? 'Llegó tarde' : 'Detectado por BLE'}$senal';
+    // Registró su rostro hoy en ese celular: no es fraude por sí solo
+    // (celular nuevo, reinstalación), pero conviene mirarlo en persona.
+    final rostro = _vm.rostroRecienRegistrado(fila.inscrito.clave)
+        ? ' • rostro registrado hoy, verifícalo'
+        : '';
+    return '${tarde ? 'Llegó tarde' : 'Detectado por BLE'}$senal$rostro';
   }
 
   /// De -40 dBm (pegado al docente) a -100 dBm (al límite del aula).

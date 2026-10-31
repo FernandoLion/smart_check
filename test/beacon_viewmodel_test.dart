@@ -232,6 +232,39 @@ void main() {
     expect(ble.anunciando, '1117000000');
   });
 
+  test('la firma lleva cómo se verificó su rostro', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+
+    expect(
+      await vm.marcar(
+        [enAula],
+        '1117000000',
+        dispositivoVinculado: celularDePrueba,
+        vinculadoEn: atado,
+        rostro: 'enrolado',
+        similitudRostro: 0.61234,
+      ),
+      isTrue,
+    );
+
+    final firma = cursos.presenciasPorSesion['llamado-1']!.single;
+    expect(firma.rostro, 'enrolado');
+    expect(firma.rostroRecienEnrolado, isTrue);
+    // Se guarda redondeada: es para calibrar, no hace falta más.
+    expect(firma.toMap()['similitud_rostro'], 0.612);
+    expect(firma.toMap()['rostro'], 'enrolado');
+  });
+
+  test('sin verificación facial la firma no inventa el campo', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+
+    expect(await marcar([enAula]), isTrue);
+
+    final mapa = cursos.presenciasPorSesion['llamado-1']!.single.toMap();
+    expect(mapa.containsKey('rostro'), isFalse);
+    expect(mapa.containsKey('similitud_rostro'), isFalse);
+  });
+
   test('si el servidor rechaza la firma, no se anuncia', () async {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
     cursos.falloAlFirmar = const CursoException(

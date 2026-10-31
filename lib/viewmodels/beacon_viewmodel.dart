@@ -67,11 +67,16 @@ class BeaconViewModel extends ChangeNotifier {
   /// Busca entre [cursos] uno con el llamado abierto ahora mismo y empieza a
   /// anunciar [clave]. Devuelve false si no hay llamado, si el estudiante no
   /// está en el aula o si falla el BLE.
+  ///
+  /// [rostro] y [similitudRostro] son lo que dio la verificación facial
+  /// antes de llegar aquí, y viajan en la firma para el docente.
   Future<bool> marcar(
     List<Curso> cursos,
     String clave, {
     String? dispositivoVinculado,
     DateTime? vinculadoEn,
+    String? rostro,
+    double? similitudRostro,
   }) async {
     _buscando = true;
     _error = null;
@@ -131,6 +136,8 @@ class BeaconViewModel extends ChangeNotifier {
           dispositivo: esteCelular!,
           vinculadoEn: vinculadoEn,
           biometria: biometria.comoDato,
+          rostro: rostro,
+          similitudRostro: similitudRostro,
         ),
       );
 

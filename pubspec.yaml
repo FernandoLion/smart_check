@@ -56,6 +56,13 @@ dependencies:
   camera: ^0.12.2
   google_mlkit_face_detection: ^0.15.1
 
+  # Y quien es: MobileFaceNet (assets/models) convierte la cara en un vector
+  # de 128 numeros que se compara con el del dueno de la cuenta. `image`
+  # recorta y escala la cara; la referencia se guarda cifrada en el celular.
+  tflite_flutter: ^0.12.1
+  image: ^4.12.0
+  flutter_secure_storage: ^11.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -82,6 +89,9 @@ flutter:
     # Raiz de Sectigo (R46) con la que se firma el certificado de Chaira.
     # Varios Android todavia en uso no la traen, asi que la app la lleva.
     - assets/certs/sectigo_r46.pem
+    # MobileFaceNet de Qualcomm AI Hub v0.65.0 (Apache-2.0, ver
+    # assets/models/README.md).
+    - assets/models/mobile_facenet.tflite
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -9,6 +9,7 @@ import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/beacon_viewmodel.dart';
+import '../../viewmodels/face_verification_viewmodel.dart';
 
 class BleBeaconScreen extends StatefulWidget {
   /// Las materias del estudiante: entre ellas se busca la que el docente
@@ -18,10 +19,14 @@ class BleBeaconScreen extends StatefulWidget {
   /// Cédula o correo con el que el docente lo inscribió.
   final String clave;
 
+  /// Cómo se verificó su cara antes de llegar aquí; viaja en la firma.
+  final VerificacionFacial? rostro;
+
   const BleBeaconScreen({
     super.key,
     required this.cursos,
     required this.clave,
+    this.rostro,
   });
 
   @override
@@ -100,6 +105,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
       widget.clave,
       dispositivoVinculado: perfil?.dispositivoId,
       vinculadoEn: perfil?.dispositivoDesde,
+      rostro: widget.rostro?.resultado.name,
+      similitudRostro: widget.rostro?.similitud,
     );
     if (!mounted || ok) return;
     setState(() => _isStopped = true);

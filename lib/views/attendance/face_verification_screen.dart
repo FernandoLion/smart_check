@@ -1,19 +1,25 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/curso_model.dart';
+import '../../services/chaira_service.dart';
+import '../../services/identidad_facial_service.dart';
 import '../../services/rostro_service.dart';
 import '../../utils/app_theme.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/face_verification_viewmodel.dart';
 
-/// Comprueba con la cámara frontal que delante del celular hay una persona
-/// de verdad, antes de dejarla emitir la baliza.
+/// Comprueba con la cámara frontal que delante del celular está el dueño de
+/// la cuenta, vivo, antes de dejarlo emitir la baliza.
 ///
-/// Devuelve `true` por [Navigator.pop] si se verificó, y null si se canceló
-/// o no se pudo.
+/// Devuelve por [Navigator.pop] una [VerificacionFacial] si se verificó, y
+/// null si se canceló o no se pudo.
 class FaceVerificationScreen extends StatefulWidget {
   final Curso curso;
 
@@ -44,7 +50,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
   late final AnimationController _pulseController;
 
   final _rostros = RostroService();
-  final _vm = FaceVerificationViewModel();
+  late final FaceVerificationViewModel _vm;
 
   CameraController? _camara;
 
@@ -52,6 +58,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
   /// encolan, la vista se traba y acaba cayéndose.
   bool _procesando = false;
   bool _saliendo = false;
+  bool _tomandoFoto = false;
   String? _errorDeCamara;
 
   bool get _isValidated => _vm.verificado;
@@ -72,6 +79,20 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
 
+    final auth = context.read<AuthViewModel>();
+    final perfil = auth.perfil;
+    _vm = FaceVerificationViewModel(
+      identidad: IdentidadEnCelular(
+        uid: perfil?.uid ?? '',
+        // La de la sesión si ya bajó; si no, se descarga ahora.
+        fotoChaira: () async {
+          final enMemoria = auth.usuarioActual?.imagenBytes;
+          if (enMemoria != null) return enMemoria;
+          final url = perfil?.fotoUrl;
+          return url == null ? null : ChairaService().descargarFoto(url);
+        },
+      ),
+    );
     _vm.addListener(_alCambiar);
     _encenderLaCamara();
   }
@@ -79,7 +100,41 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
   void _alCambiar() {
     if (!mounted) return;
     setState(() {});
+    if (_vm.quiereFoto) _tomarFoto();
     if (_vm.verificado) _salirVerificado();
+  }
+
+  /// Al terminar el gesto se toma una foto en ese mismo instante y se
+  /// compara con la del dueño. La foto se borra en cuanto se compara.
+  Future<void> _tomarFoto() async {
+    final camara = _camara;
+    if (_tomandoFoto || camara == null) return;
+    _tomandoFoto = true;
+    XFile? foto;
+    try {
+      if (camara.value.isStreamingImages) await camara.stopImageStream();
+      foto = await camara.takePicture();
+      await _vm.compararFoto(foto.path);
+    } catch (_) {
+      await _vm.compararFoto('');
+    } finally {
+      _tomandoFoto = false;
+      if (foto != null) {
+        try {
+          await File(foto.path).delete();
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// Otro intento, con otro gesto sorteado.
+  Future<void> _reintentar() async {
+    final camara = _camara;
+    if (camara == null || _tomandoFoto) return;
+    _vm.empezar();
+    if (!camara.value.isStreamingImages) {
+      await camara.startImageStream(_alLlegarFotograma);
+    }
   }
 
   Future<void> _encenderLaCamara() async {
@@ -163,12 +218,18 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     if (_saliendo) return;
     _saliendo = true;
     await Future<void>.delayed(const Duration(milliseconds: 800));
-    if (mounted) Navigator.pop(context, true);
+    final resultado = _vm.resultado;
+    if (!mounted || resultado == null) return;
+    Navigator.pop<VerificacionFacial>(
+      context,
+      (resultado: resultado, similitud: _vm.similitudCalculada),
+    );
   }
 
   @override
   void dispose() {
     _vm.removeListener(_alCambiar);
+    _vm.identidad?.cerrar();
     _vm.dispose();
     _camara?.dispose();
     _rostros.cerrar();
@@ -266,7 +327,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
               // Volver a empezar con otro gesto. (Aquí había una linterna,
               // pero la cámara frontal del celular no tiene flash.)
               GestureDetector(
-                onTap: _camara == null ? null : _vm.empezar,
+                onTap: _camara == null ? null : _reintentar,
                 child: Container(
                   width: 40,
                   height: 40,
@@ -539,7 +600,12 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            _vm.instruccion,
+                            // En depuración se ve la similitud, para
+                            // calibrar los umbrales con caras reales.
+                            kDebugMode && _vm.similitudCalculada != null
+                                ? '${_vm.instruccion} '
+                                    '(${_vm.similitudCalculada!.toStringAsFixed(2)})'
+                                : _vm.instruccion,
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               color: Colors.white,
@@ -584,8 +650,10 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
               _buildTelemetryPill(
                 icon: _isValidated ? Icons.verified : Icons.timelapse,
                 label: _isValidated
-                    ? 'Prueba de vida: OK'
-                    : 'Prueba de vida: ${(_vm.progreso * 100).round()}%',
+                    ? 'Identidad: OK'
+                    : _vm.paso == PasoVerificacion.comparando
+                        ? 'Comparando con tu rostro'
+                        : 'Prueba de vida: ${(_vm.progreso * 100).round()}%',
               ),
             ],
           ),
