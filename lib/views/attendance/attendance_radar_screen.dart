@@ -384,21 +384,28 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.sensors, color: _primaryIndigo, size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'SENSOR OMNIDIRECCIONAL',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.6,
+                    const Expanded(
+                      child: Row(
+                        children: [
+                          Icon(Icons.sensors, color: _primaryIndigo, size: 18),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'SENSOR OMNIDIRECCIONAL',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
@@ -659,20 +666,29 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                         ),
                       ],
                     ),
-                    Row(
-                      children: [
-                        const Icon(Icons.radar,
-                            color: _primaryIndigo, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          _mejorSenal,
-                          style: const TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                    const SizedBox(width: 8),
+                    // La señal es lo secundario: si no cabe, se recorta.
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.radar,
+                              color: _primaryIndigo, size: 14),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              _mejorSenal,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -998,15 +1014,20 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'ESTUDIANTES EN AULA (${_vm.totalInscritos} INSCRITOS)',
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.7,
+              Flexible(
+                child: Text(
+                  'ESTUDIANTES EN AULA (${_vm.totalInscritos} INSCRITOS)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.7,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               Row(
                 children: [
                   Icon(Icons.sort, color: _secondaryBlue, size: 14),
@@ -1044,8 +1065,11 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
             color: isSelected ? _surfaceElevated : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // Tres pestañas en un ancho fijo: con letra grande se encogen.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               if (dotColor != null) ...[
                 CircleAvatar(radius: 3, backgroundColor: dotColor),
@@ -1070,6 +1094,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),
@@ -1356,12 +1381,19 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                       size: 20,
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      _textoDelBotonPrincipal,
-                      style: TextStyle(
-                        color: _isRadarActive ? Colors.white : _tertiaryGreen,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _textoDelBotonPrincipal,
+                          maxLines: 1,
+                          style: TextStyle(
+                            color:
+                                _isRadarActive ? Colors.white : _tertiaryGreen,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],

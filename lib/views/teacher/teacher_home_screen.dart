@@ -309,13 +309,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               children: [
                 Row(
                   children: [
-                    const Text(
-                      'CAMPUS CENTRAL • FIIS',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.8,
+                    const Flexible(
+                      child: Text(
+                        'CAMPUS CENTRAL • FIIS',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -343,13 +347,19 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Panel Docente',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.6,
+                // Con la letra o la pantalla en grande se encoge en vez de
+                // salirse.
+                const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Panel Docente',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.6,
+                    ),
                   ),
                 ),
               ],
@@ -843,7 +853,8 @@ class _TeacherCourseCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
+                  Expanded(
+                    child: Row(
                     children: [
                       Stack(
                         alignment: Alignment.center,
@@ -874,11 +885,14 @@ class _TeacherCourseCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(width: 12),
-                      Column(
+                      Expanded(
+                        child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
                             'Asistencia Global',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 14,
@@ -890,6 +904,8 @@ class _TeacherCourseCard extends StatelessWidget {
                             course.enrolledCount == 1
                                 ? '1 Alumno inscrito'
                                 : '${course.enrolledCount} Alumnos inscritos',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 12,
@@ -897,8 +913,11 @@ class _TeacherCourseCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      ),
                     ],
                   ),
+                  ),
+                  const SizedBox(width: 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [

@@ -914,12 +914,17 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                   ),
                 ],
               ),
-              const Text(
-                'Sesión actual',
-                style: TextStyle(
-                  color: AppTheme.textTertiary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
+              const SizedBox(width: 8),
+              const Flexible(
+                child: Text(
+                  'Sesión actual',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppTheme.textTertiary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
