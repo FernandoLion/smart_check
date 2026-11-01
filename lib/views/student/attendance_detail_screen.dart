@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
+
 import '../../../models/student_subject_model.dart';
 import '../../../utils/app_theme.dart';
 import "../attendance/ble_beacon_screen.dart";
+
 class AttendanceDetailScreen extends StatefulWidget {
   final StudentSubjectModel? subject;
 
-  const AttendanceDetailScreen({
-    super.key,
-    this.subject,
-  });
+  const AttendanceDetailScreen({super.key, this.subject});
 
   @override
   State<AttendanceDetailScreen> createState() => _AttendanceDetailScreenState();
@@ -146,11 +145,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.chevron_left,
-                  color: _primaryIndigo,
-                  size: 26,
-                ),
+                Icon(Icons.chevron_left, color: _primaryIndigo, size: 26),
                 Text(
                   'Mis Asignaturas',
                   style: TextStyle(
@@ -186,11 +181,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
-      child: Icon(
-        icon,
-        color: AppTheme.textSecondary,
-        size: 18,
-      ),
+      child: Icon(icon, color: AppTheme.textSecondary, size: 18),
     );
   }
 
@@ -259,22 +250,23 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            RichText(
-              text: const TextSpan(
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 13,
-                ),
-                children: [
-                  TextSpan(text: 'Docente: '),
-                  TextSpan(
-                    text: 'Ana M. Pérez',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+            Flexible(
+              child: Text.rich(
+                const TextSpan(
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                  children: [
+                    TextSpan(text: 'Docente: '),
+                    TextSpan(
+                      text: 'Ana M. Pérez',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -301,56 +293,57 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Encabezado del Termómetro
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // Encabezado del Termómetro. Si el título y la píldora no caben
+          // juntos, la píldora baja (antes partía "Termómetro" por la mitad).
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.start,
+            spacing: 8,
+            runSpacing: 10,
             children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: _systemAmber.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.warning_amber_rounded,
-                        color: _systemAmber,
-                        size: 20,
-                      ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: _systemAmber.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Termómetro de Riesgo',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 19,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            'Reglamento Académico Estudiantil',
-                            style: TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: _systemAmber,
+                      size: 20,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Termómetro de Riesgo',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Reglamento Académico Estudiantil',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
               // Pill "Te quedan 2 fallas"
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -415,22 +408,26 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                   ),
                 ],
               ),
-              RichText(
-                text: const TextSpan(
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 13,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: '4',
-                      style: TextStyle(
-                        color: _systemAmber,
-                        fontWeight: FontWeight.bold,
-                      ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text.rich(
+                  const TextSpan(
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
                     ),
-                    TextSpan(text: ' / 6 fallas máx. permitidas'),
-                  ],
+                    children: [
+                      TextSpan(
+                        text: '4',
+                        style: TextStyle(
+                          color: _systemAmber,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(text: ' / 6 fallas máx. permitidas'),
+                    ],
+                  ),
+                  textAlign: TextAlign.end,
                 ),
               ),
             ],
@@ -512,21 +509,27 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
           const SizedBox(height: 6),
 
           // Etiquetas bajo la barra segmentada
+          // En pantallas angostas el texto del medio pasa a dos líneas.
           const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 '0 fallas',
                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
               ),
-              Text(
-                'Límite crítico: 6 fallas (Acuerdo 014)',
-                style: TextStyle(
-                  color: _systemAmber,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Límite crítico: 6 fallas (Acuerdo 014)',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _systemAmber,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
+              SizedBox(width: 8),
               Text(
                 'Reprobación',
                 style: TextStyle(color: _systemRed, fontSize: 11),
@@ -631,15 +634,18 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: labelColor,
-              fontSize: 11,
-              fontWeight: isBoldLabel ? FontWeight.w600 : FontWeight.normal,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: labelColor,
+                fontSize: 11,
+                fontWeight: isBoldLabel ? FontWeight.w600 : FontWeight.normal,
+              ),
+              maxLines: 1,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -780,37 +786,42 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Text(
-                    'Marzo 2025',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _primaryIndigo.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      '1er Periodo',
+              Expanded(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    const Text(
+                      'Marzo 2025',
                       style: TextStyle(
-                        color: _primaryIndigo,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _primaryIndigo.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        '1er Periodo',
+                        style: TextStyle(
+                          color: _primaryIndigo,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Row(
                 children: [
                   _buildSmallNavCircle(Icons.chevron_left),
@@ -864,9 +875,12 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
           Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
           const SizedBox(height: 12),
 
-          // Leyenda del Calendario (Presente, Falla, Justificada, Hoy)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          // Leyenda del Calendario (Presente, Falla, Justificada, Hoy). Si no
+          // cabe en una línea, pasa a la siguiente.
+          Wrap(
+            alignment: WrapAlignment.spaceAround,
+            spacing: 12,
+            runSpacing: 6,
             children: [
               _buildLegendItem(color: _calendarGreen, label: 'Presente'),
               _buildLegendItem(color: _systemRed, label: 'Falla'),
@@ -1037,20 +1051,14 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
         return Center(
           child: Text(
             item.day,
-            style: const TextStyle(
-              color: AppTheme.textTertiary,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: AppTheme.textTertiary, fontSize: 13),
           ),
         );
       case _DayType.normal:
         return Center(
           child: Text(
             item.day,
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
         );
     }
@@ -1079,14 +1087,19 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Últimos Registros de Clase',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+              const Flexible(
+                child: Text(
+                  'Últimos Registros de Clase',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {},
                 child: const Text(
@@ -1127,19 +1140,19 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
-                        const Flexible(
-                          child: Text(
-                            'Jueves 20 Mar',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        const Text(
+                          'Jueves 20 Mar',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -1177,7 +1190,9 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Abriendo solicitud de justificación académica...'),
+                      content: Text(
+                        'Abriendo solicitud de justificación académica...',
+                      ),
                       duration: Duration(seconds: 1),
                     ),
                   );
@@ -1233,7 +1248,10 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         const Text(
                           'Martes 18 Mar',
@@ -1243,7 +1261,6 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -1315,7 +1332,10 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         const Text(
                           'Jueves 13 Mar',
@@ -1325,7 +1345,6 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -1445,12 +1464,19 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                         children: [
                           const Row(
                             children: [
-                              Text(
-                                'Iniciar Asistencia BLE',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Iniciar Asistencia BLE',
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                               SizedBox(width: 6),

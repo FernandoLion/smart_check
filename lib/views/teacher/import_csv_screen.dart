@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../models/inscrito_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/csv_inscritos.dart';
@@ -99,8 +100,10 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
 
   Widget _buildTopAppBar(BuildContext context) {
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      // Altura mínima, no fija: con letra grande el título y el subtítulo
+      // necesitan más.
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         children: [
           GestureDetector(
@@ -123,6 +126,9 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
               children: [
                 const Text(
                   'Importar Estudiantes',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 17,
@@ -209,7 +215,8 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
         ),
         decoration: const InputDecoration(
           border: InputBorder.none,
-          hintText: 'Cédula;Nombre;Correo\n'
+          hintText:
+              'Cédula;Nombre;Correo\n'
               '1117000000;Ana María Pérez Gómez;an.perez@udla.edu.co',
           hintStyle: TextStyle(color: AppTheme.textTertiary),
         ),

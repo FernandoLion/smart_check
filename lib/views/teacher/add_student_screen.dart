@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/inscrito_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../widgets/add_students_modal.dart';
 import 'import_csv_screen.dart';
+
 /// Agrega estudiantes uno a uno, por cédula (verificada en Chairá) o por
 /// correo institucional. Al salir devuelve la lista de [Inscrito] agregados
 /// con `Navigator.pop`.
@@ -73,14 +75,16 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         );
         return;
       }
-      _agregar(Inscrito(email: correo, nombre: correo.split('@').first.toUpperCase()));
+      _agregar(
+        Inscrito(email: correo, nombre: correo.split('@').first.toUpperCase()),
+      );
       _searchController.clear();
       return;
     }
 
-    await context
-        .read<AuthViewModel>()
-        .verificarEnChaira(entrada.replaceAll(RegExp(r'[.\s-]'), ''));
+    await context.read<AuthViewModel>().verificarEnChaira(
+      entrada.replaceAll(RegExp(r'[.\s-]'), ''),
+    );
   }
 
   void _agregar(Inscrito inscrito) {
@@ -135,7 +139,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         if (nuevos != null) nuevos.forEach(_agregar);
       },
     );
-  } 
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -148,42 +152,42 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         if (!didPop) _salir();
       },
       child: Scaffold(
-      backgroundColor: _bgSurface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // 1. CUPERTINO NAVIGATION BAR (< Volver | Añadir Estudiante | Listo)
-            _buildTopNavigationBar(context),
+        backgroundColor: _bgSurface,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // 1. CUPERTINO NAVIGATION BAR (< Volver | Añadir Estudiante | Listo)
+              _buildTopNavigationBar(context),
 
-            // 2. MAIN CONTENT CANVAS
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                children: [
-                  // Sección 1: Búsqueda por Identificación + Input Cupertino
-                  _buildSearchSection(authVM.isVerifyingChaira),
-                  const SizedBox(height: 20),
+              // 2. MAIN CONTENT CANVAS
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  children: [
+                    // Sección 1: Búsqueda por Identificación + Input Cupertino
+                    _buildSearchSection(authVM.isVerifyingChaira),
+                    const SizedBox(height: 20),
 
-                  // Sección 2: Smart Search Result Card (Identity Verification Glass Card)
-                  if (liveResult != null && liveResult.success)
-                    _buildVerifiedStudentCard(liveResult)
-                  else
-                    _buildPistaBusqueda(authVM.errorMessage),
-                  const SizedBox(height: 24),
+                    // Sección 2: Smart Search Result Card (Identity Verification Glass Card)
+                    if (liveResult != null && liveResult.success)
+                      _buildVerifiedStudentCard(liveResult)
+                    else
+                      _buildPistaBusqueda(authVM.errorMessage),
+                    const SizedBox(height: 24),
 
-                  // Sección 3: Añadidos Recientemente (Cupertino Inset Grouped List)
-                  _buildRecentlyAddedSection(),
-                  const SizedBox(height: 20),
+                    // Sección 3: Añadidos Recientemente (Cupertino Inset Grouped List)
+                    _buildRecentlyAddedSection(),
+                    const SizedBox(height: 20),
 
-                  // 4. Institutional Security Footnote
-                  _buildSecurityFooter(),
-                ],
+                    // 4. Institutional Security Footnote
+                    _buildSecurityFooter(),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -210,8 +214,10 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
   Widget _buildTopNavigationBar(BuildContext context) {
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      // Altura mínima, no fija: con letra grande el título y el subtítulo
+      // necesitan más.
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: _surfaceElevated.withValues(alpha: 0.85),
         border: Border(
@@ -247,6 +253,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
               children: [
                 const Text(
                   'Añadir Estudiante',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 17,
@@ -490,11 +499,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: _tertiaryGreen,
-                        size: 14,
-                      ),
+                      Icon(Icons.check_circle, color: _tertiaryGreen, size: 14),
                       SizedBox(width: 6),
                       Flexible(
                         child: Text(
@@ -594,8 +599,8 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 3),
-                    RichText(
-                      text: TextSpan(
+                    Text.rich(
+                      TextSpan(
                         style: const TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 13,
@@ -773,8 +778,8 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: RichText(
-                    text: const TextSpan(
+                  child: Text.rich(
+                    const TextSpan(
                       style: TextStyle(
                         color: Color(0xFFE4E2E4),
                         fontSize: 12,
@@ -803,18 +808,18 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
           ElevatedButton(
             onPressed: hasLiveMatch
                 ? () => _agregar(
-                      Inscrito(
-                        cedula: cedula.replaceAll(RegExp(r'[.\s-]'), ''),
-                        // El correo solo si Chairá lo confirmó: uno deducido
-                        // del nombre podría ser la clave de otra persona, y
-                        // acabaría metiéndola en la lista de la clase.
-                        email: liveResult.correoVerificado
-                            ? '${liveResult.username}'
+                    Inscrito(
+                      cedula: cedula.replaceAll(RegExp(r'[.\s-]'), ''),
+                      // El correo solo si Chairá lo confirmó: uno deducido
+                      // del nombre podría ser la clave de otra persona, y
+                      // acabaría metiéndola en la lista de la clase.
+                      email: liveResult.correoVerificado
+                          ? '${liveResult.username}'
                                 '${AuthViewModel.dominioInstitucional}'
-                            : null,
-                        nombre: nombre,
-                      ),
-                    )
+                          : null,
+                      nombre: nombre,
+                    ),
+                  )
                 : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: _primaryIndigo,
@@ -833,10 +838,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 SizedBox(width: 8),
                 Text(
                   'Añadir a la Clase',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -858,11 +860,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                   ),
                 ),
                 SizedBox(width: 4),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: _primaryLight,
-                  size: 12,
-                ),
+                Icon(Icons.arrow_forward_ios, color: _primaryLight, size: 12),
               ],
             ),
           ),

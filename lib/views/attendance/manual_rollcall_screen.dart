@@ -24,7 +24,9 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
   static const Color _surfaceControl = Color(0xFF2C2C2E);
   static const Color _surfaceHigh = Color(0xFF2A2A2C);
   static const Color _primaryIndigo = Color(0xFF5E5CE6); // primary-container
-  static const Color _primaryLight = Color(0xFFC2C1FF); // primary / primary-fixed-dim
+  static const Color _primaryLight = Color(
+    0xFFC2C1FF,
+  ); // primary / primary-fixed-dim
   static const Color _tertiaryGreen = Color(0xFF47E266); // tertiary
   static const Color _systemAmber = Color(0xFFFF9F0A);
   static const Color _systemRed = Color(0xFFFF453A);
@@ -36,8 +38,9 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
       .map((f) => f.inscrito)
       .toList();
 
-  late final List<_UndetectedStudent> _students =
-      _pendientes.map(_aTarjeta).toList();
+  late final List<_UndetectedStudent> _students = _pendientes
+      .map(_aTarjeta)
+      .toList();
 
   /// "3 no detectados", o "1 no detectado" cuando solo falta uno.
   String get _sinDetectar {
@@ -406,8 +409,8 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
             ],
           ),
           const SizedBox(height: 2),
-          RichText(
-            text: TextSpan(
+          Text.rich(
+            TextSpan(
               style: const TextStyle(
                 color: AppTheme.textSecondary,
                 fontSize: 12,
@@ -598,11 +601,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.close,
-                      color: _systemRed,
-                      size: 22,
-                    ),
+                    child: const Icon(Icons.close, color: _systemRed, size: 22),
                   ),
                   const SizedBox(height: 4),
                   const Text(
@@ -751,66 +750,77 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.1),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.badge_outlined,
-                                    color: _primaryLight,
-                                    size: 13,
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.65),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.1),
                                   ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    student.idCode,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.badge_outlined,
+                                      color: _primaryLight,
+                                      size: 13,
                                     ),
+                                    const SizedBox(width: 5),
+                                    Flexible(
+                                      child: Text(
+                                        student.idCode,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _surfaceControl.withValues(
+                                    alpha: 0.85,
                                   ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _surfaceControl.withValues(alpha: 0.85),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.08),
+                                  ),
+                                ),
+                                child: Text(
+                                  student.program,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                              child: Text(
-                                student.program,
-                                style: const TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
 
+                        const SizedBox(width: 8),
                         // Missing Beacon Badge ("Sin baliza BLE")
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -884,191 +894,224 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
             flex: 48,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Name & Primary Tag
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              student.name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: -0.3,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.verified_user_outlined,
-                            color: AppTheme.textTertiary,
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        student.semesterGroup,
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
+              child: // La tarjeta tiene alto fijo: si con letra grande el contenido no
+                  // cabe, se reduce en proporción en vez de salirse.
+                  LayoutBuilder(
+                    builder: (context, caja) => FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth: caja.maxWidth,
+                          maxWidth: caja.maxWidth,
+                          minHeight: caja.maxHeight,
                         ),
-                      ),
-                    ],
-                  ),
-
-                  // Quick Metrics Bento Grid (2 columns)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: _surfaceControl.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.08),
-                            ),
-                          ),
+                        child: IntrinsicHeight(
                           child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Asistencia global',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 11,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
+                              // Name & Primary Tag
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          student.name,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: -0.3,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const Icon(
+                                        Icons.verified_user_outlined,
+                                        color: AppTheme.textTertiary,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
                                   Text(
-                                    student.globalAttendance,
-                                    style: TextStyle(
-                                      color: student.isCritical
-                                          ? _systemRed
-                                          : _tertiaryGreen,
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      student.faultsSummary,
-                                      style: const TextStyle(
-                                        color: AppTheme.textSecondary,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
+                                    student.semesterGroup,
+                                    style: const TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: _surfaceControl.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.08),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Ubicación asignada',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 11,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
+
+                              // Quick Metrics Bento Grid (2 columns)
                               Row(
                                 children: [
-                                  const Icon(
-                                    Icons.meeting_room_outlined,
-                                    color: _primaryLight,
-                                    size: 14,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      student.classroom,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: _surfaceControl.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.08,
+                                          ),
+                                        ),
                                       ),
-                                      overflow: TextOverflow.ellipsis,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Asistencia global',
+                                            style: TextStyle(
+                                              color: AppTheme.textSecondary,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.baseline,
+                                            textBaseline:
+                                                TextBaseline.alphabetic,
+                                            children: [
+                                              Text(
+                                                student.globalAttendance,
+                                                style: TextStyle(
+                                                  color: student.isCritical
+                                                      ? _systemRed
+                                                      : _tertiaryGreen,
+                                                  fontSize: 17,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Flexible(
+                                                child: Text(
+                                                  student.faultsSummary,
+                                                  style: const TextStyle(
+                                                    color:
+                                                        AppTheme.textSecondary,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: _surfaceControl.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.08,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Ubicación asignada',
+                                            style: TextStyle(
+                                              color: AppTheme.textSecondary,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.meeting_room_outlined,
+                                                color: _primaryLight,
+                                                size: 14,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Flexible(
+                                                child: Text(
+                                                  student.classroom,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
+                              ),
+
+                              // Offline / Reason Note Capsule
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _surfaceControl.withValues(alpha: 0.4),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.08),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.bluetooth_disabled,
+                                      color: _systemAmber,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        student.probableReason,
+                                        style: const TextStyle(
+                                          color: AppTheme.textSecondary,
+                                          fontSize: 12,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    ],
-                  ),
-
-                  // Offline / Reason Note Capsule
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _surfaceControl.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.bluetooth_disabled,
-                          color: _systemAmber,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            student.probableReason,
-                            style: const TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 12,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
                     ),
                   ),
-                ],
-              ),
             ),
           ),
         ],
@@ -1083,8 +1126,11 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Swipe Instructions Visual Pill
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // Si no cabe en una línea, la segunda indicación baja.
+          const Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 2,
             children: [
               Icon(Icons.arrow_back, color: AppTheme.textTertiary, size: 13),
               SizedBox(width: 4),
@@ -1153,11 +1199,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.close,
-                      color: _systemRed,
-                      size: 32,
-                    ),
+                    child: const Icon(Icons.close, color: _systemRed, size: 32),
                   ),
                 ),
 
@@ -1217,11 +1259,14 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'O pulsa aquí para pasar a lista en tabla tradicional',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 13,
+                Flexible(
+                  child: Text(
+                    'O pulsa aquí para pasar a lista en tabla tradicional',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
                 SizedBox(width: 6),

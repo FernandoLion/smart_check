@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/asistencia_resumen.dart';
 import '../../models/curso_model.dart';
 import '../../models/student_subject_model.dart';
-import '../../services/identidad_facial_service.dart';
 import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
-import '../../viewmodels/face_verification_viewmodel.dart';
 import '../../viewmodels/student_viewmodel.dart';
 import '../attendance/face_verification_screen.dart';
 import '../teacher/teacher_home_screen.dart';
@@ -45,9 +44,10 @@ class StudentHomeScreen extends StatelessWidget {
 
     final perfil = authVM.perfil;
     if (perfil != null) {
-      context
-          .read<StudentViewModel>()
-          .vigilarCursos(cedula: perfil.cedula, email: perfil.email);
+      context.read<StudentViewModel>().vigilarCursos(
+        cedula: perfil.cedula,
+        email: perfil.email,
+      );
     }
 
     return Scaffold(
@@ -382,7 +382,9 @@ class StudentHomeScreen extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              totalSubjects == 1 ? '1 Asignatura' : '$totalSubjects Asignaturas',
+              totalSubjects == 1
+                  ? '1 Asignatura'
+                  : '$totalSubjects Asignaturas',
               style: const TextStyle(
                 color: AppTheme.textSecondary,
                 fontSize: 13,
@@ -459,7 +461,10 @@ class StudentHomeScreen extends StatelessWidget {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircleAvatar(radius: 3, backgroundColor: _tertiaryGreen),
+                        CircleAvatar(
+                          radius: 3,
+                          backgroundColor: _tertiaryGreen,
+                        ),
                         SizedBox(width: 6),
                         Text(
                           'Estudiante',
@@ -498,9 +503,7 @@ class StudentHomeScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.surfaceControl.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.05),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
               child: Column(
                 children: [
@@ -508,24 +511,20 @@ class StudentHomeScreen extends StatelessWidget {
                   const FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.how_to_reg,
-                        color: _tertiaryGreen,
-                        size: 14,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Asistencia',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.how_to_reg, color: _tertiaryGreen, size: 14),
+                        SizedBox(width: 4),
+                        Text(
+                          'Asistencia',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -558,9 +557,7 @@ class StudentHomeScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.surfaceControl.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.05),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
               child: Column(
                 children: [
@@ -568,24 +565,24 @@ class StudentHomeScreen extends StatelessWidget {
                   const FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.menu_book_outlined,
-                        color: _systemAmber,
-                        size: 14,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Materias',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.menu_book_outlined,
+                          color: _systemAmber,
+                          size: 14,
                         ),
-                      ),
-                    ],
-                  ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Materias',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -616,9 +613,7 @@ class StudentHomeScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.surfaceControl.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.05),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
               child: Column(
                 children: [
@@ -626,24 +621,24 @@ class StudentHomeScreen extends StatelessWidget {
                   const FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        color: _systemRed,
-                        size: 14,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'En riesgo',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: _systemRed,
+                          size: 14,
                         ),
-                      ),
-                    ],
-                  ),
+                        SizedBox(width: 4),
+                        Text(
+                          'En riesgo',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -744,17 +739,16 @@ class StudentHomeScreen extends StatelessWidget {
   ) {
     final vigente = estudiante.llamadoVigente;
     return ElevatedButton(
-      onPressed:
-          vigente == null ? null : () => _onRegisterAttendanceTap(context),
+      onPressed: vigente == null
+          ? null
+          : () => _onRegisterAttendanceTap(context),
       style: ElevatedButton.styleFrom(
         backgroundColor: _primaryIndigo,
         foregroundColor: Colors.white,
         disabledBackgroundColor: AppTheme.surfaceControl,
         disabledForegroundColor: AppTheme.textSecondary,
         minimumSize: const Size.fromHeight(52),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(26),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
         elevation: vigente == null ? 0 : 10,
         shadowColor: _primaryIndigo.withValues(alpha: 0.5),
       ),
@@ -773,10 +767,7 @@ class StudentHomeScreen extends StatelessWidget {
                   : 'Registrar asistencia · ${vigente.$1.codigo}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -784,123 +775,84 @@ class StudentHomeScreen extends StatelessWidget {
     );
   }
 
-/// Marcar asistencia son tres puertas, en este orden: estar en el aula,
-/// estar delante del celular y que el docente oiga la baliza.
-Future<void> _onRegisterAttendanceTap(BuildContext context) async {
-  final perfil = context.read<AuthViewModel>().perfil;
-  final clave = perfil?.cedula ?? perfil?.email;
-  if (clave == null || clave.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tu sesión expiró. Vuelve a entrar.')),
+  /// Marcar asistencia son tres puertas, en este orden: estar en el aula,
+  /// estar delante del celular y que el docente oiga la baliza.
+  Future<void> _onRegisterAttendanceTap(BuildContext context) async {
+    final perfil = context.read<AuthViewModel>().perfil;
+    final clave = perfil?.cedula ?? perfil?.email;
+    if (clave == null || clave.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tu sesión expiró. Vuelve a entrar.')),
+      );
+      return;
+    }
+    final estudiante = context.read<StudentViewModel>();
+    final vigente = estudiante.llamadoVigente;
+    if (vigente == null) return;
+
+    // La ubicación primero porque es inmediata: sería cruel pedirle la cara
+    // para después decirle que está a trescientos metros del aula.
+    if (!await _estaEnElAula(context, vigente.$1) || !context.mounted) return;
+
+    // Después, que sea el dueño de la cuenta y no un compañero con su
+    // celular: prueba de vida y comparación con su cara.
+    final rostro = await verificarRostro(context, curso: vigente.$1);
+    if (rostro == null || !context.mounted) return;
+
+    // Las otras puertas —el celular vinculado, la huella y la firma de la
+    // presencia— las lleva la pantalla de la baliza, que es donde se marca.
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BleBeaconScreen(
+          cursos: estudiante.cursos,
+          clave: clave,
+          rostro: rostro,
+        ),
+      ),
     );
-    return;
+    // Al volver de marcar, la asistencia ya cambió: hay que releerla.
+    await estudiante.refrescar();
   }
-  final estudiante = context.read<StudentViewModel>();
-  final vigente = estudiante.llamadoVigente;
-  if (vigente == null) return;
 
-  // La ubicación primero porque es inmediata: sería cruel pedirle la cara
-  // para después decirle que está a trescientos metros del aula.
-  if (!await _estaEnElAula(context, vigente.$1) || !context.mounted) return;
-
-  // Después, que sea el dueño de la cuenta y no un compañero con su
-  // celular: prueba de vida y comparación con su cara.
-  if (!await IdentidadEnCelular.tieneReferencia(perfil!.uid)) {
-    if (!context.mounted || !await _aceptaEnrolarse(context)) return;
+  /// Si el estudiante está dentro de la geocerca del curso. La baliza lo
+  /// vuelve a comprobar antes de emitir; esto es solo para avisar a tiempo.
+  Future<bool> _estaEnElAula(BuildContext context, Curso curso) async {
+    String mensaje;
+    try {
+      final metros = await metrosFueraDelAula(
+        UbicacionService(),
+        curso.geocerca,
+      );
+      if (metros == null) return true;
+      mensaje =
+          'Estás a $metros m del aula. Acércate para registrar tu '
+          'asistencia.';
+    } on UbicacionException catch (e) {
+      mensaje = e.mensaje;
+    }
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(mensaje)));
+    }
+    return false;
   }
-  if (!context.mounted) return;
-  final rostro = await Navigator.push<VerificacionFacial>(
-    context,
-    MaterialPageRoute(builder: (_) => FaceVerificationScreen(curso: vigente.$1)),
-  );
-  if (rostro == null || !context.mounted) return;
-
-  // Las otras puertas —el celular vinculado, la huella y la firma de la
-  // presencia— las lleva la pantalla de la baliza, que es donde se marca.
-  await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => BleBeaconScreen(
-        cursos: estudiante.cursos,
-        clave: clave,
-        rostro: rostro,
-      ),
-    ),
-  );
-  // Al volver de marcar, la asistencia ya cambió: hay que releerla.
-  await estudiante.refrescar();
-}
-
-/// La primera vez que verifica su cara en este celular: qué se hace con ella
-/// y su consentimiento (los datos biométricos son sensibles, Ley 1581 de
-/// 2012).
-Future<bool> _aceptaEnrolarse(BuildContext context) async {
-  final acepta = await showDialog<bool>(
-    context: context,
-    builder: (dialogo) => AlertDialog(
-      backgroundColor: AppTheme.surfaceElevated,
-      title: const Text(
-        'Registrar tu rostro',
-        style: TextStyle(color: Colors.white),
-      ),
-      content: const Text(
-        'Para que nadie pueda marcar tu asistencia con tu celular, vamos a '
-        'comparar tu cara con tu foto de Chairá.\n\n'
-        'Si coinciden, guardaremos una huella numérica de tu rostro, cifrada '
-        'y solo en este celular. No se guarda ninguna foto ni sale nada de '
-        'tu teléfono. Puedes borrarla cuando quieras desde Ajustes.',
-        style: TextStyle(color: AppTheme.textSecondary, height: 1.4),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogo, false),
-          child: const Text('Ahora no'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(dialogo, true),
-          child: const Text('Acepto'),
-        ),
-      ],
-    ),
-  );
-  return acepta ?? false;
-}
-
-/// Si el estudiante está dentro de la geocerca del curso. La baliza lo
-/// vuelve a comprobar antes de emitir; esto es solo para avisar a tiempo.
-Future<bool> _estaEnElAula(BuildContext context, Curso curso) async {
-  String mensaje;
-  try {
-    final metros = await metrosFueraDelAula(UbicacionService(), curso.geocerca);
-    if (metros == null) return true;
-    mensaje = 'Estás a $metros m del aula. Acércate para registrar tu '
-        'asistencia.';
-  } on UbicacionException catch (e) {
-    mensaje = e.mensaje;
-  }
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
-  }
-  return false;
-}
 
   void _onSubjectTap(BuildContext context, StudentSubjectModel subject) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => AttendanceDetailScreen(subject: subject),
-    ),
-  );
-}
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AttendanceDetailScreen(subject: subject),
+      ),
+    );
+  }
 
-void _onSettingsTap(BuildContext context) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const StudentSettingsScreen(),
-    ),
-  );
-}
+  void _onSettingsTap(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const StudentSettingsScreen()),
+    );
+  }
 }
 
 /// Widget de Tarjeta de Asignatura (Semáforo Ámbar / Verde / Rojo)
@@ -908,10 +860,7 @@ class _SubjectPassCard extends StatelessWidget {
   final StudentSubjectModel subject;
   final VoidCallback onTap;
 
-  const _SubjectPassCard({
-    required this.subject,
-    required this.onTap,
-  });
+  const _SubjectPassCard({required this.subject, required this.onTap});
 
   Color get _accentColor {
     switch (subject.status) {
@@ -1108,61 +1057,66 @@ class _SubjectPassCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppTheme.surfaceControl.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: accent.withValues(alpha: 0.25),
-                      ),
+                      border: Border.all(color: accent.withValues(alpha: 0.25)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Text(
-                              porcentaje == null ? '—' : '$porcentaje%',
-                              style: TextStyle(
-                                color: accent,
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                height: 1.0,
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Text(
+                                porcentaje == null ? '—' : '$porcentaje%',
+                                style: TextStyle(
+                                  color: accent,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.0,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: accent.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: accent.withValues(alpha: 0.35),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: accent.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: accent.withValues(alpha: 0.35),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        subject.statusLabel,
+                                        style: TextStyle(
+                                          color: accent,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  child: Text(
-                                    subject.statusLabel,
-                                    style: TextStyle(
-                                      color: accent,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      subject.sessionsLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: AppTheme.textTertiary,
+                                        fontSize: 11,
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  subject.sessionsLabel,
-                                  style: const TextStyle(
-                                    color: AppTheme.textTertiary,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Icon(_bottomNoteIcon, color: accent, size: 26),
                       ],
                     ),
@@ -1189,7 +1143,8 @@ class _SubjectPassCard extends StatelessWidget {
                             Text(
                               porcentaje == null ? '— ' : '$porcentaje% ',
                               style: TextStyle(
-                                color: subject.status == NivelAsistencia.atencion
+                                color:
+                                    subject.status == NivelAsistencia.atencion
                                     ? Colors.white
                                     : accent,
                                 fontSize: 12,
@@ -1202,10 +1157,11 @@ class _SubjectPassCard extends StatelessWidget {
                                 style: TextStyle(
                                   color:
                                       subject.status == NivelAsistencia.riesgo
-                                          ? accent
-                                          : AppTheme.textTertiary,
+                                      ? accent
+                                      : AppTheme.textTertiary,
                                   fontSize: 11,
                                 ),
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),

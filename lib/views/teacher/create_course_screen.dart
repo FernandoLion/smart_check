@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/curso_model.dart';
 import '../../models/inscrito_model.dart';
 import '../../services/ubicacion_service.dart';
@@ -143,10 +144,8 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _EditorHorario(
-        horarios: _horarios,
-        alCambiar: () => setState(() {}),
-      ),
+      builder: (_) =>
+          _EditorHorario(horarios: _horarios, alCambiar: () => setState(() {})),
     );
   }
 
@@ -154,9 +153,8 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     final nuevos = await Navigator.push<List<Inscrito>>(
       context,
       MaterialPageRoute(
-        builder: (_) => ImportCsvScreen(
-          courseName: _courseNameController.text.trim(),
-        ),
+        builder: (_) =>
+            ImportCsvScreen(courseName: _courseNameController.text.trim()),
       ),
     );
     if (nuevos != null) _agregarPendientes(nuevos);
@@ -166,9 +164,8 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
     final nuevos = await Navigator.push<List<Inscrito>>(
       context,
       MaterialPageRoute(
-        builder: (_) => AddStudentScreen(
-          courseTitle: _courseNameController.text.trim(),
-        ),
+        builder: (_) =>
+            AddStudentScreen(courseTitle: _courseNameController.text.trim()),
       ),
     );
     if (nuevos != null) _agregarPendientes(nuevos);
@@ -236,15 +233,23 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
               ),
             ),
           ),
-          const Text(
-            'Crear Curso',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.4,
+          const SizedBox(width: 8),
+          // El título se encoge antes que los botones de los lados.
+          const Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'Crear Curso',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.4,
+                ),
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: _handleSaveCourse,
             child: context.watch<TeacherViewModel>().guardando
@@ -288,8 +293,8 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 ),
                 const SizedBox(width: 8),
                 Flexible(
-                  child: RichText(
-                    text: TextSpan(
+                  child: Text.rich(
+                    TextSpan(
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 13,
@@ -609,9 +614,9 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           child: Text(
             _geocerca == null
                 ? 'Sin geocerca, el radar no comprobará que la clase se dicte '
-                    'en el aula. Párate en el aula y toca la insignia.'
+                      'en el aula. Párate en el aula y toca la insignia.'
                 : 'El radar solo abrirá la clase a menos de '
-                    '${_geocerca!.radioMetros.round()} m de este punto.',
+                      '${_geocerca!.radioMetros.round()} m de este punto.',
             style: const TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 13,
@@ -631,8 +636,9 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: (puesta ? _tertiaryContainer : _primaryIndigo)
-              .withValues(alpha: 0.2),
+          color: (puesta ? _tertiaryContainer : _primaryIndigo).withValues(
+            alpha: 0.2,
+          ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color.withValues(alpha: 0.35)),
         ),
@@ -812,10 +818,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 const SizedBox(height: 3),
                 const Text(
                   'Pega la lista desde Excel o un CSV',
-                  style: TextStyle(
-                    color: _tertiaryGreen,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: _tertiaryGreen, fontSize: 13),
                 ),
               ],
             ),
@@ -877,30 +880,25 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 ),
                 const SizedBox(height: 12),
                 const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Añadir por Cédula o Correo',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Text(
+                        'Añadir por Cédula o Correo',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    Icon(
-                      Icons.add,
-                      color: AppTheme.textTertiary,
-                      size: 20,
-                    ),
+                    SizedBox(width: 8),
+                    Icon(Icons.add, color: AppTheme.textTertiary, size: 20),
                   ],
                 ),
                 const SizedBox(height: 3),
                 const Text(
                   'Búsqueda individual en Chairá',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                 ),
               ],
             ),
@@ -954,8 +952,10 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
               InkWell(
                 onTap: _verTodos,
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1186,10 +1186,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   }
 
   Widget _buildDivider() {
-    return Container(
-      height: 1,
-      color: Colors.white.withValues(alpha: 0.08),
-    );
+    return Container(height: 1, color: Colors.white.withValues(alpha: 0.08));
   }
 }
 
@@ -1266,9 +1263,11 @@ class _EditorHorarioState extends State<_EditorHorario> {
     }
     widget.horarios
       ..add(Horario(dia: _dia, inicio: _hhmm(_inicio), fin: _hhmm(_fin)))
-      ..sort((a, b) => a.dia != b.dia
-          ? a.dia.compareTo(b.dia)
-          : a.inicioMinutos.compareTo(b.inicioMinutos));
+      ..sort(
+        (a, b) => a.dia != b.dia
+            ? a.dia.compareTo(b.dia)
+            : a.inicioMinutos.compareTo(b.inicioMinutos),
+      );
     widget.alCambiar();
     setState(() {});
   }

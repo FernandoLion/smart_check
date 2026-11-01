@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
 import '../models/usuario_perfil_model.dart';
 import '../models/verificacion_result_model.dart';
 import '../services/auth_service.dart';
@@ -24,16 +25,10 @@ class AuthViewModel extends ChangeNotifier {
     ChairaService? chairaService,
     PerfilService? perfilService,
     DispositivoService? dispositivos,
-    DateTime Function()? reloj,
-  })  : _authService = authService ?? AuthService(),
-        _chairaService = chairaService ?? ChairaService(),
-        _perfilService = perfilService ?? PerfilService(),
-        _dispositivos = dispositivos ?? DispositivoService(),
-        _ahora = reloj ?? DateTime.now;
-
-  /// Inyectable para poder probar la espera entre celulares sin esperar una
-  /// semana, como en [RadarViewModel].
-  final DateTime Function() _ahora;
+  }) : _authService = authService ?? AuthService(),
+       _chairaService = chairaService ?? ChairaService(),
+       _perfilService = perfilService ?? PerfilService(),
+       _dispositivos = dispositivos ?? DispositivoService();
 
   bool _isLoading = false;
   bool _isVerifyingChaira = false;
@@ -76,27 +71,16 @@ class AuthViewModel extends ChangeNotifier {
   Future<String?> identificadorDeEsteDispositivo() =>
       _dispositivos.identificador();
 
-  /// Si ya se puede vincular otro celular (la primera vez, siempre).
-  bool get puedeVincular => _perfil?.puedeVincular(_ahora()) ?? false;
-
-  /// Cuándo se podrá cambiar de celular, o null si ya se puede.
-  DateTime? get proximoCambioDeDispositivo => _perfil?.proximoCambio(_ahora());
-
   /// Ata el celular en el que corre la app a la cuenta con sesión iniciada.
   ///
-  /// La espera de una semana la imponen las reglas; aquí se comprueba antes
-  /// solo para dar un motivo claro en vez de un "permiso denegado".
+  /// Quien la llama (la pantalla del celular vinculado) exige antes que la
+  /// cara del estudiante coincida con la suya: eso es lo que impide atar la
+  /// cuenta de otro a un teléfono ajeno. No hay espera entre cambios; cada
+  /// uno queda en el historial.
   Future<bool> vincularEsteDispositivo() async {
     final perfil = _perfil;
     if (perfil == null) {
       _errorMessage = 'Tu sesión expiró. Vuelve a entrar.';
-      notifyListeners();
-      return false;
-    }
-    if (!perfil.puedeVincular(_ahora())) {
-      _errorMessage = 'Ya cambiaste de celular hace poco. Podrás volver a '
-          'hacerlo el ${_dia(perfil.proximoCambio(_ahora())!)}. Mientras '
-          'tanto, pídele al docente que te marque a mano.';
       notifyListeners();
       return false;
     }
@@ -107,7 +91,8 @@ class AuthViewModel extends ChangeNotifier {
     try {
       final id = await _dispositivos.identificador();
       if (id == null) {
-        _errorMessage = 'Este dispositivo no da un identificador. La '
+        _errorMessage =
+            'Este dispositivo no da un identificador. La '
             'asistencia se marca desde el celular.';
         return false;
       }
@@ -133,10 +118,6 @@ class AuthViewModel extends ChangeNotifier {
       return const [];
     }
   }
-
-  static String _dia(DateTime fecha) =>
-      '${fecha.day.toString().padLeft(2, '0')}/'
-      '${fecha.month.toString().padLeft(2, '0')}';
 
   /// Solo se usan cuentas @udla.edu.co: el usuario escribe "an.perez" (o el
   /// correo completo) y aquí se valida y se completa a "an.perez@udla.edu.co".
@@ -218,7 +199,8 @@ class AuthViewModel extends ChangeNotifier {
     _verificacionResult = result;
 
     if (!result.success) {
-      _errorMessage = result.error ?? 'No se pudo verificar el documento en Chaira.';
+      _errorMessage =
+          result.error ?? 'No se pudo verificar el documento en Chaira.';
       notifyListeners();
       return false;
     }
@@ -247,7 +229,10 @@ class AuthViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final error = await _authService.registerWithEmailPassword(correo, password);
+    final error = await _authService.registerWithEmailPassword(
+      correo,
+      password,
+    );
     if (error != null) return _fallar(error);
 
     final perfil = UsuarioPerfil.desdeVerificacion(
@@ -300,7 +285,7 @@ class AuthViewModel extends ChangeNotifier {
       return _fallarVinculacion(
         result.correoVerificado
             ? 'Ese documento está registrado en Chairá con otro usuario, no '
-                'con $email.'
+                  'con $email.'
             : 'El documento no corresponde a la cuenta $email.',
       );
     }

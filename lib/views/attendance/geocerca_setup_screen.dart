@@ -1,8 +1,12 @@
 import 'dart:math' as math;
 import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
 import '../../utils/app_theme.dart';
+import '../../widgets/texto_sin_cortes.dart';
+
 class GeocercaSetupScreen extends StatefulWidget {
   final String blockAndRoom;
   final String facultySubtitle;
@@ -58,10 +62,10 @@ class _GeocercaSetupScreenState extends State<GeocercaSetupScreen>
     super.dispose();
   }
 
-void _handleConfirmGeofence() {
-  // La geocerca del curso se marca al crearlo, desde Crear Curso.
-  Navigator.pop(context);
-}
+  void _handleConfirmGeofence() {
+    // La geocerca del curso se marca al crearlo, desde Crear Curso.
+    Navigator.pop(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,9 +98,7 @@ void _handleConfirmGeofence() {
             top: 0,
             left: 0,
             right: 0,
-            child: SafeArea(
-              child: _buildTopFloatingHeader(context),
-            ),
+            child: SafeArea(child: _buildTopFloatingHeader(context)),
           ),
 
           // 5. CUPERTINO FROSTED GLASS BOTTOM SHEET MODAL (~40% SCREEN)
@@ -175,11 +177,7 @@ void _handleConfirmGeofence() {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.chevron_left,
-                        color: _primaryLight,
-                        size: 18,
-                      ),
+                      Icon(Icons.chevron_left, color: _primaryLight, size: 18),
                       SizedBox(width: 2),
                       Text(
                         'Clases',
@@ -194,36 +192,47 @@ void _handleConfirmGeofence() {
                 ),
               ),
 
+              const SizedBox(width: 8),
               // Precision Pill Status
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: _surfaceElevated.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7,
                   ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircleAvatar(radius: 3.5, backgroundColor: _tertiaryGreen),
-                    SizedBox(width: 8),
-                    Text(
-                      'GPS Alta Precisión ±3m',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  decoration: BoxDecoration(
+                    color: _surfaceElevated.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
                     ),
-                  ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 3.5,
+                        backgroundColor: _tertiaryGreen,
+                      ),
+                      SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'GPS Alta Precisión ±3m',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
+              const SizedBox(width: 8),
               // Campus Map Layers Toggle
               GestureDetector(
                 onTap: () {},
@@ -237,11 +246,7 @@ void _handleConfirmGeofence() {
                       color: Colors.white.withValues(alpha: 0.08),
                     ),
                   ),
-                  child: const Icon(
-                    Icons.tune,
-                    color: Colors.white,
-                    size: 19,
-                  ),
+                  child: const Icon(Icons.tune, color: Colors.white, size: 19),
                 ),
               ),
             ],
@@ -415,9 +420,7 @@ void _handleConfirmGeofence() {
               decoration: BoxDecoration(
                 color: _surfaceElevated.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.6),
@@ -677,13 +680,15 @@ void _handleConfirmGeofence() {
                                 size: 15,
                               ),
                               SizedBox(width: 5),
-                              Text(
-                                'COORDENADAS',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.6,
+                              Flexible(
+                                child: TextoSinCortes(
+                                  'COORDENADAS',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.6,
+                                  ),
                                 ),
                               ),
                             ],
@@ -726,20 +731,24 @@ void _handleConfirmGeofence() {
                                 size: 15,
                               ),
                               SizedBox(width: 5),
-                              Text(
-                                'BLE + GPS',
-                                style: TextStyle(
-                                  color: _tertiaryGreen,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.6,
+                              Flexible(
+                                child: Text(
+                                  'BLE + GPS',
+                                  style: TextStyle(
+                                    color: _tertiaryGreen,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.6,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          Wrap(
+                            alignment: WrapAlignment.spaceBetween,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
                             children: [
                               Text(
                                 '25 m',
@@ -853,11 +862,16 @@ void _handleConfirmGeofence() {
                   children: [
                     Icon(Icons.check_circle, size: 20),
                     SizedBox(width: 8),
-                    Text(
-                      'Confirmar Geocerca del Aula',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Confirmar Geocerca del Aula',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],

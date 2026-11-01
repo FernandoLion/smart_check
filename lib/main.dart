@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
 import 'utils/app_theme.dart';
+import 'utils/escala_texto.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'views/login_screen.dart';
 import 'viewmodels/student_viewmodel.dart';
@@ -49,6 +50,9 @@ class SmartCheckApp extends StatelessWidget {
         title: 'SmartCheck',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
+        // La letra del sistema se respeta, pero sin pasar del tamaño en que
+        // las pantallas están probadas.
+        builder: limitarEscalaDeTexto,
         home: const LoginScreen(),
       ),
     );

@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -76,7 +78,8 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
   void _handleSearchTyping(String val) {
     final cleanVal = val.trim();
     setState(() {
-      _isMatchVisible = cleanVal == '1117000000' ||
+      _isMatchVisible =
+          cleanVal == '1117000000' ||
           cleanVal == '2022-3810' ||
           cleanVal.length >= 8;
     });
@@ -217,10 +220,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                 SizedBox(width: 4),
                 Text(
                   'Volver',
-                  style: TextStyle(
-                    color: _primaryLight,
-                    fontSize: 17,
-                  ),
+                  style: TextStyle(color: _primaryLight, fontSize: 17),
                 ),
               ],
             ),
@@ -287,11 +287,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
           Expanded(
             child: Row(
               children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: _tertiaryGreen,
-                  size: 20,
-                ),
+                const Icon(Icons.check_circle, color: _tertiaryGreen, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -332,21 +328,28 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
-                children: [
-                  CircleAvatar(radius: 4, backgroundColor: _tertiaryGreen),
-                  SizedBox(width: 6),
-                  Text(
-                    'CHAIRÁ DB EN LÍNEA',
-                    style: TextStyle(
-                      color: _tertiaryGreen,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.6,
+              const Expanded(
+                child: Row(
+                  children: [
+                    CircleAvatar(radius: 4, backgroundColor: _tertiaryGreen),
+                    SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'CHAIRÁ DB EN LÍNEA',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: _tertiaryGreen,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -374,10 +377,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
           const SizedBox(height: 6),
           const Text(
             'Curso Destino',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 15,
-            ),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 15),
           ),
           const SizedBox(height: 2),
           Text(
@@ -431,10 +431,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                   keyboardType: TextInputType.number,
                   onChanged: _handleSearchTyping,
                   onSubmitted: (_) => _performLiveChairaLookup(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                   decoration: const InputDecoration(
                     hintText: 'Cédula de Ciudadanía o Código Chairá...',
                     hintStyle: TextStyle(
@@ -501,10 +498,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                 SizedBox(width: 8),
                 Text(
                   'Chairá Sync 12ms',
-                  style: TextStyle(
-                    color: AppTheme.textTertiary,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
                 ),
               ],
             ),
@@ -670,13 +664,16 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Código Institucional',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 13,
+                        const Expanded(
+                          child: Text(
+                            'Código Institucional',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -701,13 +698,16 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Documento CC',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 13,
+                        const Expanded(
+                          child: Text(
+                            'Documento CC',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           cedula,
                           style: const TextStyle(
@@ -720,7 +720,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                     ),
                     const SizedBox(height: 10),
                     const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Sede Académica',
@@ -729,11 +729,12 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                             fontSize: 13,
                           ),
                         ),
-                        Text(
-                          'Campus Principal Florencia',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Campus Principal Florencia',
+                            textAlign: TextAlign.end,
+                            style: TextStyle(color: Colors.white, fontSize: 13),
                           ),
                         ),
                       ],
@@ -772,11 +773,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Icon(
-                            Icons.verified,
-                            color: _tertiaryGreen,
-                            size: 15,
-                          ),
+                          Icon(Icons.verified, color: _tertiaryGreen, size: 15),
                         ],
                       ),
                     ),
@@ -916,13 +913,18 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                             size: 20,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            _isEnrollSuccess
-                                ? '¡Añadido con Éxito!'
-                                : 'Añadir al Curso 302-B',
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                _isEnrollSuccess
+                                    ? '¡Añadido con Éxito!'
+                                    : 'Añadir al Curso 302-B',
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -936,19 +938,15 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      'Ver ficha académica completa en Chairá',
-                      style: TextStyle(
-                        color: _primaryLight,
-                        fontSize: 15,
+                    Flexible(
+                      child: Text(
+                        'Ver ficha académica completa en Chairá',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: _primaryLight, fontSize: 15),
                       ),
                     ),
                     SizedBox(width: 4),
-                    Icon(
-                      Icons.chevron_right,
-                      color: _primaryLight,
-                      size: 16,
-                    ),
+                    Icon(Icons.chevron_right, color: _primaryLight, size: 16),
                   ],
                 ),
               ),
@@ -968,43 +966,47 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Text(
-                    'Añadidos en esta sesión',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _surfaceControl,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${_sessionStudents.length}',
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+              Expanded(
+                child: Row(
+                  children: [
+                    const Flexible(
+                      child: Text(
+                        'Añadidos en esta sesión',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _surfaceControl,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${_sessionStudents.length}',
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               const Text(
                 'Sesión activa',
-                style: TextStyle(
-                  color: AppTheme.textTertiary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
               ),
             ],
           ),
@@ -1111,6 +1113,7 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
                                     : AppTheme.textSecondary,
                                 fontSize: 12,
                               ),
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),

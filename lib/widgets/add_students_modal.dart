@@ -1,5 +1,7 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
+
 import '../utils/app_theme.dart';
 
 class AddStudentsModal extends StatelessWidget {
@@ -98,8 +100,8 @@ class AddStudentsModal extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          RichText(
-                            text: TextSpan(
+                          Text.rich(
+                            TextSpan(
                               style: const TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontSize: 13,
@@ -107,8 +109,7 @@ class AddStudentsModal extends StatelessWidget {
                               ),
                               children: [
                                 const TextSpan(
-                                  text:
-                                      'Selecciona cómo deseas registrar a los alumnos en ',
+                                  text: 'Selecciona cómo deseas registrar a los alumnos en ',
                                 ),
                                 TextSpan(
                                   text: courseName,
@@ -399,8 +400,8 @@ class AddStudentsModal extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: RichText(
-                        text: const TextSpan(
+                      child: Text.rich(
+                        const TextSpan(
                           style: TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 12,
@@ -408,8 +409,7 @@ class AddStudentsModal extends StatelessWidget {
                           ),
                           children: [
                             TextSpan(
-                              text:
-                                  'Sincronización directa con base de datos institucional ',
+                              text: 'Sincronización directa con base de datos institucional ',
                             ),
                             TextSpan(
                               text: 'Chairá 2025-1',
@@ -419,8 +419,7 @@ class AddStudentsModal extends StatelessWidget {
                               ),
                             ),
                             TextSpan(
-                              text:
-                                  '. Los derechos de matrícula serán validados en tiempo real.',
+                              text: '. Los derechos de matrícula serán validados en tiempo real.',
                             ),
                           ],
                         ),

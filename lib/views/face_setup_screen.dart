@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../models/verificacion_result_model.dart';
 import '../utils/app_theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import 'login_screen.dart';
 import 'teacher/teacher_home_screen.dart';
+
 class FaceSetupScreen extends StatefulWidget {
   const FaceSetupScreen({super.key});
 
@@ -71,7 +73,9 @@ class _FaceSetupScreenState extends State<FaceSetupScreen>
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('¡Vector biométrico registrado con éxito en el dispositivo!'),
+        content: Text(
+          '¡Vector biométrico registrado con éxito en el dispositivo!',
+        ),
         backgroundColor: AppTheme.success,
       ),
     );
@@ -88,7 +92,6 @@ class _FaceSetupScreenState extends State<FaceSetupScreen>
   }
 
   void _handleSkip() {
-    
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -211,10 +214,7 @@ class _FaceSetupScreenState extends State<FaceSetupScreen>
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircleAvatar(
-                      radius: 3,
-                      backgroundColor: _primaryIndigo,
-                    ),
+                    CircleAvatar(radius: 3, backgroundColor: _primaryIndigo),
                     SizedBox(width: 6),
                     Text(
                       'UDLA SECURE',
@@ -327,11 +327,7 @@ class _FaceSetupScreenState extends State<FaceSetupScreen>
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: _tertiaryGreen,
-                        size: 14,
-                      ),
+                      Icon(Icons.check_circle, color: _tertiaryGreen, size: 14),
                       SizedBox(width: 6),
                       Flexible(
                         child: Text(
@@ -351,10 +347,7 @@ class _FaceSetupScreenState extends State<FaceSetupScreen>
               const SizedBox(width: 8),
               const Text(
                 'Sincronizado',
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 11,
-                ),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
               ),
             ],
           ),
@@ -628,94 +621,117 @@ class _FaceSetupScreenState extends State<FaceSetupScreen>
                   ),
 
                   // Marco Biométrico Central (Esquinas + Óvalo + Constelación)
-                  SizedBox(
-                    width: 224,
-                    height: 224,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // 4 Esquinas estilo Apple Face ID
-                        const Positioned(
-                          top: 0,
-                          left: 0,
-                          child: _CornerBracket(isTop: true, isLeft: true),
-                        ),
-                        const Positioned(
-                          top: 0,
-                          right: 0,
-                          child: _CornerBracket(isTop: true, isLeft: false),
-                        ),
-                        const Positioned(
-                          bottom: 0,
-                          left: 0,
-                          child: _CornerBracket(isTop: false, isLeft: true),
-                        ),
-                        const Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: _CornerBracket(isTop: false, isLeft: false),
-                        ),
-
-                        // Óvalo Guía con animación de pulso y puntos biométricos
-                        ScaleTransition(
-                          scale: _pulseAnimation,
-                          child: SizedBox(
-                            width: 176,
-                            height: 192,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // Anillo exterior punteado simulado
-                                Container(
-                                  width: 176,
-                                  height: 192,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(100),
-                                    border: Border.all(
-                                      color: _scanCompleted
-                                          ? _tertiaryGreen
-                                          : _primaryLight.withValues(
-                                              alpha: 0.35,
-                                            ),
-                                      width: 1.2,
-                                    ),
-                                  ),
-                                ),
-                                // Anillo interior
-                                Container(
-                                  width: 144,
-                                  height: 160,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(100),
-                                    border: Border.all(
-                                      color: _primaryLight.withValues(
-                                        alpha: 0.18,
-                                      ),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    _scanCompleted
-                                        ? Icons.check_circle_outline
-                                        : Icons.face,
-                                    size: 64,
-                                    color: _scanCompleted
-                                        ? _tertiaryGreen
-                                        : _primaryLight.withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                // Puntos de la constelación facial
-                                _buildConstellationDot(top: 48, left: 40),
-                                _buildConstellationDot(top: 48, right: 40),
-                                _buildConstellationDot(top: 88),
-                                _buildConstellationDot(bottom: 48, left: 48),
-                                _buildConstellationDot(bottom: 48, right: 48),
-                                _buildConstellationDot(bottom: 32, isWide: true),
-                              ],
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: SizedBox(
+                        width: 224,
+                        height: 224,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // 4 Esquinas estilo Apple Face ID
+                            const Positioned(
+                              top: 0,
+                              left: 0,
+                              child: _CornerBracket(isTop: true, isLeft: true),
                             ),
-                          ),
+                            const Positioned(
+                              top: 0,
+                              right: 0,
+                              child: _CornerBracket(isTop: true, isLeft: false),
+                            ),
+                            const Positioned(
+                              bottom: 0,
+                              left: 0,
+                              child: _CornerBracket(isTop: false, isLeft: true),
+                            ),
+                            const Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: _CornerBracket(
+                                isTop: false,
+                                isLeft: false,
+                              ),
+                            ),
+
+                            // Óvalo Guía con animación de pulso y puntos biométricos
+                            ScaleTransition(
+                              scale: _pulseAnimation,
+                              child: SizedBox(
+                                width: 176,
+                                height: 192,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    // Anillo exterior punteado simulado
+                                    Container(
+                                      width: 176,
+                                      height: 192,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(
+                                          100,
+                                        ),
+                                        border: Border.all(
+                                          color: _scanCompleted
+                                              ? _tertiaryGreen
+                                              : _primaryLight.withValues(
+                                                  alpha: 0.35,
+                                                ),
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                    // Anillo interior
+                                    Container(
+                                      width: 144,
+                                      height: 160,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(
+                                          100,
+                                        ),
+                                        border: Border.all(
+                                          color: _primaryLight.withValues(
+                                            alpha: 0.18,
+                                          ),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        _scanCompleted
+                                            ? Icons.check_circle_outline
+                                            : Icons.face,
+                                        size: 64,
+                                        color: _scanCompleted
+                                            ? _tertiaryGreen
+                                            : _primaryLight.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                      ),
+                                    ),
+                                    // Puntos de la constelación facial
+                                    _buildConstellationDot(top: 48, left: 40),
+                                    _buildConstellationDot(top: 48, right: 40),
+                                    _buildConstellationDot(top: 88),
+                                    _buildConstellationDot(
+                                      bottom: 48,
+                                      left: 48,
+                                    ),
+                                    _buildConstellationDot(
+                                      bottom: 48,
+                                      right: 48,
+                                    ),
+                                    _buildConstellationDot(
+                                      bottom: 32,
+                                      isWide: true,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
 
@@ -829,12 +845,14 @@ class _FaceSetupScreenState extends State<FaceSetupScreen>
               children: [
                 Row(
                   children: [
-                    Text(
-                      'Validación Offline Anti-Fraude',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        'Validación Offline Anti-Fraude',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     SizedBox(width: 6),
@@ -942,10 +960,12 @@ class _CornerBracket extends StatelessWidget {
         borderRadius: BorderRadius.only(
           topLeft: isTop && isLeft ? const Radius.circular(16) : Radius.zero,
           topRight: isTop && !isLeft ? const Radius.circular(16) : Radius.zero,
-          bottomLeft:
-              !isTop && isLeft ? const Radius.circular(16) : Radius.zero,
-          bottomRight:
-              !isTop && !isLeft ? const Radius.circular(16) : Radius.zero,
+          bottomLeft: !isTop && isLeft
+              ? const Radius.circular(16)
+              : Radius.zero,
+          bottomRight: !isTop && !isLeft
+              ? const Radius.circular(16)
+              : Radius.zero,
         ),
         border: Border(
           top: isTop ? borderSide : BorderSide.none,

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/verificacion_result_model.dart';
 import '../../services/identidad_facial_service.dart';
 import '../../utils/app_theme.dart';
@@ -9,6 +10,7 @@ import '../../viewmodels/auth_viewmodel.dart';
 import '../login_screen.dart';
 import 'attendance_detail_screen.dart';
 import 'biometric_validation_screen.dart';
+import '../../widgets/texto_sin_cortes.dart';
 
 class StudentSettingsScreen extends StatefulWidget {
   const StudentSettingsScreen({super.key});
@@ -172,19 +174,26 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              _buildIconBox(Icons.podcasts),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'Estado de la baliza',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                _buildIconBox(Icons.podcasts),
+                                const SizedBox(width: 12),
+                                const Flexible(
+                                  child: Text(
+                                    'Estado de la baliza',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -271,7 +280,9 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    _isCopied ? Icons.check : Icons.content_copy,
+                                    _isCopied
+                                        ? Icons.check
+                                        : Icons.content_copy,
                                     color: _primaryLight,
                                     size: 15,
                                   ),
@@ -297,8 +308,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                     _buildSwitchRow(
                       icon: Icons.schedule,
                       title: 'Activar baliza automáticamente',
-                      subtitle:
-                          'En horario programado de clase según geocerca',
+                      subtitle: 'En horario programado de clase según geocerca',
                       value: _autoBeacon,
                       onChanged: (val) => setState(() => _autoBeacon = val),
                     ),
@@ -360,28 +370,27 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              _buildIconBox(
-                                Icons.light_mode_outlined,
-                                iconColor: _systemAmber,
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                'Tema actual',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
+                          _buildIconBox(
+                            Icons.light_mode_outlined,
+                            iconColor: _systemAmber,
                           ),
+                          const SizedBox(width: 12),
                           const Text(
-                            'Modo Claro (Activo)',
-                            style: TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                            'Tema actual',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Modo Claro (Activo)',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -449,7 +458,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(
+                                        TextoSinCortes(
                                           'Sincronizar ahora',
                                           style: TextStyle(
                                             color: Colors.white,
@@ -457,7 +466,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                           ),
                                         ),
                                         SizedBox(height: 2),
-                                        Text(
+                                        TextoSinCortes(
                                           'Última sincronización',
                                           style: TextStyle(
                                             color: AppTheme.textSecondary,
@@ -470,23 +479,31 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                 ],
                               ),
                             ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _lastSyncText,
-                                  style: const TextStyle(
-                                    color: AppTheme.textSecondary,
-                                    fontSize: 13,
+                            const SizedBox(width: 8),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 120),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      _lastSyncText,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Icon(
-                                  Icons.refresh,
-                                  color: AppTheme.textTertiary,
-                                  size: 20,
-                                ),
-                              ],
+                                  const SizedBox(width: 6),
+                                  const Icon(
+                                    Icons.refresh,
+                                    color: AppTheme.textTertiary,
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -633,7 +650,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              TextoSinCortes(
                 'Configuración',
                 style: TextStyle(
                   color: Colors.white,
@@ -645,10 +662,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
               SizedBox(height: 2),
               Text(
                 'Parámetros de cuenta, baliza y privacidad',
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -686,7 +700,8 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
   Widget _buildStudentProfileCard(VerificacionResult? data) {
     final nombre = data?.nombre ?? 'Carlos Andrés Muñoz Rivera';
     // El correo real de la cuenta; deducirlo del nombre puede no coincidir.
-    final email = context.read<AuthViewModel>().perfil?.email ??
+    final email =
+        context.read<AuthViewModel>().perfil?.email ??
         (data?.username != null
             ? '${data!.username}@udla.edu.co'
             : 'c.munoz@udla.edu.co');
@@ -914,6 +929,8 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
       ),
       child: Text(
         text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: textColor,
           fontSize: 13,
@@ -983,67 +1000,78 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  _buildIconBox(icon),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                        ),
-                        if (subtitle != null) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitle,
+        // El lado derecho ocupa lo que necesita, hasta el 45% del ancho; el
+        // resto es para el título.
+        child: LayoutBuilder(
+          builder: (context, caja) => Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    _buildIconBox(icon),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextoSinCortes(
+                            title,
                             style: const TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 12,
-                              height: 1.3,
+                              color: Colors.white,
+                              fontSize: 16,
                             ),
                           ),
+                          if (subtitle != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (trailingWidget != null) trailingWidget,
-                if (trailingText != null)
-                  Text(
-                    trailingText,
-                    style: TextStyle(
-                      color: trailingTextColor,
-                      fontSize: 13,
-                      fontWeight: trailingTextBold
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                    ),
-                  ),
-                const SizedBox(width: 6),
-                const Icon(
-                  Icons.chevron_right,
-                  color: AppTheme.textTertiary,
-                  size: 20,
+                  ],
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: caja.maxWidth * 0.45),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (trailingWidget != null) Flexible(child: trailingWidget),
+                    if (trailingText != null)
+                      Flexible(
+                        child: Text(
+                          trailingText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: trailingTextColor,
+                            fontSize: 13,
+                            fontWeight: trailingTextBold
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: AppTheme.textTertiary,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1070,7 +1098,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TextoSinCortes(
                         title,
                         style: const TextStyle(
                           color: Colors.white,
@@ -1111,70 +1139,72 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
   }) {
     final badgeColor = isGranted ? _tertiaryGreen : _systemAmber;
     final badgeText = isGranted ? 'Concedido' : 'Pendiente';
-    final badgeIcon = isGranted ? Icons.check_circle_outline : Icons.pending_outlined;
+    final badgeIcon = isGranted
+        ? Icons.check_circle_outline
+        : Icons.pending_outlined;
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: badgeColor.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Row(
-              children: [
-                _buildIconBox(icon),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                      ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: const TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: badgeColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(badgeIcon, color: badgeColor, size: 15),
-                const SizedBox(width: 5),
-                Text(
-                  badgeText,
-                  style: TextStyle(
-                    color: badgeColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+          Icon(badgeIcon, color: badgeColor, size: 15),
+          const SizedBox(width: 5),
+          Text(
+            badgeText,
+            style: TextStyle(
+              color: badgeColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      // Con poco ancho (pantalla angosta o letra grande) la etiqueta baja
+      // debajo del título, para que el título no quede apretado.
+      child: LayoutBuilder(
+        builder: (context, caja) {
+          final etiquetaAbajo =
+              caja.maxWidth < MediaQuery.textScalerOf(context).scale(300);
+          return Row(
+            children: [
+              _buildIconBox(icon),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextoSinCortes(
+                      title,
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                    if (etiquetaAbajo) ...[const SizedBox(height: 6), badge],
+                  ],
+                ),
+              ),
+              if (!etiquetaAbajo) ...[const SizedBox(width: 8), badge],
+            ],
+          );
+        },
       ),
     );
   }
@@ -1212,10 +1242,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
         const Text(
           'Versión 1.0.0 • SmartCheck UDLA Estudiantes',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppTheme.textTertiary,
-            fontSize: 13,
-          ),
+          style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
         ),
       ],
     );
@@ -1291,14 +1318,10 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                   color: _primaryIndigo.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(
-                  Icons.tune,
-                  color: Colors.white,
-                  size: 22,
-                ),
+                child: const Icon(Icons.tune, color: Colors.white, size: 22),
               ),
               const SizedBox(height: 4),
-              const Text(
+              const TextoSinCortes(
                 'Configuración',
                 style: TextStyle(
                   color: Colors.white,

@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/usuario_perfil_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../attendance/face_verification_screen.dart';
 
 class BiometricValidationScreen extends StatefulWidget {
   const BiometricValidationScreen({super.key});
@@ -74,9 +77,25 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
     return vinculado != null && vinculado == _esteCelular;
   }
 
+  /// Antes de atar la cuenta a este celular, la cara de quien lo tiene debe
+  /// ser la del estudiante. Sin esto, un compañero podría vincular la cuenta
+  /// de un ausente a su propio teléfono y marcarlo desde ahí.
   Future<void> _vincular() async {
-    setState(() => _vinculando = true);
     final auth = context.read<AuthViewModel>();
+    final rostro = await verificarRostro(context);
+    if (rostro == null || !mounted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Para vincular este celular tienes que confirmar tu rostro.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    setState(() => _vinculando = true);
     final listo = await auth.vincularEsteDispositivo();
     if (listo) _historial = await auth.historialDeDispositivos();
     if (!mounted) return;
@@ -170,43 +189,43 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
               color: AppTheme.surfaceControl,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.close,
-              color: Colors.white,
-              size: 19,
-            ),
+            child: const Icon(Icons.close, color: Colors.white, size: 19),
           ),
         ),
 
         // Pill Central: "UDLA SECURE ACCESS"
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceElevated,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.lock,
-                color: _primaryLight,
-                size: 14,
-              ),
-              SizedBox(width: 6),
-              Text(
-                'UDLA SECURE ACCESS',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8,
+        const SizedBox(width: 8),
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceElevated,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock, color: _primaryLight, size: 14),
+                SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'UDLA SECURE ACCESS',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+        const SizedBox(width: 8),
 
         // Indicador Derecho NFC con punto verde pulsante
         Container(
@@ -219,9 +238,10 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               FadeTransition(
-                opacity: Tween<double>(begin: 0.4, end: 1.0).animate(
-                  _pulseController,
-                ),
+                opacity: Tween<double>(
+                  begin: 0.4,
+                  end: 1.0,
+                ).animate(_pulseController),
                 child: Container(
                   width: 8,
                   height: 8,
@@ -232,11 +252,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(
-                Icons.contactless,
-                color: _tertiaryGreen,
-                size: 16,
-              ),
+              const Icon(Icons.contactless, color: _tertiaryGreen, size: 16),
             ],
           ),
         ),
@@ -477,8 +493,8 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                             ],
                           ),
                           const SizedBox(height: 5),
-                          RichText(
-                            text: TextSpan(
+                          Text.rich(
+                            TextSpan(
                               style: const TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontSize: 13,
@@ -535,9 +551,11 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                _corto(context
-                                    .watch<AuthViewModel>()
-                                    .dispositivoVinculado),
+                                _corto(
+                                  context
+                                      .watch<AuthViewModel>()
+                                      .dispositivoVinculado,
+                                ),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 13,
@@ -593,9 +611,10 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     FadeTransition(
-                      opacity: Tween<double>(begin: 0.5, end: 1.0).animate(
-                        _pulseController,
-                      ),
+                      opacity: Tween<double>(
+                        begin: 0.5,
+                        end: 1.0,
+                      ).animate(_pulseController),
                       child: const Icon(
                         Icons.contactless_outlined,
                         color: _primaryLight,
@@ -629,23 +648,23 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
     final ringColor = _preguntando
         ? _primaryIndigo
         : esEste
-            ? _tertiaryGreen
-            : _systemAmber;
+        ? _tertiaryGreen
+        : _systemAmber;
     final titulo = _preguntando
         ? 'Comprobando este celular...'
         : esEste
-            ? 'Este es tu celular'
-            : vinculado == null
-                ? 'Ningún celular vinculado'
-                : 'Tu cuenta está atada a otro celular';
+        ? 'Este es tu celular'
+        : vinculado == null
+        ? 'Ningún celular vinculado'
+        : 'Tu cuenta está atada a otro celular';
     final detalle = _preguntando
         ? 'Un momento.'
         : esEste
-            ? 'Con él firmas tu asistencia, y el servidor lo comprueba.'
-            : vinculado == null
-                ? 'Vincula este celular para poder marcar asistencia.'
-                : 'Si cambiaste de teléfono, vincula este. Si no, tu '
-                    'asistencia se marca con el otro.';
+        ? 'Con él firmas tu asistencia, y el servidor lo comprueba.'
+        : vinculado == null
+        ? 'Vincula este celular para poder marcar asistencia.'
+        : 'Si cambiaste de teléfono, vincula este. Si no, tu '
+              'asistencia se marca con el otro.';
 
     return Column(
       children: [
@@ -682,10 +701,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                 decoration: BoxDecoration(
                   color: AppTheme.surfaceElevated,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: ringColor,
-                    width: 3.5,
-                  ),
+                  border: Border.all(color: ringColor, width: 3.5),
                   boxShadow: [
                     BoxShadow(
                       color: ringColor.withValues(alpha: 0.25),
@@ -699,8 +715,8 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                     _preguntando
                         ? Icons.smartphone
                         : esEste
-                            ? Icons.verified_user
-                            : Icons.phonelink_erase,
+                        ? Icons.verified_user
+                        : Icons.phonelink_erase,
                     color: _preguntando ? _primaryLight : ringColor,
                     size: 36,
                   ),
@@ -756,12 +772,15 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                 size: 15,
               ),
               const SizedBox(width: 6),
-              Text(
-                _leyendaDeFechas(auth),
-                style: const TextStyle(
-                  color: Color(0xFFE4E2E4),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+              Flexible(
+                child: Text(
+                  _leyendaDeFechas(auth),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFE4E2E4),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -771,11 +790,8 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
     );
   }
 
-  /// Desde cuándo está atado el celular, cuántos ha habido, y cuándo se
-  /// podrá cambiar si todavía no se puede.
+  /// Desde cuándo está atado el celular y cuántos ha habido.
   String _leyendaDeFechas(AuthViewModel auth) {
-    final proximo = auth.proximoCambioDeDispositivo;
-    if (proximo != null) return 'Puedes cambiarlo el ${_fecha(proximo)}';
     final desde = auth.perfil?.dispositivoDesde;
     if (desde == null) return 'Sin vincular';
     final veces = _historial.length;
@@ -785,12 +801,12 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
 
   Widget _buildRevalidateButton() {
     final auth = context.watch<AuthViewModel>();
-    final puede = auth.puedeVincular && !_preguntando && !_vinculando;
+    final puede = !_preguntando && !_vinculando;
     final texto = _esElVinculado
         ? 'Este celular ya está vinculado'
         : auth.dispositivoVinculado == null
-            ? 'Vincular este celular'
-            : 'Cambiar a este celular';
+        ? 'Vincular este celular'
+        : 'Cambiar a este celular';
 
     return ElevatedButton(
       onPressed: (!puede || _esElVinculado) ? null : _vincular,
@@ -800,9 +816,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
         foregroundColor: Colors.white,
         disabledForegroundColor: Colors.white,
         minimumSize: const Size.fromHeight(50),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         elevation: 8,
         shadowColor: _primaryIndigo.withValues(alpha: 0.4),
       ),
@@ -814,11 +828,16 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
             size: 20,
           ),
           const SizedBox(width: 8),
-          Text(
-            _vinculando ? 'Vinculando...' : texto,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                _vinculando ? 'Vinculando...' : texto,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],
@@ -832,11 +851,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.verified_user,
-            color: AppTheme.textTertiary,
-            size: 16,
-          ),
+          Icon(Icons.verified_user, color: AppTheme.textTertiary, size: 16),
           SizedBox(width: 8),
           Flexible(
             child: Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../utils/app_theme.dart';
 import '../utils/usuario_input_formatter.dart';
 import '../viewmodels/auth_viewmodel.dart';
@@ -196,8 +197,8 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: RichText(
-                    text: const TextSpan(
+                  child: Text.rich(
+                    const TextSpan(
                       style: TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 13,
@@ -213,8 +214,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
                           ),
                         ),
                         TextSpan(
-                          text:
-                              ' por estricta política de seguridad universitaria UDLA.',
+                          text: ' por estricta política de seguridad universitaria UDLA.',
                         ),
                       ],
                     ),
@@ -249,11 +249,16 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
                 : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        'Enviar enlace de recuperación',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Enviar enlace de recuperación',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                       SizedBox(width: 8),
@@ -309,9 +314,9 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            RichText(
+            Text.rich(
               textAlign: TextAlign.center,
-              text: TextSpan(
+              TextSpan(
                 style: const TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 15,

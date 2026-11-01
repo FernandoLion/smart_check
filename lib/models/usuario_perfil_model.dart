@@ -58,12 +58,6 @@ class UsuarioPerfil {
   final String? dispositivoId;
   final DateTime? dispositivoDesde;
 
-  /// Lo que hay que esperar para poder vincular otro celular. Sin esto,
-  /// turnarse un teléfono entre varios sería tan fácil como volver a pulsar
-  /// el botón; con esto, quien pierda el suyo antes de tiempo lo marca el
-  /// docente a mano.
-  static const esperaEntreDispositivos = Duration(days: 7);
-
   const UsuarioPerfil({
     required this.uid,
     required this.email,
@@ -117,14 +111,14 @@ class UsuarioPerfil {
   /// Sin el dispositivo a propósito: lo escribe `vincularDispositivo` con la
   /// hora del servidor, y las reglas solo admiten ese cambio por separado.
   Map<String, dynamic> toMap() => {
-        'email': email,
-        'nombre': nombre,
-        'cedula': cedula,
-        'programa': programa,
-        'tipo_usuario': tipoUsuario,
-        'foto_url': fotoUrl,
-        'roles': roles,
-      };
+    'email': email,
+    'nombre': nombre,
+    'cedula': cedula,
+    'programa': programa,
+    'tipo_usuario': tipoUsuario,
+    'foto_url': fotoUrl,
+    'roles': roles,
+  };
 
   bool get esDocente => roles.contains(Rol.docente);
   bool get esEstudiante => roles.contains(Rol.estudiante);
@@ -132,33 +126,20 @@ class UsuarioPerfil {
   /// Si ya hay un celular atado a esta cuenta.
   bool get tieneDispositivo => (dispositivoId ?? '').isNotEmpty;
 
-  /// Si se puede vincular otro celular. La primera vez siempre se puede; a
-  /// partir de ahí, solo cuando pasó la espera. Es la misma cuenta que hacen
-  /// las reglas, repetida aquí para avisar antes de intentarlo en vano.
-  bool puedeVincular(DateTime ahora) {
-    if (!tieneDispositivo || dispositivoDesde == null) return true;
-    return !ahora.isBefore(dispositivoDesde!.add(esperaEntreDispositivos));
-  }
-
-  /// Cuándo se podrá cambiar de celular, o null si ya se puede.
-  DateTime? proximoCambio(DateTime ahora) => puedeVincular(ahora)
-      ? null
-      : dispositivoDesde!.add(esperaEntreDispositivos);
-
   /// El mismo perfil con otro celular atado, para refrescarlo en memoria sin
   /// volver a leer Firestore.
   UsuarioPerfil conDispositivo(String id, DateTime desde) => UsuarioPerfil(
-        uid: uid,
-        email: email,
-        nombre: nombre,
-        cedula: cedula,
-        programa: programa,
-        tipoUsuario: tipoUsuario,
-        fotoUrl: fotoUrl,
-        roles: roles,
-        dispositivoId: id,
-        dispositivoDesde: desde,
-      );
+    uid: uid,
+    email: email,
+    nombre: nombre,
+    cedula: cedula,
+    programa: programa,
+    tipoUsuario: tipoUsuario,
+    fotoUrl: fotoUrl,
+    roles: roles,
+    dispositivoId: id,
+    dispositivoDesde: desde,
+  );
 
   /// Docente que también cursa materias: es el único caso en que se pregunta
   /// con qué perfil entrar.

@@ -1,11 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../login_screen.dart';
 import 'import_csv_screen.dart';
+import '../../widgets/texto_sin_cortes.dart';
 
 class TeacherSettingsScreen extends StatefulWidget {
   const TeacherSettingsScreen({super.key});
@@ -145,7 +147,9 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Descargando plantilla oficial Chairá...'),
+                            content: Text(
+                              'Descargando plantilla oficial Chairá...',
+                            ),
                             duration: Duration(seconds: 1),
                           ),
                         );
@@ -297,15 +301,22 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Configuración',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.5,
+            const Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Configuración',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                ),
               ),
             ),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
@@ -333,10 +344,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
         const SizedBox(height: 4),
         const Text(
           'Gestión de cuenta institucional y parámetros de aula',
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 15,
-          ),
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 15),
         ),
       ],
     );
@@ -347,7 +355,8 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
         ? 'Prof. ${data!.nombre}'
         : 'Prof. Usuario';
     // El correo real de la cuenta; deducirlo del nombre puede no coincidir.
-    final email = context.read<AuthViewModel>().perfil?.email ??
+    final email =
+        context.read<AuthViewModel>().perfil?.email ??
         (data?.username != null
             ? '${data!.username}@udla.edu.co'
             : 'usuario@udla.edu.co');
@@ -427,12 +436,16 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
-                      idText,
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                    Flexible(
+                      child: Text(
+                        idText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
@@ -510,12 +523,14 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
         children: [
           // Alcance de detección (BLE Micro-Zone)
           const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Alcance de detección',
-                style: TextStyle(color: Colors.white, fontSize: 17),
+              Expanded(
+                child: Text(
+                  'Alcance de detección',
+                  style: TextStyle(color: Colors.white, fontSize: 17),
+                ),
               ),
+              SizedBox(width: 8),
               Text(
                 'BLE Micro-Zone',
                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
@@ -545,10 +560,13 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Duración del escaneo',
-                style: TextStyle(color: Colors.white, fontSize: 17),
+              const Expanded(
+                child: Text(
+                  'Duración del escaneo',
+                  style: TextStyle(color: Colors.white, fontSize: 17),
+                ),
               ),
+              const SizedBox(width: 8),
               Row(
                 children: const [
                   Text(
@@ -573,10 +591,13 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Tolerancia de llegada tarde',
-                style: TextStyle(color: Colors.white, fontSize: 17),
+              const Expanded(
+                child: Text(
+                  'Tolerancia de llegada tarde',
+                  style: TextStyle(color: Colors.white, fontSize: 17),
+                ),
               ),
+              const SizedBox(width: 8),
               Row(
                 children: const [
                   Text(
@@ -745,7 +766,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                     Icon(icon, color: iconColor, size: 22),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
+                      child: TextoSinCortes(
                         title,
                         style: const TextStyle(
                           color: Colors.white,
@@ -811,40 +832,49 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: _surfaceControl,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.dark_mode_outlined,
-                    color: _primaryLight,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Tema actual',
-                      style: TextStyle(color: Colors.white, fontSize: 17),
+            Expanded(
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: _surfaceControl,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    Text(
-                      'Optimizado para OLED',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
+                    child: const Icon(
+                      Icons.dark_mode_outlined,
+                      color: _primaryLight,
+                      size: 20,
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tema actual',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.white, fontSize: 17),
+                        ),
+                        Text(
+                          'Optimizado para OLED',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -974,31 +1004,38 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  RotationTransition(
-                    turns: _syncController,
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: _surfaceControl,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.sync,
-                        color: _primaryLight,
-                        size: 20,
+              Expanded(
+                child: Row(
+                  children: [
+                    RotationTransition(
+                      turns: _syncController,
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: _surfaceControl,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.sync,
+                          color: _primaryLight,
+                          size: 20,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Sincronizar ahora',
-                    style: TextStyle(color: Colors.white, fontSize: 17),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    const Flexible(
+                      child: Text(
+                        'Sincronizar ahora',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Colors.white, fontSize: 17),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Row(
                 children: [
                   Text(
@@ -1089,7 +1126,11 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
             child: const Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.school_outlined, color: AppTheme.textSecondary, size: 24),
+                Icon(
+                  Icons.school_outlined,
+                  color: AppTheme.textSecondary,
+                  size: 24,
+                ),
                 SizedBox(height: 4),
                 Text(
                   'Cursos',
@@ -1108,7 +1149,9 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Pronto conectaremos con el Flujo 4: Radar BLE en Vivo'),
+                  content: Text(
+                    'Pronto conectaremos con el Flujo 4: Radar BLE en Vivo',
+                  ),
                   duration: Duration(seconds: 1),
                 ),
               );
@@ -1136,7 +1179,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
             children: [
               Icon(Icons.settings, color: _primaryIndigo, size: 25),
               SizedBox(height: 4),
-              Text(
+              TextoSinCortes(
                 'Configuración',
                 style: TextStyle(
                   color: _primaryIndigo,
@@ -1178,17 +1221,11 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
   }
 
   Widget _buildDivider() {
-    return Container(
-      height: 1,
-      color: Colors.white.withValues(alpha: 0.08),
-    );
+    return Container(height: 1, color: Colors.white.withValues(alpha: 0.08));
   }
 
   Widget _buildFullWidthDivider() {
-    return Container(
-      height: 1,
-      color: Colors.white.withValues(alpha: 0.08),
-    );
+    return Container(height: 1, color: Colors.white.withValues(alpha: 0.08));
   }
 
   Widget _buildNavRow({

@@ -21,13 +21,19 @@ import '../../viewmodels/face_verification_viewmodel.dart';
 /// Devuelve por [Navigator.pop] una [VerificacionFacial] si se verificó, y
 /// null si se canceló o no se pudo.
 class FaceVerificationScreen extends StatefulWidget {
-  final Curso curso;
+  /// El curso del llamado, o null cuando se verifica para vincular el
+  /// celular.
+  final Curso? curso;
 
-  const FaceVerificationScreen({super.key, required this.curso});
+  const FaceVerificationScreen({super.key, this.curso});
 
-  String get courseTitle => '${curso.nombre} - Grupo ${curso.grupo}';
-  String get professorName => 'Docente: ${curso.docenteNombre}';
-  String get classroom => curso.aula;
+  String get courseTitle => curso == null
+      ? 'Vincular este celular'
+      : '${curso!.nombre} - Grupo ${curso!.grupo}';
+  String get professorName => curso == null
+      ? 'Confirma que eres tú antes de atar tu cuenta'
+      : 'Docente: ${curso!.docenteNombre}';
+  String get classroom => curso?.aula ?? 'Este celular';
 
   @override
   State<FaceVerificationScreen> createState() => _FaceVerificationScreenState();
@@ -164,6 +170,11 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     } on CameraException catch (e) {
       if (!mounted) return;
       setState(() => _errorDeCamara = _mensajeDeCamara(e));
+    } catch (_) {
+      // Un celular sin el plugin de cámara (o un emulador raro) no debe
+      // dejar la pantalla en blanco.
+      if (!mounted) return;
+      setState(() => _errorDeCamara = 'No se pudo abrir la cámara.');
     }
   }
 
@@ -181,10 +192,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     try {
       final entrada = _comoEntradaDeMlKit(imagen);
       if (entrada != null) {
-        final tamano = Size(
-          imagen.width.toDouble(),
-          imagen.height.toDouble(),
-        );
+        final tamano = Size(imagen.width.toDouble(), imagen.height.toDouble());
         _vm.alVer(await _rostros.analizar(entrada, tamano));
       }
     } catch (_) {
@@ -220,10 +228,10 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     await Future<void>.delayed(const Duration(milliseconds: 800));
     final resultado = _vm.resultado;
     if (!mounted || resultado == null) return;
-    Navigator.pop<VerificacionFacial>(
-      context,
-      (resultado: resultado, similitud: _vm.similitudCalculada),
-    );
+    Navigator.pop<VerificacionFacial>(context, (
+      resultado: resultado,
+      similitud: _vm.similitudCalculada,
+    ));
   }
 
   @override
@@ -285,28 +293,36 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 4,
-                      backgroundColor: _tertiaryGreen,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      widget.classroom,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 4,
+                        backgroundColor: _tertiaryGreen,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          widget.classroom,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 const Icon(
                   Icons.bluetooth_searching,
                   color: _primaryIndigo,
                   size: 15,
                 ),
+                const SizedBox(width: 4),
                 const Text(
                   'BLE Activo',
                   style: TextStyle(
@@ -340,46 +356,58 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                   ),
                   child: Icon(
                     Icons.refresh,
-                    color: _camara == null ? AppTheme.textTertiary : Colors.white,
+                    color: _camara == null
+                        ? AppTheme.textTertiary
+                        : Colors.white,
                     size: 20,
                   ),
                 ),
               ),
 
+              const SizedBox(width: 8),
               // Live Beacon Geofence Status Chip
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: _surfaceElevated.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _tertiaryGreen.withValues(alpha: 0.3),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
                   ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.verified_user,
-                      color: _tertiaryGreen,
-                      size: 16,
+                  decoration: BoxDecoration(
+                    color: _surfaceElevated.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _tertiaryGreen.withValues(alpha: 0.3),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Geocerca Validada • ${widget.classroom}',
-                      style: const TextStyle(
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.verified_user,
                         color: _tertiaryGreen,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        size: 16,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          widget.curso == null
+                              ? 'Vinculación de celular'
+                              : 'Geocerca Validada • ${widget.classroom}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _tertiaryGreen,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
+              const SizedBox(width: 8),
               // Botón Info
               Container(
                 width: 40,
@@ -416,10 +444,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           const Text(
             'Mantén tu rostro dentro del marco • SIS-402 Ingeniería de Software II',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 13,
-            ),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
         ],
       ),
@@ -520,9 +545,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
 
                     // Malla de puntos 3D TrueDepth
                     Positioned.fill(
-                      child: CustomPaint(
-                        painter: _FaceIdMeshPainter(),
-                      ),
+                      child: CustomPaint(painter: _FaceIdMeshPainter()),
                     ),
 
                     // Barra horizontal de escaneo láser (animate-laser)
@@ -567,56 +590,56 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                 left: 10,
                 right: 10,
                 child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _isValidated
+                        ? _tertiaryContainer.withValues(alpha: 0.45)
+                        : _surfaceElevated.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
                       color: _isValidated
-                          ? _tertiaryContainer.withValues(alpha: 0.45)
-                          : _surfaceElevated.withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _isValidated
-                            ? _tertiaryGreen
-                            : _primaryIndigo.withValues(alpha: 0.6),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          blurRadius: 12,
-                        ),
-                      ],
+                          ? _tertiaryGreen
+                          : _primaryIndigo.withValues(alpha: 0.6),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.fingerprint,
-                          color: _primaryIndigo,
-                          size: 15,
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            // En depuración se ve la similitud, para
-                            // calibrar los umbrales con caras reales.
-                            kDebugMode && _vm.similitudCalculada != null
-                                ? '${_vm.instruccion} '
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.fingerprint,
+                        color: _primaryIndigo,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          // En depuración se ve la similitud, para
+                          // calibrar los umbrales con caras reales.
+                          kDebugMode && _vm.similitudCalculada != null
+                              ? '${_vm.instruccion} '
                                     '(${_vm.similitudCalculada!.toStringAsFixed(2)})'
-                                : _vm.instruccion,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
+                              : _vm.instruccion,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                ),
               ),
             ],
           ),
@@ -652,8 +675,8 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                 label: _isValidated
                     ? 'Identidad: OK'
                     : _vm.paso == PasoVerificacion.comparando
-                        ? 'Comparando con tu rostro'
-                        : 'Prueba de vida: ${(_vm.progreso * 100).round()}%',
+                    ? 'Comparando con tu rostro'
+                    : 'Prueba de vida: ${(_vm.progreso * 100).round()}%',
               ),
             ],
           ),
@@ -700,10 +723,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     );
   }
 
-  Widget _buildTelemetryPill({
-    required IconData icon,
-    required String label,
-  }) {
+  Widget _buildTelemetryPill({required IconData icon, required String label}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -842,10 +862,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                   ],
                 ),
                 const SizedBox(height: 12),
-                Divider(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  height: 1,
-                ),
+                Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -854,11 +871,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.alarm,
-                            color: _systemAmber,
-                            size: 16,
-                          ),
+                          Icon(Icons.alarm, color: _systemAmber, size: 16),
                           SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -874,23 +887,30 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                         ],
                       ),
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.pin_drop_outlined,
-                          color: AppTheme.textTertiary,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Sensor ${widget.classroom}',
-                          style: const TextStyle(
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.pin_drop_outlined,
                             color: AppTheme.textTertiary,
-                            fontSize: 12,
+                            size: 14,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'Sensor ${widget.classroom}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppTheme.textTertiary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -908,9 +928,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
               decoration: BoxDecoration(
                 color: _surfaceControl.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -952,10 +970,12 @@ class _ReticleCorner extends StatelessWidget {
         borderRadius: BorderRadius.only(
           topLeft: isTop && isLeft ? const Radius.circular(12) : Radius.zero,
           topRight: isTop && !isLeft ? const Radius.circular(12) : Radius.zero,
-          bottomLeft:
-              !isTop && isLeft ? const Radius.circular(12) : Radius.zero,
-          bottomRight:
-              !isTop && !isLeft ? const Radius.circular(12) : Radius.zero,
+          bottomLeft: !isTop && isLeft
+              ? const Radius.circular(12)
+              : Radius.zero,
+          bottomRight: !isTop && !isLeft
+              ? const Radius.circular(12)
+              : Radius.zero,
         ),
         border: Border(
           top: isTop ? side : BorderSide.none,
@@ -986,4 +1006,63 @@ class _FaceIdMeshPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Comprueba que quien tiene el celular es el dueño de la cuenta: prueba de
+/// vida y comparación de su cara. Lo usan el marcaje de asistencia (con el
+/// [curso] del llamado) y la vinculación del celular (sin curso).
+///
+/// La primera vez en este celular le pide su consentimiento y lo compara con
+/// su foto de Chairá. Devuelve null si cancela o no pasa.
+Future<VerificacionFacial?> verificarRostro(
+  BuildContext context, {
+  Curso? curso,
+}) async {
+  final uid = context.read<AuthViewModel>().perfil?.uid;
+  if (uid == null) return null;
+  if (!await IdentidadEnCelular.tieneReferencia(uid)) {
+    if (!context.mounted || !await _aceptaRegistrarRostro(context)) {
+      return null;
+    }
+  }
+  if (!context.mounted) return null;
+  return Navigator.push<VerificacionFacial>(
+    context,
+    MaterialPageRoute(builder: (_) => FaceVerificationScreen(curso: curso)),
+  );
+}
+
+/// La primera vez que verifica su cara en este celular: qué se hace con ella
+/// y su consentimiento (los datos biométricos son sensibles, Ley 1581 de
+/// 2012).
+Future<bool> _aceptaRegistrarRostro(BuildContext context) async {
+  final acepta = await showDialog<bool>(
+    context: context,
+    builder: (dialogo) => AlertDialog(
+      backgroundColor: AppTheme.surfaceElevated,
+      title: const Text(
+        'Registrar tu rostro',
+        style: TextStyle(color: Colors.white),
+      ),
+      content: const Text(
+        'Para que nadie pueda usar tu cuenta desde otro celular, vamos a '
+        'comparar tu cara con tu foto de Chairá.\n\n'
+        'Si coinciden, guardaremos una huella numérica de tu rostro, cifrada '
+        'y solo en este celular. No se guarda ninguna foto ni sale nada de '
+        'tu teléfono. Puedes borrarla cuando quieras desde Ajustes.',
+        style: TextStyle(color: AppTheme.textSecondary, height: 1.4),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogo, false),
+          child: const Text('Ahora no'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogo, true),
+          child: const Text('Acepto'),
+        ),
+      ],
+    ),
+  );
+  return acepta ?? false;
 }

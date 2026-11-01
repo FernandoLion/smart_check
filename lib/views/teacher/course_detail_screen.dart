@@ -12,7 +12,10 @@ import 'session_detail_screen.dart';
 class CourseDetailScreen extends StatefulWidget {
   final Curso curso;
 
-  const CourseDetailScreen({super.key, required this.curso});
+  const CourseDetailScreen({super.key, required this.curso, this.vm});
+
+  /// Solo para las pruebas: el viewmodel con servicios falsos.
+  final CourseDetailViewModel? vm;
 
   @override
   State<CourseDetailScreen> createState() => _CourseDetailScreenState();
@@ -22,11 +25,27 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     with SingleTickerProviderStateMixin {
   static const _dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   static const _diasLargos = [
-    'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado',
+    'Domingo',
   ];
   static const _meses = [
-    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
   ];
 
   late final TabController _tabController;
@@ -49,7 +68,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _vm = CourseDetailViewModel()..vigilar(widget.curso.id);
+    _vm = (widget.vm ?? CourseDetailViewModel())..vigilar(widget.curso.id);
     _buscador.addListener(() => setState(() {}));
   }
 
@@ -79,24 +98,24 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         child: ListenableBuilder(
           listenable: _vm,
           builder: (context, _) => Column(
-          children: [
-            // 1. HEADER UNIFICADO (Dynamic Island + Navigation + TabBar)
-            _buildHeader(context),
+            children: [
+              // 1. HEADER UNIFICADO (Dynamic Island + Navigation + TabBar)
+              _buildHeader(context),
 
-            // 2. CONTENIDO DE LAS PESTAÑAS (Sesiones vs Estudiantes)
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  // PESTAÑA 1: SESIONES (Pantalla 14)
-                  _buildSessionsTab(),
+              // 2. CONTENIDO DE LAS PESTAÑAS (Sesiones vs Estudiantes)
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // PESTAÑA 1: SESIONES (Pantalla 14)
+                    _buildSessionsTab(),
 
-                  // PESTAÑA 2: ESTUDIANTES (Pantalla 15)
-                  _buildStudentsTab(),
-                ],
+                    // PESTAÑA 2: ESTUDIANTES (Pantalla 15)
+                    _buildStudentsTab(),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
           ),
         ),
       ),
@@ -119,49 +138,54 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             height: 28,
             width: 176,
             padding: const EdgeInsets.symmetric(horizontal: 12),
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: _primaryIndigo,
-                        shape: BoxShape.circle,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: _primaryIndigo,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'BLE Activo',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 11,
+                      const SizedBox(width: 6),
+                      const Text(
+                        'BLE Activo',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const Row(
-                  children: [
-                    Icon(Icons.sensors, color: _primaryLight, size: 13),
-                    SizedBox(width: 4),
-                    Text(
-                      'SmartCheck',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                    ],
+                  ),
+                  const SizedBox(width: 18),
+                  const Row(
+                    children: [
+                      Icon(Icons.sensors, color: _primaryLight, size: 13),
+                      SizedBox(width: 4),
+                      Text(
+                        'SmartCheck',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -254,41 +278,47 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               ),
               tabs: [
                 Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.event_note, size: 16),
-                      SizedBox(width: 6),
-                      Text('Sesiones'),
-                    ],
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.event_note, size: 16),
+                        SizedBox(width: 6),
+                        Text('Sesiones'),
+                      ],
+                    ),
                   ),
                 ),
                 Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.group, size: 16),
-                      const SizedBox(width: 6),
-                      const Text('Estudiantes'),
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _primaryIndigo.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${_vm.totalInscritos}',
-                          style: const TextStyle(
-                            color: _primaryLight,
-                            fontSize: 10,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.group, size: 16),
+                        const SizedBox(width: 6),
+                        const Text('Estudiantes'),
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _primaryIndigo.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${_vm.totalInscritos}',
+                            style: const TextStyle(
+                              color: _primaryLight,
+                              fontSize: 10,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -441,9 +471,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         ),
         const SizedBox(height: 10),
         if (pasadas.isEmpty)
-          _buildAviso(
-            'Todavía no has cerrado ninguna clase de este curso.',
-          )
+          _buildAviso('Todavía no has cerrado ninguna clase de este curso.')
         else
           Container(
             decoration: BoxDecoration(
@@ -489,10 +517,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   Widget _buildClaseDeHoy() {
     final ahora = DateTime.now();
     final abierta = _vm.llamadoVigente;
-    final bloqueHoy = widget.curso.horarios
-        .where((h) => h.dia == ahora.weekday)
-        .toList()
-      ..sort((a, b) => a.inicioMinutos.compareTo(b.inicioMinutos));
+    final bloqueHoy =
+        widget.curso.horarios.where((h) => h.dia == ahora.weekday).toList()
+          ..sort((a, b) => a.inicioMinutos.compareTo(b.inicioMinutos));
 
     final String titulo;
     final String insignia;
@@ -501,7 +528,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       titulo = 'LLAMADO ABIERTO';
       insignia = 'Radar abierto';
       // La hora es la de la ventana del llamado; la fecha, la de la clase.
-      horario = 'Llamado ${_horaDe(abierta.inicio)} - '
+      horario =
+          'Llamado ${_horaDe(abierta.inicio)} - '
           '${_horaDe(abierta.fin)} • ${_fechaLarga(abierta.franja)}';
     } else if (bloqueHoy.isNotEmpty) {
       titulo = 'CLASE DE HOY';
@@ -510,8 +538,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         (h) => h.finMinutos > minuto,
         orElse: () => bloqueHoy.last,
       );
-      insignia = siguiente.inicioMinutos > minuto ? 'Por empezar' : 'En horario';
-      horario = '${siguiente.inicio} - ${siguiente.fin} • '
+      insignia = siguiente.inicioMinutos > minuto
+          ? 'Por empezar'
+          : 'En horario';
+      horario =
+          '${siguiente.inicio} - ${siguiente.fin} • '
           '${_diasLargos[ahora.weekday - 1]}';
     } else {
       titulo = 'SIN CLASE HOY';
@@ -548,8 +579,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 children: [
                   CircleAvatar(
                     radius: 4,
-                    backgroundColor:
-                        abierta != null ? _tertiaryGreen : AppTheme.textTertiary,
+                    backgroundColor: abierta != null
+                        ? _tertiaryGreen
+                        : AppTheme.textTertiary,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -613,7 +645,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   geocerca == null
                       ? '${widget.curso.aula} • Sin geocerca asignada'
                       : '${widget.curso.aula} • Geocerca ±'
-                          '${geocerca.radioMetros.round()}m',
+                            '${geocerca.radioMetros.round()}m',
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
                     fontSize: 13,
@@ -676,11 +708,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     children: [
                       Icon(Icons.sensors, size: 18),
                       SizedBox(width: 6),
-                      Text(
-                        'Iniciar Radar',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Iniciar Radar',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -711,11 +748,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         size: 17,
                       ),
                       SizedBox(width: 6),
-                      Text(
-                        'Editar Geocerca',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Editar Geocerca',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -896,7 +938,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                               porcentaje == null
                                   ? 'Sin inscritos'
                                   : '$porcentaje% (${resumen.asistieron}/'
-                                      '${resumen.inscritos})',
+                                        '${resumen.inscritos})',
                               style: TextStyle(
                                 color: aviso ? _systemAmber : _tertiaryGreen,
                                 fontSize: 12,
@@ -948,10 +990,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     final lista = busqueda.isEmpty
         ? todos
         : todos
-            .where((i) =>
-                i.nombre.toLowerCase().contains(busqueda) ||
-                i.identificacion.toLowerCase().contains(busqueda))
-            .toList();
+              .where(
+                (i) =>
+                    i.nombre.toLowerCase().contains(busqueda) ||
+                    i.identificacion.toLowerCase().contains(busqueda),
+              )
+              .toList();
     final promedio = _vm.promedio;
     final enRiesgo = _vm.enRiesgo;
 
@@ -1199,18 +1243,19 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       name: inscrito.nombre,
       id: inscrito.identificacion,
       faultsText: a.sesiones == 0 ? 'Sin clases aún' : _faltas(a.faltas),
-      attendanceText:
-          porcentaje == null ? 'Sin asistencia' : '$porcentaje% Asist.',
+      attendanceText: porcentaje == null
+          ? 'Sin asistencia'
+          : '$porcentaje% Asist.',
       badgeLabel: critico
           ? 'Riesgo Crítico'
           : alerta
-              ? 'Alerta'
-              : 'Normal',
+          ? 'Alerta'
+          : 'Normal',
       badgeColor: critico
           ? _systemRed
           : alerta
-              ? _systemAmber
-              : _tertiaryGreen,
+          ? _systemAmber
+          : _tertiaryGreen,
       progressFraction: a.faltasPermitidas == 0
           ? 0
           : a.faltas / a.faltasPermitidas,

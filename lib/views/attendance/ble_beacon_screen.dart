@@ -27,7 +27,11 @@ class BleBeaconScreen extends StatefulWidget {
     required this.cursos,
     required this.clave,
     this.rostro,
+    this.vm,
   });
+
+  /// Solo para las pruebas: el viewmodel con servicios falsos.
+  final BeaconViewModel? vm;
 
   @override
   State<BleBeaconScreen> createState() => _BleBeaconScreenState();
@@ -84,7 +88,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
       duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
 
-    _vm = BeaconViewModel()..addListener(_alCambiar);
+    _vm = (widget.vm ?? BeaconViewModel())..addListener(_alCambiar);
     WidgetsBinding.instance.addPostFrameCallback((_) => _empezar());
 
     // Solo repinta la cuenta atrás; de cortar la emisión se encarga el
@@ -196,10 +200,11 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   }
 
   void _onOpenRadarScreen() {
-    final mensaje = _vm.error ??
+    final mensaje =
+        _vm.error ??
         (_vm.anunciando
             ? 'Tu celular se está anunciando. El docente te verá aparecer en '
-                'su radar.'
+                  'su radar.'
             : 'Todavía no te estás anunciando.');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(mensaje), duration: const Duration(seconds: 3)),
@@ -278,9 +283,10 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   FadeTransition(
-                    opacity: Tween<double>(begin: 0.35, end: 1.0).animate(
-                      _liveDotController,
-                    ),
+                    opacity: Tween<double>(
+                      begin: 0.35,
+                      end: 1.0,
+                    ).animate(_liveDotController),
                     child: Container(
                       width: 8,
                       height: 8,
@@ -333,11 +339,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.verified_user,
-                      color: _primaryIndigo,
-                      size: 14,
-                    ),
+                    Icon(Icons.verified_user, color: _primaryIndigo, size: 14),
                     SizedBox(width: 6),
                     Text(
                       'UDLA • Campus Seguro',
@@ -492,9 +494,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
               height: 236,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.05),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
             ),
             Container(
@@ -502,9 +502,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
               height: 176,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.06),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
               ),
             ),
 
@@ -555,8 +553,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                           color: _totalSeconds == 0
                               ? _systemRed
                               : _isStopped
-                                  ? AppTheme.textSecondary
-                                  : Colors.white,
+                              ? AppTheme.textSecondary
+                              : Colors.white,
                           fontSize: 30,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.bold,
@@ -622,9 +620,10 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             FadeTransition(
-              opacity: Tween<double>(begin: 0.3, end: 1.0).animate(
-                _liveDotController,
-              ),
+              opacity: Tween<double>(
+                begin: 0.3,
+                end: 1.0,
+              ).animate(_liveDotController),
               child: Container(
                 width: 10,
                 height: 10,
@@ -635,15 +634,18 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
               ),
             ),
             const SizedBox(width: 8),
-            Text(
-              _isStopped
-                  ? 'Baliza desconectada'
-                  : 'Emitiendo baliza de asistencia...',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.3,
+            Flexible(
+              child: Text(
+                _isStopped
+                    ? 'Baliza desconectada'
+                    : 'Emitiendo baliza de asistencia...',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.3,
+                ),
               ),
             ),
           ],
@@ -879,9 +881,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
             decoration: BoxDecoration(
               color: _tertiaryGreen.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _tertiaryGreen.withValues(alpha: 0.22),
-              ),
+              border: Border.all(color: _tertiaryGreen.withValues(alpha: 0.22)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

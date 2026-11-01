@@ -12,12 +12,13 @@ import 'manual_rollcall_screen.dart';
 class AttendanceRadarScreen extends StatefulWidget {
   final Curso curso;
 
-  const AttendanceRadarScreen({super.key, required this.curso});
+  const AttendanceRadarScreen({super.key, required this.curso, this.vm});
 
-  String get courseTitle => [
-        curso.nombre,
-        if (curso.aula.isNotEmpty) curso.aula,
-      ].join(' • ');
+  /// Solo para las pruebas: el viewmodel con servicios falsos.
+  final RadarViewModel? vm;
+
+  String get courseTitle =>
+      [curso.nombre, if (curso.aula.isNotEmpty) curso.aula].join(' • ');
 
   @override
   State<AttendanceRadarScreen> createState() => _AttendanceRadarScreenState();
@@ -54,7 +55,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
   @override
   void initState() {
     super.initState();
-    _vm = RadarViewModel()..addListener(_alCambiarElRadar);
+    _vm = (widget.vm ?? RadarViewModel())..addListener(_alCambiarElRadar);
     WidgetsBinding.instance.addPostFrameCallback((_) => _arrancar());
 
     // Animación continua de 360° para el haz del radar (4s linear infinite)
@@ -256,8 +257,10 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
 
   Widget _buildTopHeader(BuildContext context) {
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      // Altura mínima, no fija: con letra grande el título y el subtítulo
+      // necesitan más.
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: _surfaceOled.withValues(alpha: 0.85),
         border: Border(
@@ -672,8 +675,11 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.radar,
-                              color: _primaryIndigo, size: 14),
+                          const Icon(
+                            Icons.radar,
+                            color: _primaryIndigo,
+                            size: 14,
+                          ),
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
@@ -741,10 +747,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
 
   /// La señal del estudiante que mejor se oye ahora mismo.
   String get _mejorSenal {
-    final rssis = _vm.lista
-        .map((f) => f.rssi)
-        .whereType<int>()
-        .toList();
+    final rssis = _vm.lista.map((f) => f.rssi).whereType<int>().toList();
     if (rssis.isEmpty) return 'Sin señal todavía';
     return 'Mejor señal: ${_calidad(rssis.reduce((a, b) => a > b ? a : b))}';
   }
@@ -860,49 +863,49 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
     bool showCheck = false,
   }) {
     return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: size,
-            height: size,
-            alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: bgColor ?? _surfaceControl,
+            shape: BoxShape.circle,
+            border: Border.all(color: _tertiaryGreen, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 6,
+              ),
+            ],
+          ),
+          child: Text(
+            initials,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: size * 0.34,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: -2,
+          right: -2,
+          child: Container(
+            width: showCheck ? 13 : 9,
+            height: showCheck ? 13 : 9,
             decoration: BoxDecoration(
-              color: bgColor ?? _surfaceControl,
+              color: _tertiaryGreen,
               shape: BoxShape.circle,
-              border: Border.all(color: _tertiaryGreen, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  blurRadius: 6,
-                ),
-              ],
+              border: Border.all(color: _surfaceOled, width: 1.5),
             ),
-            child: Text(
-              initials,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: size * 0.34,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            child: showCheck
+                ? const Icon(Icons.check, size: 8, color: Colors.black)
+                : null,
           ),
-          Positioned(
-            bottom: -2,
-            right: -2,
-            child: Container(
-              width: showCheck ? 13 : 9,
-              height: showCheck ? 13 : 9,
-              decoration: BoxDecoration(
-                color: _tertiaryGreen,
-                shape: BoxShape.circle,
-                border: Border.all(color: _surfaceOled, width: 1.5),
-              ),
-              child: showCheck
-                  ? const Icon(Icons.check, size: 8, color: Colors.black)
-                  : null,
-            ),
-          ),
-        ],
+        ),
+      ],
     );
   }
 
@@ -942,13 +945,13 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
             sesion == null
                 ? Icons.lock_clock
                 : vencido
-                    ? Icons.timer_off_outlined
-                    : Icons.schedule,
+                ? Icons.timer_off_outlined
+                : Icons.schedule,
             color: sesion == null
                 ? AppTheme.textTertiary
                 : vencido
-                    ? _systemAmber
-                    : _tertiaryGreen,
+                ? _systemAmber
+                : _tertiaryGreen,
             size: 18,
           ),
           const SizedBox(width: 10),
@@ -1069,32 +1072,34 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (dotColor != null) ...[
-                CircleAvatar(radius: 3, backgroundColor: dotColor),
-                const SizedBox(width: 5),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (dotColor != null) ...[
+                  CircleAvatar(radius: 3, backgroundColor: dotColor),
+                  const SizedBox(width: 5),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : AppTheme.textSecondary,
+                    fontSize: 13,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  count,
+                  style: TextStyle(
+                    color: isSelected
+                        ? AppTheme.textSecondary
+                        : AppTheme.textTertiary,
+                    fontSize: 11,
+                  ),
+                ),
               ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : AppTheme.textSecondary,
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                count,
-                style: TextStyle(
-                  color: isSelected
-                      ? AppTheme.textSecondary
-                      : AppTheme.textTertiary,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
+            ),
           ),
         ),
       ),
@@ -1388,8 +1393,9 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                           _textoDelBotonPrincipal,
                           maxLines: 1,
                           style: TextStyle(
-                            color:
-                                _isRadarActive ? Colors.white : _tertiaryGreen,
+                            color: _isRadarActive
+                                ? Colors.white
+                                : _tertiaryGreen,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),

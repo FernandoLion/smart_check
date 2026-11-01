@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../../utils/app_theme.dart';
 import 'add_student_screen.dart';
+import '../../widgets/texto_sin_cortes.dart';
 
 class SessionDetailScreen extends StatefulWidget {
   final String courseName;
@@ -179,9 +181,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
   Widget _buildTopHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      decoration: BoxDecoration(
-        color: _surfaceOled.withValues(alpha: 0.9),
-      ),
+      decoration: BoxDecoration(color: _surfaceOled.withValues(alpha: 0.9)),
       child: Column(
         children: [
           // Dynamic Island Capsule
@@ -195,51 +195,57 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: _primaryIndigo,
-                        shape: BoxShape.circle,
+            alignment: Alignment.center,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: _primaryIndigo,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'BLE Activo',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                      const SizedBox(width: 6),
+                      const Text(
+                        'BLE Activo',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const Row(
-                  children: [
-                    Icon(Icons.sensors, color: _primaryLight, size: 13),
-                    SizedBox(width: 4),
-                    Text(
-                      'SmartCheck',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                    ],
+                  ),
+                  const SizedBox(width: 18),
+                  const Row(
+                    children: [
+                      Icon(Icons.sensors, color: _primaryLight, size: 13),
+                      SizedBox(width: 4),
+                      Text(
+                        'SmartCheck',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
 
-          // Navigation Bar (iOS Back, Titles, Action)
-          SizedBox(
-            height: 48,
+          // Navigation Bar (iOS Back, Titles, Action). Altura mínima, no fija:
+          // con letra grande el título y el subtítulo necesitan más.
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -255,10 +261,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                       ),
                       Text(
                         'Mis Clases',
-                        style: TextStyle(
-                          color: _primaryIndigo,
-                          fontSize: 15,
-                        ),
+                        style: TextStyle(color: _primaryIndigo, fontSize: 15),
                       ),
                     ],
                   ),
@@ -415,7 +418,8 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               const Icon(
                 Icons.schedule,
@@ -459,50 +463,52 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
               color: _surfaceControl.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: _surfaceContainer,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.meeting_room_outlined,
-                          color: _primaryLight,
-                          size: 18,
-                        ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: _surfaceContainer,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Bloque B2 • Aula 301',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              'Campus Central UDLA',
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: const Icon(
+                        Icons.meeting_room_outlined,
+                        color: _primaryLight,
+                        size: 18,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Bloque B2 • Aula 301',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            'Campus Central UDLA',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -535,12 +541,14 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
           const SizedBox(height: 14),
 
           // Asistencia General & Barra Tricolor
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.end,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
@@ -650,8 +658,9 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       ),
       child: Column(
         children: [
-          Text(
+          TextoSinCortes(
             label,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 12,
@@ -689,10 +698,14 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       ),
       child: Column(
         children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.hub_outlined, color: _primaryLight, size: 18),
                   SizedBox(width: 6),
@@ -709,10 +722,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
               ),
               Text(
                 'Motor SmartCheck v4.2',
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
             ],
           ),
@@ -728,43 +738,47 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: _surfaceControl,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.sensors,
-                        color: _primaryLight,
-                        size: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Radar BLE Autónomo',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: _surfaceControl,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        Text(
-                          'Cero fricción • Proximidad RSSI',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
-                          ),
+                        child: const Icon(
+                          Icons.sensors,
+                          color: _primaryLight,
+                          size: 16,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Radar BLE Autónomo',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              'Cero fricción • Proximidad RSSI',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -801,43 +815,47 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: _surfaceControl,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.how_to_reg_outlined,
-                        color: _systemAmber,
-                        size: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Llamado Docente',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: _surfaceControl,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        Text(
-                          'Validado por Prof. Ana M.',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
-                          ),
+                        child: const Icon(
+                          Icons.how_to_reg_outlined,
+                          color: _systemAmber,
+                          size: 16,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Llamado Docente',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              'Validado por Prof. Ana M.',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -915,8 +933,11 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       children: [
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Text(
                 'ESTUDIANTES REGISTRADOS',
@@ -928,6 +949,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                 ),
               ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.tune, color: _primaryLight, size: 14),
                   SizedBox(width: 4),
@@ -1155,11 +1177,11 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
             children: [
               Icon(Icons.ios_share, size: 20),
               SizedBox(width: 8),
-              Text(
-                'Exportar Reporte Oficial (PDF / Excel)',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  'Exportar Reporte Oficial (PDF / Excel)',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -1188,9 +1210,12 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
             children: [
               Icon(Icons.lock_reset, size: 18),
               SizedBox(width: 6),
-              Text(
-                'Reabrir Asistencia para Corrección',
-                style: TextStyle(fontSize: 15),
+              Flexible(
+                child: Text(
+                  'Reabrir Asistencia para Corrección',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 15),
+                ),
               ),
             ],
           ),
@@ -1199,20 +1224,13 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
         const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.shield_outlined,
-              color: AppTheme.textTertiary,
-              size: 14,
-            ),
+            Icon(Icons.shield_outlined, color: AppTheme.textTertiary, size: 14),
             SizedBox(width: 6),
             Flexible(
               child: Text(
                 'Registro sincronizado con la plataforma académica Chairá UDLA.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppTheme.textTertiary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
               ),
             ),
           ],

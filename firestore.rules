@@ -37,19 +37,18 @@ service cloud.firestore {
       // Lo único que el usuario puede cambiar de su perfil es el celular con
       // el que marca asistencia, y solo eso: el rol sigue siendo intocable.
       // `dispositivo_desde` tiene que ser la hora del servidor, así que la
-      // app escribe `FieldValue.serverTimestamp()`; si la pusiera el celular,
-      // adelantar el reloj saltaría la espera. Entre cambio y cambio pasan 7
-      // días; a quien se le dañe el celular antes, lo marca el docente a mano.
+      // app escribe `FieldValue.serverTimestamp()`: la firma de presencia lo
+      // repite y el docente ve si el celular se vinculó hace nada.
+      // No hay espera entre cambios: antes de vincular, la app exige que la
+      // cara del estudiante coincida con su foto de Chairá (el servidor no lo
+      // puede comprobar). Cada cambio queda en el historial de abajo.
       allow update: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['dispositivo_id', 'dispositivo_desde'])
         && request.resource.data.dispositivo_id is string
         && request.resource.data.dispositivo_id.size() >= 8
-        && request.resource.data.dispositivo_desde == request.time
-        && (resource.data.get('dispositivo_id', '') == ''
-          || resource.data.dispositivo_desde + duration.value(7, 'd')
-               <= request.time);
+        && request.resource.data.dispositivo_desde == request.time;
       allow delete: if false;
 
       // El historial de celulares: se añade, no se corrige ni se borra.

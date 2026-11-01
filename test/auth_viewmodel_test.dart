@@ -200,7 +200,7 @@ void main() {
     const uid = 'uid-$correo';
     final hoy = DateTime(2026, 3, 10, 9);
 
-    /// Un viewmodel con la sesión ya iniciada y el reloj parado en [ahora].
+    /// Un viewmodel con la sesión ya iniciada y el servidor marcando [ahora].
     Future<AuthViewModel> conSesion({
       DateTime? ahora,
       String? esteCelular = 'android-1234567890',
@@ -213,7 +213,6 @@ void main() {
         perfilService: perfiles,
         chairaService: chairaFalso(),
         dispositivos: FakeDispositivoService(esteCelular),
-        reloj: () => ahora ?? hoy,
       );
       await vm.signIn('an.perez', 'Clave123!');
       return vm;
@@ -223,7 +222,6 @@ void main() {
       final vm = await conSesion();
 
       expect(vm.dispositivoVinculado, isNull);
-      expect(vm.puedeVincular, isTrue);
       expect(await vm.esEsteDispositivo(), isFalse);
     });
 
@@ -242,44 +240,27 @@ void main() {
       expect(historial.single.anterior, isNull);
     });
 
-    test('antes de la semana no deja cambiar de celular', () async {
+    test('se puede cambiar a otro celular el mismo día, y queda el anterior',
+        () async {
+      // No hay espera entre cambios: lo que impide atar la cuenta de otro a
+      // un teléfono ajeno es la verificación facial previa, en la pantalla.
       final vm = await conSesion();
       await vm.vincularEsteDispositivo();
 
-      final seisDias = AuthViewModel(
-        authService: auth,
-        perfilService: perfiles,
-        chairaService: chairaFalso(),
-        dispositivos: FakeDispositivoService('android-otro-celular'),
-        reloj: () => hoy.add(const Duration(days: 6)),
-      );
-      await seisDias.signIn('an.perez', 'Clave123!');
-
-      expect(seisDias.puedeVincular, isFalse);
-      expect(await seisDias.vincularEsteDispositivo(), isFalse);
-      expect(seisDias.errorMessage, contains('17/03'));
-      // Y no tocó nada: sigue atado el primero.
-      expect(seisDias.dispositivoVinculado, 'android-1234567890');
-    });
-
-    test('pasada la semana sí deja cambiar, y queda el anterior', () async {
-      final vm = await conSesion();
-      await vm.vincularEsteDispositivo();
-
-      final despues = hoy.add(const Duration(days: 8));
-      perfiles.horaDelServidor = despues;
+      final unaHoraDespues = hoy.add(const Duration(hours: 1));
+      perfiles.horaDelServidor = unaHoraDespues;
       final otro = AuthViewModel(
         authService: auth,
         perfilService: perfiles,
         chairaService: chairaFalso(),
         dispositivos: FakeDispositivoService('android-otro-celular'),
-        reloj: () => despues,
       );
       await otro.signIn('an.perez', 'Clave123!');
 
-      expect(otro.puedeVincular, isTrue);
       expect(await otro.vincularEsteDispositivo(), isTrue);
       expect(otro.dispositivoVinculado, 'android-otro-celular');
+      expect(otro.perfil?.dispositivoDesde, unaHoraDespues);
+      expect(await otro.esEsteDispositivo(), isTrue);
       final historial = await otro.historialDeDispositivos();
       expect(historial.length, 2);
       expect(historial.first.anterior, 'android-1234567890');
@@ -302,7 +283,6 @@ void main() {
         perfilService: perfiles,
         chairaService: chairaFalso(),
         dispositivos: FakeDispositivoService('android-del-amigo'),
-        reloj: () => hoy,
       );
       await prestado.signIn('an.perez', 'Clave123!');
 
@@ -315,15 +295,7 @@ void main() {
     final perfil = perfilDe('an.perez@udla.edu.co', 'ANA', [Rol.estudiante])
         .conDispositivo('android-1234567890', atado);
 
-    test('la espera entre celulares es de una semana', () {
-      expect(perfil.puedeVincular(atado), isFalse);
-      expect(perfil.puedeVincular(atado.add(const Duration(days: 6))), isFalse);
-      expect(perfil.puedeVincular(atado.add(const Duration(days: 7))), isTrue);
-      expect(perfil.proximoCambio(atado), atado.add(const Duration(days: 7)));
-      expect(perfil.proximoCambio(atado.add(const Duration(days: 7))), isNull);
-    });
-
-    test('un perfil viejo sin celular puede vincular desde ya', () {
+    test('un perfil viejo no tiene celular vinculado', () {
       final viejo = UsuarioPerfil.fromMap('uid', {
         'email': 'an.perez@udla.edu.co',
         'nombre': 'ANA',
@@ -331,7 +303,6 @@ void main() {
       });
 
       expect(viejo.tieneDispositivo, isFalse);
-      expect(viejo.puedeVincular(DateTime(2026)), isTrue);
     });
 
     test('el celular no se guarda con el resto del perfil', () {
