@@ -7,6 +7,8 @@ import '../../models/verificacion_result_model.dart';
 import '../../services/identidad_facial_service.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/face_verification_viewmodel.dart';
+import '../attendance/face_verification_screen.dart';
 import '../login_screen.dart';
 import 'attendance_detail_screen.dart';
 import 'biometric_validation_screen.dart';
@@ -45,6 +47,10 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
 
   late final AnimationController _syncController;
 
+  /// Si este celular ya guarda la cara del estudiante. null mientras se
+  /// consulta.
+  bool? _tieneRostro;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +58,13 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
+    _mirarRostro();
+  }
+
+  Future<void> _mirarRostro() async {
+    final uid = context.read<AuthViewModel>().perfil?.uid;
+    final tiene = uid != null && await IdentidadEnCelular.tieneReferencia(uid);
+    if (mounted) setState(() => _tieneRostro = tiene);
   }
 
   @override
@@ -528,6 +541,17 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                     ),
                     _buildDivider(),
                     _buildNavRow(
+                      icon: Icons.face_outlined,
+                      title: _tieneRostro == true
+                          ? 'Probar mi rostro'
+                          : 'Registrar mi rostro',
+                      subtitle: _tieneRostro == true
+                          ? 'Se compara con el que guarda este celular'
+                          : 'Se compara con tu foto de Chairá',
+                      onTap: _probarRostro,
+                    ),
+                    _buildDivider(),
+                    _buildNavRow(
                       icon: Icons.face_retouching_off,
                       title: 'Borrar mi rostro de este celular',
                       subtitle: 'Se volverá a comparar con tu foto de Chairá',
@@ -940,6 +964,26 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
     );
   }
 
+  /// Registra la cara del estudiante en este celular, o comprueba la que ya
+  /// tiene, sin esperar a un llamado: así llega a clase enrolado y no gasta
+  /// la ventana de diez minutos en eso.
+  Future<void> _probarRostro() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final rostro = await verificarRostro(context);
+    if (!mounted) return;
+    await _mirarRostro();
+    if (rostro == null) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          rostro.resultado == ResultadoIdentidad.enrolado
+              ? 'Listo: tu rostro quedó registrado en este celular.'
+              : 'Listo: eres tú.',
+        ),
+      ),
+    );
+  }
+
   /// Borra la huella numérica del rostro guardada en este celular. La
   /// próxima vez que marque asistencia se volverá a registrar contra Chairá.
   Future<void> _borrarRostro() async {
@@ -981,6 +1025,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
     );
     if (confirma != true) return;
     await IdentidadEnCelular.olvidar(uid);
+    await _mirarRostro();
     messenger.showSnackBar(
       const SnackBar(content: Text('Tu rostro se borró de este celular.')),
     );

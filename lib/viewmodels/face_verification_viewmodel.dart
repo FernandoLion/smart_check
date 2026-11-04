@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../services/identidad_facial_service.dart';
 import '../services/rostro_service.dart';
@@ -285,6 +285,7 @@ class FaceVerificationViewModel extends ChangeNotifier {
       final referencia = await identidad.referencia();
       if (referencia != null) {
         _similitud = similitud(vivo, referencia);
+        _anotar('referencia', umbralIdentidad);
         if (_similitud! >= umbralIdentidad) {
           return _confirmar(ResultadoIdentidad.coincide);
         }
@@ -298,6 +299,7 @@ class FaceVerificationViewModel extends ChangeNotifier {
             'tu rostro. Pide al docente que te marque a mano.');
       }
       _similitud = similitud(vivo, chaira);
+      _anotar('chaira', umbralEnrolamiento);
       if (_similitud! < umbralEnrolamiento) {
         return _fallar('Tu rostro no coincide con tu foto de Chairá. Si eres '
             'tú, pide al docente que te marque a mano.');
@@ -310,6 +312,16 @@ class FaceVerificationViewModel extends ChangeNotifier {
       _comparandoFoto = false;
       notifyListeners();
     }
+  }
+
+  /// Deja cada comparación en el log de depuración: con varias caras
+  /// reales, esas líneas son la tabla para calibrar los umbrales.
+  void _anotar(String contra, double umbral) {
+    if (!kDebugMode) return;
+    debugPrint(
+      '[rostro] contra=$contra similitud=${_similitud!.toStringAsFixed(3)} '
+      'umbral=$umbral pasa=${_similitud! >= umbral}',
+    );
   }
 
   void _confirmar(ResultadoIdentidad resultado) {
