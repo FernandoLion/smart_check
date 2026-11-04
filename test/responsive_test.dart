@@ -235,7 +235,26 @@ final Map<String, Future<Widget> Function(_Mundo)> _vistas = {
         curso: _curso(),
         vm: CourseDetailViewModel(servicio: m.cursos),
       ),
-  'Detalle de sesión': (_) async => const SessionDetailScreen(),
+  'Detalle de sesión': (m) async {
+    final sesion = m.cursos.sesionesPorCurso[_curso().id]!.first;
+    // Uno vino (por el radar) y el otro no: las dos filas a la vez.
+    m.cursos.asistenciasPorSesion[sesion.id] = [
+      Asistencia(
+        claveInscrito: _cedula,
+        estado: EstadoAsistencia.presente,
+        metodo: MetodoAsistencia.ble,
+        hora: sesion.inicio.add(const Duration(minutes: 3)),
+        registradoPor: _uid,
+      ),
+    ];
+    return SessionDetailScreen(
+      curso: _curso(),
+      vm: CourseDetailViewModel(servicio: m.cursos)..vigilar(_curso().id),
+      franja: sesion.franja,
+      fechaTitulo: 'Miércoles 28 de octubre de 2026',
+      horario: 'Llamado 08:02 - 08:12',
+    );
+  },
   'Radar': (m) async => AttendanceRadarScreen(curso: _curso(), vm: m.radar()),
   'Llamado manual': (m) async {
     final radar = m.radar();

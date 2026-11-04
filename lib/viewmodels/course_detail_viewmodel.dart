@@ -20,6 +20,20 @@ class InscritoAsistencia {
   String get identificacion => inscrito.cedula ?? inscrito.email ?? '';
 }
 
+/// Un inscrito en una clase pasada: si quedó presente y con qué marca.
+class FilaDeSesion {
+  final Inscrito inscrito;
+
+  /// La marca que decide su estado en esa clase, o null si nadie lo marcó.
+  /// Si asistió, la primera que cuenta; si no, la última que lo dejó
+  /// ausente (una corrección a mano).
+  final Asistencia? marca;
+
+  const FilaDeSesion(this.inscrito, this.marca);
+
+  bool get presente => marca?.cuentaComoAsistio ?? false;
+}
+
 /// Una sesión con cuántos inscritos asistieron.
 class SesionResumen {
   final Sesion sesion;
@@ -59,6 +73,10 @@ class CourseDetailViewModel extends ChangeNotifier {
   Map<String, List<Asistencia>> _asistencias = const {};
   bool _cargando = false;
   String? _error;
+
+  /// Una lectura puede terminar después de cerrar la pantalla: entonces ya
+  /// no hay a quién avisar.
+  bool _desechado = false;
 
   bool get cargando => _cargando;
   String? get error => _error;
@@ -102,6 +120,99 @@ class CourseDetailViewModel extends ChangeNotifier {
           for (final a in _asistencias[sesion.id] ?? const <Asistencia>[])
             if (a.cuentaComoAsistio) a.claveInscrito,
       };
+
+  /// Quién vino a la clase de [franja] y cómo quedó marcado: los presentes
+  /// primero, por hora de llegada, y luego los ausentes por nombre.
+  List<FilaDeSesion> detalleDeFranja(DateTime franja) {
+    final sesiones = CursoService.franjasTerminadas(_sesiones, _ahora())[franja] ??
+        const <Sesion>[];
+    final marcas = [
+      for (final s in sesiones) ...?_asistencias[s.id],
+    ];
+    final filas = [
+      for (final i in _inscritos) FilaDeSesion(i, _marcaDe(i.clave, marcas)),
+    ];
+    filas.sort((a, b) {
+      if (a.presente != b.presente) return a.presente ? -1 : 1;
+      if (a.presente) return a.marca!.hora.compareTo(b.marca!.hora);
+      return a.inscrito.nombre.compareTo(b.inscrito.nombre);
+    });
+    return filas;
+  }
+
+  /// Cuántas veces abrió el docente el radar en la clase de [franja].
+  int llamadosDeFranja(DateTime franja) =>
+      CursoService.franjasTerminadas(_sesiones, _ahora())[franja]?.length ?? 0;
+
+  static Asistencia? _marcaDe(String clave, List<Asistencia> marcas) {
+    final suyas = marcas.where((a) => a.claveInscrito == clave).toList()
+      ..sort((a, b) => a.hora.compareTo(b.hora));
+    if (suyas.isEmpty) return null;
+    for (final a in suyas) {
+      if (a.cuentaComoAsistio) return a;
+    }
+    return suyas.last;
+  }
+
+  /// Corrige a mano la asistencia de [inscrito] en la clase de [franja].
+  ///
+  /// Para darlo por presente basta una marca en el primer llamado de la
+  /// franja. Para darlo por ausente hay que corregir cada llamado donde
+  /// quedó presente, porque con uno solo ya contaría como asistido. Las
+  /// reglas aceptan correcciones manuales también después de cerrado el
+  /// llamado. Devuelve el error para mostrarlo, o null si se guardó.
+  Future<String?> corregirAsistencia(
+    DateTime franja,
+    Inscrito inscrito, {
+    required bool presente,
+    required String docenteUid,
+  }) async {
+    final cursoId = _cursoId;
+    final sesiones =
+        CursoService.franjasTerminadas(_sesiones, _ahora())[franja];
+    if (cursoId == null || sesiones == null || sesiones.isEmpty) {
+      return 'Esa clase ya no está en la lista.';
+    }
+    final aCorregir = presente
+        ? [sesiones.reduce((a, b) => a.inicio.isBefore(b.inicio) ? a : b)]
+        : [
+            for (final s in sesiones)
+              if ((_asistencias[s.id] ?? const <Asistencia>[]).any(
+                (a) => a.claveInscrito == inscrito.clave && a.cuentaComoAsistio,
+              ))
+                s,
+          ];
+    final nuevas = Map<String, List<Asistencia>>.from(_asistencias);
+    try {
+      for (final sesion in aCorregir) {
+        final marca = Asistencia(
+          claveInscrito: inscrito.clave,
+          estado: presente
+              ? EstadoAsistencia.presente
+              : EstadoAsistencia.ausente,
+          metodo: MetodoAsistencia.manual,
+          hora: _ahora(),
+          registradoPor: docenteUid,
+        );
+        await _servicio.registrarAsistencia(cursoId, sesion.id, marca);
+        nuevas[sesion.id] = [
+          for (final a in nuevas[sesion.id] ?? const <Asistencia>[])
+            if (a.claveInscrito != inscrito.clave) a,
+          marca,
+        ];
+      }
+    } on CursoException catch (e) {
+      return e.mensaje;
+    } finally {
+      // Lo que alcanzó a guardarse se ve ya, sin esperar a que cambien las
+      // sesiones: el panel no se queda con la foto de antes.
+      if (!_desechado && _cursoId == cursoId) {
+        _asistencias = nuevas;
+        notifyListeners();
+      }
+    }
+    return null;
+  }
 
   /// Los inscritos con su asistencia, los de mayor riesgo primero.
   List<InscritoAsistencia> get inscritos {
@@ -179,10 +290,11 @@ class CourseDetailViewModel extends ChangeNotifier {
         sesiones.map((s) => s.id).toList(),
       );
       // Otra emisión pudo cambiar de curso mientras se leían.
-      if (_cursoId != cursoId) return;
+      if (_desechado || _cursoId != cursoId) return;
       _asistencias = leidas;
       notifyListeners();
     } on CursoException catch (e) {
+      if (_desechado) return;
       _error = e.mensaje;
       notifyListeners();
     }
@@ -205,6 +317,7 @@ class CourseDetailViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _desechado = true;
     _subInscritos?.cancel();
     _subSesiones?.cancel();
     super.dispose();

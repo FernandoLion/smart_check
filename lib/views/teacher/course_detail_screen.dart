@@ -828,14 +828,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           context,
           MaterialPageRoute(
             builder: (context) => SessionDetailScreen(
-              courseName: widget.curso.nombre,
-              courseCodeAndGroup:
-                  '${widget.curso.codigo} • Grupo ${widget.curso.grupo}',
-              sessionDateTitle: _fechaLarga(sesion.franja),
-              sessionTimeRange:
+              curso: widget.curso,
+              vm: _vm,
+              franja: sesion.franja,
+              fechaTitulo: _fechaLarga(sesion.franja),
+              horario:
                   'Llamado ${_horaDe(sesion.inicio)} - ${_horaDe(sesion.fin)}',
-              presentCount: resumen.asistieron,
-              totalCount: resumen.inscritos,
             ),
           ),
         );

@@ -163,4 +163,112 @@ void main() {
     expect(vm.totalInscritos, 2);
     expect(vm.sesionesPasadas, hasLength(1));
   });
+
+  group('detalle de una clase', () {
+    final franja20 = DateTime(2026, 10, 20, 8);
+
+    test('lista a los inscritos reales: presentes primero, por hora', () async {
+      servicio.sesionesPorCurso['c1'] = [llamado('s1', 20, 2)];
+      servicio.asistenciasPorSesion['s1'] = [presente('carlos')];
+
+      vm.vigilar('c1');
+      await pumpEventQueue();
+      final filas = vm.detalleDeFranja(franja20);
+
+      expect(filas.map((f) => f.inscrito.nombre), ['CARLOS MUÑOZ', 'ANA PÉREZ']);
+      expect(filas.first.presente, isTrue);
+      expect(filas.first.marca!.metodo, MetodoAsistencia.ble);
+      expect(filas.last.presente, isFalse);
+      expect(filas.last.marca, isNull);
+    });
+
+    test('con dos llamados en la franja, cuenta la marca que asistió',
+        () async {
+      servicio.sesionesPorCurso['c1'] = [
+        llamado('s1', 20, 2),
+        llamado('s2', 20, 40),
+      ];
+      servicio.asistenciasPorSesion['s1'] = [ausente('ana')];
+      servicio.asistenciasPorSesion['s2'] = [presente('ana')];
+
+      vm.vigilar('c1');
+      await pumpEventQueue();
+      final ana = vm
+          .detalleDeFranja(franja20)
+          .firstWhere((f) => f.inscrito.clave == 'ana');
+
+      expect(ana.presente, isTrue);
+    });
+
+    test('marcar presente a mano se guarda y se ve sin recargar', () async {
+      servicio.sesionesPorCurso['c1'] = [llamado('s1', 20, 2)];
+
+      vm.vigilar('c1');
+      await pumpEventQueue();
+      final ana = vm.detalleDeFranja(franja20).firstWhere(
+            (f) => f.inscrito.clave == 'ana',
+          );
+      final error = await vm.corregirAsistencia(
+        franja20,
+        ana.inscrito,
+        presente: true,
+        docenteUid: 'uid-docente',
+      );
+
+      expect(error, isNull);
+      final guardada = servicio.asistenciasPorSesion['s1']!.single;
+      expect(guardada.claveInscrito, 'ana');
+      expect(guardada.metodo, MetodoAsistencia.manual);
+      expect(guardada.registradoPor, 'uid-docente');
+      expect(
+        vm.detalleDeFranja(franja20).firstWhere((f) => f.inscrito.clave == 'ana').presente,
+        isTrue,
+      );
+      expect(vm.sesionesPasadas.single.asistieron, 1);
+    });
+
+    test('dejarlo ausente corrige cada llamado donde contaba', () async {
+      servicio.sesionesPorCurso['c1'] = [
+        llamado('s1', 20, 2),
+        llamado('s2', 20, 40),
+      ];
+      servicio.asistenciasPorSesion['s1'] = [presente('ana')];
+      servicio.asistenciasPorSesion['s2'] = [presente('ana')];
+
+      vm.vigilar('c1');
+      await pumpEventQueue();
+      final ana = vm.detalleDeFranja(franja20).first.inscrito;
+      await vm.corregirAsistencia(
+        franja20,
+        ana,
+        presente: false,
+        docenteUid: 'uid-docente',
+      );
+
+      for (final id in ['s1', 's2']) {
+        final marca = servicio.asistenciasPorSesion[id]!.single;
+        expect(marca.estado, EstadoAsistencia.ausente);
+        expect(marca.metodo, MetodoAsistencia.manual);
+      }
+      expect(vm.sesionesPasadas.single.asistieron, 0);
+    });
+
+    test('si no se puede guardar, lo dice y no cambia nada', () async {
+      servicio.sesionesPorCurso['c1'] = [llamado('s1', 20, 2)];
+
+      vm.vigilar('c1');
+      await pumpEventQueue();
+      servicio.fallo = const CursoException('permiso denegado');
+      final ana = vm.detalleDeFranja(franja20).last.inscrito;
+      final error = await vm.corregirAsistencia(
+        franja20,
+        ana,
+        presente: true,
+        docenteUid: 'uid-docente',
+      );
+
+      expect(error, 'permiso denegado');
+      expect(vm.detalleDeFranja(franja20).every((f) => !f.presente), isTrue);
+    });
+  });
 }
