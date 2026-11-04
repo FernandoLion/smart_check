@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../models/verificacion_result_model.dart';
+import '../services/identidad_facial_service.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
 import '../utils/usuario_input_formatter.dart';
+import 'attendance/face_verification_screen.dart';
 import 'login_screen.dart';
-import 'face_setup_screen.dart';
 
 class SmartRegisterScreen extends StatefulWidget {
   const SmartRegisterScreen({super.key});
@@ -24,6 +25,11 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
   // Apagado por defecto: un docente solo es también estudiante si lo activa.
   bool _alsoStudent = false;
   int _passwordStrength = 0;
+
+  /// La cara que ya coincidió con Chairá para este documento. Si el registro
+  /// falla después (contraseña débil, correo ya usado), al reintentar no hay
+  /// que repetir el gesto.
+  ({String documento, List<double> vector})? _rostro;
 
   @override
   void initState() {
@@ -90,6 +96,42 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
       return;
     }
 
+    // Quien va a marcar asistencia tiene que demostrar, antes de que la
+    // cuenta exista, que es el dueño del documento. Un docente que no cursa
+    // materias no marca nada, así que no pasa por aquí.
+    final seraEstudiante = !result.esDocente || _alsoStudent;
+    List<double>? rostro;
+    var sinFotoEnChaira = false;
+    if (seraEstudiante) {
+      final previo = _rostro;
+      if (previo != null && previo.documento == result.documentoConsultado) {
+        rostro = previo.vector;
+      } else {
+        final comprobado = await verificarRostroAlRegistrarse(
+          context,
+          result.imagenBytes,
+        );
+        if (!mounted) return;
+        switch (comprobado.estado) {
+          case RostroAlRegistrarse.noConfirmado:
+            _showError(
+              'Para crear una cuenta de estudiante tienes que confirmar que '
+              'eres el dueño del documento: tu rostro debe coincidir con tu '
+              'foto de Chairá.',
+            );
+            return;
+          case RostroAlRegistrarse.sinFotoEnChaira:
+            sinFotoEnChaira = true;
+          case RostroAlRegistrarse.confirmado:
+            rostro = comprobado.vector;
+            _rostro = (
+              documento: result.documentoConsultado,
+              vector: comprobado.vector!,
+            );
+        }
+      }
+    }
+
     // El dominio @udla.edu.co es fijo: el ViewModel lo agrega y valida.
     final success = await authViewModel.register(
       usernameInput,
@@ -98,15 +140,38 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
     );
 
     if (!mounted) return;
-
-    if (success) {
-   Navigator.push(
-     context,
-     MaterialPageRoute(builder: (_) => const FaceSetupScreen()),
-   );
- } else {
+    if (!success) {
       _showError(authViewModel.errorMessage ?? 'Error al registrar la cuenta.');
+      return;
     }
+
+    // Ahora sí hay uid con el que guardar la referencia, cifrada y solo en
+    // este celular.
+    final uid = authViewModel.perfil?.uid;
+    if (rostro != null && uid != null) {
+      await IdentidadEnCelular.guardarPara(uid, rostro);
+    }
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          rostro != null
+              ? 'Cuenta creada. Tu rostro quedó registrado en este celular.'
+              : sinFotoEnChaira
+                  ? 'Cuenta creada. Chairá no tiene una foto tuya con la que '
+                      'comparar tu rostro: hasta que la tenga, el docente te '
+                      'marcará la asistencia a mano.'
+                  : 'Cuenta creada.',
+        ),
+        backgroundColor: AppTheme.success,
+      ),
+    );
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   void _showError(String message) {

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -22,17 +23,30 @@ import '../../viewmodels/face_verification_viewmodel.dart';
 /// null si se canceló o no se pudo.
 class FaceVerificationScreen extends StatefulWidget {
   /// El curso del llamado, o null cuando se verifica para vincular el
-  /// celular.
+  /// celular o para crear la cuenta.
   final Curso? curso;
 
-  const FaceVerificationScreen({super.key, this.curso});
+  /// Con quién se compara la cara. Si no se da, con la del dueño de la
+  /// sesión guardada en este celular; al registrarse, con la foto de Chairá
+  /// del documento (ver [verificarRostroAlRegistrarse]).
+  final IdentidadFacial? identidad;
 
-  String get courseTitle => curso == null
-      ? 'Vincular este celular'
-      : '${curso!.nombre} - Grupo ${curso!.grupo}';
-  String get professorName => curso == null
-      ? 'Confirma que eres tú antes de atar tu cuenta'
-      : 'Docente: ${curso!.docenteNombre}';
+  const FaceVerificationScreen({super.key, this.curso, this.identidad});
+
+  bool get _esRegistro => identidad is IdentidadParaRegistro;
+
+  String get courseTitle {
+    if (curso != null) return '${curso!.nombre} - Grupo ${curso!.grupo}';
+    return _esRegistro ? 'Crear tu cuenta' : 'Vincular este celular';
+  }
+
+  String get professorName {
+    if (curso != null) return 'Docente: ${curso!.docenteNombre}';
+    return _esRegistro
+        ? 'Confirma que eres el dueño del documento'
+        : 'Confirma que eres tú antes de atar tu cuenta';
+  }
+
   String get classroom => curso?.aula ?? 'Este celular';
 
   @override
@@ -85,22 +99,26 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
 
-    final auth = context.read<AuthViewModel>();
-    final perfil = auth.perfil;
     _vm = FaceVerificationViewModel(
-      identidad: IdentidadEnCelular(
-        uid: perfil?.uid ?? '',
-        // La de la sesión si ya bajó; si no, se descarga ahora.
-        fotoChaira: () async {
-          final enMemoria = auth.usuarioActual?.imagenBytes;
-          if (enMemoria != null) return enMemoria;
-          final url = perfil?.fotoUrl;
-          return url == null ? null : ChairaService().descargarFoto(url);
-        },
-      ),
+      identidad: widget.identidad ?? _identidadDeLaSesion(),
     );
     _vm.addListener(_alCambiar);
     _encenderLaCamara();
+  }
+
+  IdentidadFacial _identidadDeLaSesion() {
+    final auth = context.read<AuthViewModel>();
+    final perfil = auth.perfil;
+    return IdentidadEnCelular(
+      uid: perfil?.uid ?? '',
+      // La de la sesión si ya bajó; si no, se descarga ahora.
+      fotoChaira: () async {
+        final enMemoria = auth.usuarioActual?.imagenBytes;
+        if (enMemoria != null) return enMemoria;
+        final url = perfil?.fotoUrl;
+        return url == null ? null : ChairaService().descargarFoto(url);
+      },
+    );
   }
 
   void _alCambiar() {
@@ -391,7 +409,9 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                       Flexible(
                         child: Text(
                           widget.curso == null
-                              ? 'Vinculación de celular'
+                              ? (widget._esRegistro
+                                    ? 'Registro de cuenta'
+                                    : 'Vinculación de celular')
                               : 'Geocerca Validada • ${widget.classroom}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1030,6 +1050,67 @@ Future<VerificacionFacial?> verificarRostro(
     context,
     MaterialPageRoute(builder: (_) => FaceVerificationScreen(curso: curso)),
   );
+}
+
+/// Lo que salió de comprobar la cara antes de crear una cuenta de estudiante.
+enum RostroAlRegistrarse {
+  /// Coincidió con la foto de Chairá: el vector queda para guardarlo como
+  /// referencia en cuanto exista la cuenta.
+  confirmado,
+
+  /// Chairá no tiene foto, o en ella no se ve una cara: no hay con qué
+  /// comparar. La cuenta se puede crear, pero sin referencia.
+  sinFotoEnChaira,
+
+  /// No aceptó, se salió o su cara no coincidió.
+  noConfirmado,
+}
+
+/// Antes de crear la cuenta de un estudiante, comprueba que quien la crea es
+/// el dueño del documento: prueba de vida y su cara contra [fotoChaira], la
+/// del carné que bajó el paso 1. Sin esto, cualquiera con la cédula de un
+/// compañero podría crearle la cuenta y enrolar su propia cara.
+Future<({RostroAlRegistrarse estado, List<double>? vector})>
+    verificarRostroAlRegistrarse(
+  BuildContext context,
+  Uint8List? fotoChaira,
+) async {
+  const sinFoto = (estado: RostroAlRegistrarse.sinFotoEnChaira, vector: null);
+  const noConfirmado = (estado: RostroAlRegistrarse.noConfirmado, vector: null);
+  if (fotoChaira == null || fotoChaira.isEmpty) return sinFoto;
+
+  final identidad = IdentidadParaRegistro(fotoChaira: fotoChaira);
+  try {
+    // Antes de abrir la cámara: si en la foto del carné no se ve una cara,
+    // pedirle el gesto sería hacerle perder el tiempo.
+    if (await identidad.embeddingDeChaira() == null) {
+      await identidad.cerrar();
+      return sinFoto;
+    }
+  } catch (_) {
+    // Sin modelo no se puede comparar: es lo mismo que no tener con qué.
+    await identidad.cerrar();
+    return sinFoto;
+  }
+
+  if (!context.mounted || !await _aceptaRegistrarRostro(context)) {
+    await identidad.cerrar();
+    return noConfirmado;
+  }
+  if (!context.mounted) {
+    await identidad.cerrar();
+    return noConfirmado;
+  }
+  // La pantalla cierra el modelo al salir; el vector ya quedó copiado.
+  final verificado = await Navigator.push<VerificacionFacial>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => FaceVerificationScreen(identidad: identidad),
+    ),
+  );
+  final vector = identidad.vector;
+  if (verificado == null || vector == null) return noConfirmado;
+  return (estado: RostroAlRegistrarse.confirmado, vector: vector);
 }
 
 /// La primera vez que verifica su cara en este celular: qué se hace con ella

@@ -63,7 +63,13 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
 
   Future<void> _mirarRostro() async {
     final uid = context.read<AuthViewModel>().perfil?.uid;
-    final tiene = uid != null && await IdentidadEnCelular.tieneReferencia(uid);
+    var tiene = false;
+    try {
+      tiene = uid != null && await IdentidadEnCelular.tieneReferencia(uid);
+    } catch (_) {
+      // Si el almacén cifrado no responde, se ofrece registrarlo: al
+      // intentarlo se verá si de verdad hay uno.
+    }
     if (mounted) setState(() => _tieneRostro = tiene);
   }
 

@@ -59,6 +59,15 @@ class IdentidadEnCelular implements IdentidadFacial {
   static Future<bool> tieneReferencia(String uid) async =>
       await _leer(uid) != null;
 
+  /// Guarda [embedding] como la cara de referencia de [uid] sin cargar el
+  /// modelo: es para el registro, que ya comparó la cara antes de que la
+  /// cuenta existiera.
+  static Future<void> guardarPara(String uid, List<double> embedding) =>
+      _almacen.write(
+        key: _clave(uid),
+        value: jsonEncode({'version': _version, 'vector': embedding}),
+      );
+
   static Future<List<double>?> _leer(String uid) async {
     final texto = await _almacen.read(key: _clave(uid));
     if (texto == null) return null;
@@ -75,16 +84,69 @@ class IdentidadEnCelular implements IdentidadFacial {
   Future<List<double>?> referencia() => _leer(uid);
 
   @override
-  Future<void> guardarReferencia(List<double> embedding) => _almacen.write(
-        key: _clave(uid),
-        value: jsonEncode({'version': _version, 'vector': embedding}),
-      );
+  Future<void> guardarReferencia(List<double> embedding) =>
+      guardarPara(uid, embedding);
 
   @override
   Future<List<double>?> embeddingDeChaira() async {
     final foto = await fotoChaira();
     if (foto == null || foto.isEmpty) return null;
     return (await _reconocimiento).embeddingDeBytes(foto);
+  }
+
+  @override
+  Future<void> cerrar() async {
+    try {
+      await (await _reconocimiento).cerrar();
+    } catch (_) {
+      // Si el modelo ni siquiera cargó, no hay nada que cerrar.
+    }
+  }
+}
+
+/// Para el registro: la cuenta todavía no existe, así que no hay `uid` con el
+/// que guardar la referencia. La cara se compara con la foto de Chairá que
+/// ya bajó el paso 1, y si coincide el vector se queda aquí hasta que la
+/// cuenta se cree; entonces se pasa a [IdentidadEnCelular.guardarPara].
+class IdentidadParaRegistro implements IdentidadFacial {
+  final Uint8List fotoChaira;
+  final Future<ReconocimientoFacialService> _reconocimiento;
+
+  List<double>? _chaira;
+  bool _chairaLeida = false;
+  List<double>? _vector;
+
+  IdentidadParaRegistro({required this.fotoChaira})
+      : _reconocimiento = ReconocimientoFacialService.cargar() {
+    _reconocimiento.ignore();
+  }
+
+  /// La cara que coincidió con Chairá, o null si todavía no hay ninguna.
+  List<double>? get vector => _vector;
+
+  @override
+  Future<List<double>?> embeddingDeFoto(String ruta) async =>
+      (await _reconocimiento).embeddingDeArchivo(ruta);
+
+  /// Nunca hay referencia: se está creando.
+  @override
+  Future<List<double>?> referencia() async => null;
+
+  @override
+  Future<void> guardarReferencia(List<double> embedding) async =>
+      _vector = embedding;
+
+  /// Se calcula una vez: la pantalla de registro la pide antes de abrir la
+  /// cámara (para saber si hay con qué comparar) y la verificación otra vez.
+  @override
+  Future<List<double>?> embeddingDeChaira() async {
+    if (!_chairaLeida) {
+      _chaira = fotoChaira.isEmpty
+          ? null
+          : await (await _reconocimiento).embeddingDeBytes(fotoChaira);
+      _chairaLeida = true;
+    }
+    return _chaira;
   }
 
   @override
