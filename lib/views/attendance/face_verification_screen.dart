@@ -354,7 +354,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           ),
           const SizedBox(height: 12),
 
-          // Action Pill Buttons (Flashlight | Geocerca Validada | Info)
+          // Action Pill Buttons (Linterna | Aula | Info)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -412,7 +412,9 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                               ? (widget._esRegistro
                                     ? 'Registro de cuenta'
                                     : 'Vinculación de celular')
-                              : 'Geocerca Validada • ${widget.classroom}',
+                              // La ubicación la comprueba después la
+                              // baliza, no esta pantalla.
+                              : 'Aula: ${widget.classroom}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -462,7 +464,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           ),
           const SizedBox(height: 4),
           const Text(
-            'Mantén tu rostro dentro del marco • SIS-402 Ingeniería de Software II',
+            'Mantén tu rostro dentro del marco',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
@@ -673,12 +675,17 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildTelemetryPill(
-                icon: _vm.paso == PasoVerificacion.encuadrando
-                    ? Icons.zoom_out_map
-                    : Icons.check_circle,
-                label: _vm.paso == PasoVerificacion.encuadrando
-                    ? 'Acércate'
-                    : 'Distancia óptima',
+                // Solo hay distancia que juzgar cuando hay una cara.
+                icon: switch (_vm.paso) {
+                  PasoVerificacion.buscando => Icons.face_outlined,
+                  PasoVerificacion.encuadrando => Icons.zoom_out_map,
+                  _ => Icons.check_circle,
+                },
+                label: switch (_vm.paso) {
+                  PasoVerificacion.buscando => 'Buscando tu cara',
+                  PasoVerificacion.encuadrando => 'Acércate',
+                  _ => 'Distancia óptima',
+                },
               ),
               const SizedBox(width: 8),
               _buildTelemetryPill(

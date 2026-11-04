@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/teacher_viewmodel.dart';
 import '../login_screen.dart';
 import 'import_csv_screen.dart';
 import '../../widgets/texto_sin_cortes.dart';
@@ -40,7 +41,8 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
   bool _summaryOnFinish = true;
 
   bool _isSyncing = false;
-  String _syncTimestamp = 'Hace 5 min';
+  // Cursos, inscritos y sesiones llegan de Firestore en vivo.
+  String _syncTimestamp = 'En vivo';
   late final AnimationController _syncController;
 
   @override
@@ -76,6 +78,8 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
       _syncTimestamp = 'Justo ahora';
     });
   }
+
+  static String _cursos(int n) => n == 1 ? '1 curso' : '$n cursos';
 
   Future<void> _handleLogout() async {
     final authVM = context.read<AuthViewModel>();
@@ -124,7 +128,9 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                       iconBgColor: _primaryIndigo.withValues(alpha: 0.2),
                       iconColor: _primaryLight,
                       title: 'Mis cursos',
-                      trailingBadgeText: '4 cursos',
+                      trailingBadgeText: _cursos(
+                        context.watch<TeacherViewModel>().cursos.length,
+                      ),
                       onTap: () => Navigator.pop(context),
                     ),
                     _buildDivider(),

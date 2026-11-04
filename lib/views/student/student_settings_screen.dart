@@ -8,6 +8,7 @@ import '../../services/identidad_facial_service.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/face_verification_viewmodel.dart';
+import '../../viewmodels/student_viewmodel.dart';
 import '../attendance/face_verification_screen.dart';
 import '../login_screen.dart';
 import 'attendance_detail_screen.dart';
@@ -43,7 +44,9 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
 
   bool _isCopied = false;
   bool _isSyncing = false;
-  String _lastSyncText = 'Hace 5 min';
+  // Las materias llegan de Firestore en vivo; "sincronizar" vuelve a pedir
+  // la asistencia de cada una.
+  String _lastSyncText = 'En vivo';
 
   late final AnimationController _syncController;
 
@@ -102,7 +105,11 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
     });
     _syncController.repeat();
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    try {
+      await context.read<StudentViewModel>().refrescar();
+    } catch (_) {
+      // El error, si lo hay, lo muestra el portal; aquí solo se para el giro.
+    }
     if (!mounted) return;
 
     _syncController.stop();
@@ -159,7 +166,9 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                       icon: Icons.auto_stories_outlined,
                       title: 'Cursos inscritos',
                       trailingWidget: _buildPillBadge(
-                        text: '5 asignaturas',
+                        text: _materias(
+                          context.watch<StudentViewModel>().subjects.length,
+                        ),
                         bgColor: _surfaceControl,
                         textColor: AppTheme.textSecondary,
                       ),
@@ -169,7 +178,9 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                     _buildNavRow(
                       icon: Icons.calendar_today_outlined,
                       title: 'Historial de asistencia',
-                      trailingText: '92% global',
+                      trailingText: _porcentajeGlobal(
+                        context.watch<StudentViewModel>().globalAttendance,
+                      ),
                       trailingTextColor: _tertiaryGreen,
                       trailingTextBold: true,
                       onTap: () {
@@ -969,6 +980,12 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
       ),
     );
   }
+
+  static String _materias(int n) => n == 1 ? '1 asignatura' : '$n asignaturas';
+
+  /// La asistencia de todas sus materias, o un guion si aún no hay clases.
+  static String _porcentajeGlobal(int? porcentaje) =>
+      porcentaje == null ? '—' : '$porcentaje% global';
 
   /// Registra la cara del estudiante en este celular, o comprueba la que ya
   /// tiene, sin esperar a un llamado: así llega a clase enrolado y no gasta
