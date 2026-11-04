@@ -40,11 +40,19 @@ class ChairaParser {
     r'''["']?errorMessage["']?\s*:\s*"((?:[^"\\]|\\.)*)"''',
   );
 
-  /// El campo donde logon.aspx deja el usuario. Ahí el setter viene sin el
-  /// prefijo `App.` que sí usa VerificaCarne.
+  /// El campo donde logon.aspx dejaba el usuario hasta octubre de 2026. Ahí
+  /// el setter viene sin el prefijo `App.` que sí usa VerificaCarne.
   static final _setterUsuario = RegExp(
     r'(?:App\.)?DF_Usuario\.setValue\(\s*"((?:[^"\\]|\\.)*)"',
   );
+
+  /// Desde noviembre de 2026 logon.aspx muestra el usuario en un SweetAlert:
+  /// `swal({ title: 'Su usuario es', text: '<b ...>usuario</b>', type:
+  /// 'success', ... })`. El `text` es un literal JavaScript entre comillas
+  /// simples dentro del script, así que se decodifica otra vez.
+  static final _swal = RegExp(r'swal\(\s*\{([\s\S]*?)\}\s*\)');
+  static final _swalTexto = RegExp(r"text\s*:\s*'((?:[^'\\]|\\.)*)'");
+  static final _swalTipo = RegExp(r"type\s*:\s*'(\w+)'");
 
   /// Los campos ocultos que ASP.NET exige para aceptar un envío de
   /// logon.aspx: hay que leerlos de la página y devolvérselos tal cual.
@@ -62,28 +70,37 @@ class ChairaParser {
   /// El usuario institucional que responde `BuscarUsuario`, o null si Chairá
   /// no encontró a nadie con ese documento.
   ///
-  /// La respuesta es del mismo estilo que la del carné, pero cuando no hay
-  /// nadie el mensaje llega dentro del propio campo y en HTML:
-  ///
-  /// ```text
-  /// {script:"...DF_Usuario.setValue(\"<FONT COLOR=red>No existe ningun
-  /// usuario...</FONT>\");..."}
-  /// ```
-  ///
-  /// Así que no basta con leer el campo: solo se acepta lo que tenga forma de
+  /// Se aceptan los dos formatos que ha tenido la página: el aviso
+  /// (`swal`) de ahora y el campo `DF_Usuario` de antes. En los dos el
+  /// usuario llega envuelto en HTML, y el "no encontrado" también llega como
+  /// texto, así que no basta con leerlo: solo se acepta lo que tenga forma de
   /// usuario, y cualquier mensaje trae espacios y no la tiene.
   static String? usuarioDeRespuesta(String body) {
     final scriptMatch = _script.firstMatch(body);
     final script =
         scriptMatch != null ? _decodeJs(scriptMatch.group(1)!) : body;
-    final match = _setterUsuario.firstMatch(script);
-    if (match == null) return null;
-    var usuario =
-        _limpiar(_decodeHtml(_decodeJs(match.group(1)!))).toLowerCase();
+    final crudo = _usuarioEnAviso(script) ?? _usuarioEnCampo(script);
+    if (crudo == null) return null;
+    var usuario = _limpiar(_decodeHtml(crudo)).toLowerCase();
     // Por si algún día devolviera el correo completo.
     final arroba = usuario.indexOf('@');
     if (arroba > 0) usuario = usuario.substring(0, arroba);
     return formatoUsuario.hasMatch(usuario) ? usuario : null;
+  }
+
+  /// El texto del aviso de éxito, o null si no hay aviso o si es el de "No
+  /// encontrado", que llega con `type: 'error'`.
+  static String? _usuarioEnAviso(String script) {
+    final aviso = _swal.firstMatch(script)?.group(1);
+    if (aviso == null) return null;
+    if (_swalTipo.firstMatch(aviso)?.group(1) != 'success') return null;
+    final texto = _swalTexto.firstMatch(aviso)?.group(1);
+    return texto == null ? null : _decodeJs(texto);
+  }
+
+  static String? _usuarioEnCampo(String script) {
+    final match = _setterUsuario.firstMatch(script);
+    return match == null ? null : _decodeJs(match.group(1)!);
   }
 
   static VerificacionResult parse(String documento, String body) {

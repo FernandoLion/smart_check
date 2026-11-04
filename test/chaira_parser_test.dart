@@ -114,6 +114,26 @@ void main() {
       );
     });
 
+    test('un aviso de éxito sin texto no inventa nada', () {
+      expect(
+        ChairaParser.usuarioDeRespuesta(
+          "{script:\"swal({ title: 'Su usuario es', type: 'success' });\"}",
+        ),
+        isNull,
+      );
+    });
+
+    test('sigue leyendo el formato anterior de logon.aspx', () {
+      expect(
+        ChairaParser.usuarioDeRespuesta(respuestaUsuarioAnterior('an.perez')),
+        'an.perez',
+      );
+      expect(
+        ChairaParser.usuarioDeRespuesta(respuestaUsuarioNoEncontradoAnterior),
+        isNull,
+      );
+    });
+
     test('lee los campos ocultos de la página de ingreso', () {
       expect(ChairaParser.camposOcultos(paginaLogon), {
         '__VIEWSTATE': 'N4MAS88ZZWI9',
