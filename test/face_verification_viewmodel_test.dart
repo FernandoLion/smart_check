@@ -27,6 +27,15 @@ class _IdentidadFalsa implements IdentidadFacial {
   Future<void> guardarReferencia(List<double> embedding) async =>
       guardada = embedding;
 
+  /// Lo que la verificación le ofreció para afinar la referencia.
+  final ofrecidas = <List<double>>[];
+
+  @override
+  Future<bool> aprender(List<double> embedding) async {
+    ofrecidas.add(embedding);
+    return true;
+  }
+
   @override
   Future<List<double>?> embeddingDeChaira() async => chaira;
 
@@ -292,8 +301,31 @@ void main() {
 
       expect(vm.paso, PasoVerificacion.fallido);
       expect(vm.instruccion, contains('No pudimos confirmar que eres tú'));
-      // Fallar no toca la referencia.
+      // Fallar no toca la referencia ni le enseña nada.
       expect(identidad.guardada, dueno);
+      expect(identidad.ofrecidas, isEmpty);
+    });
+
+    test('una verificación buena se ofrece para afinar la referencia',
+        () async {
+      final identidad =
+          _IdentidadFalsa(fotos: {'foto': casiDueno}, guardada: dueno);
+      final vm = conIdentidad(identidad);
+
+      await vm.compararFoto('foto');
+
+      expect(identidad.ofrecidas, [casiDueno]);
+    });
+
+    test('enrolarse empieza la referencia, no la afina', () async {
+      final identidad =
+          _IdentidadFalsa(fotos: {'foto': casiDueno}, chaira: dueno);
+      final vm = conIdentidad(identidad);
+
+      await vm.compararFoto('foto');
+
+      expect(identidad.guardada, casiDueno);
+      expect(identidad.ofrecidas, isEmpty);
     });
 
     test('sin referencia se enrola si coincide con Chairá', () async {

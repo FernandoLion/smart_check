@@ -1,3 +1,4 @@
+import 'dart:math' show sqrt1_2;
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -82,5 +83,89 @@ void main() {
       tamano: 2,
     );
     expect(salida.sublist(0, 4), [0, 1, 0, 1]);
+  });
+
+  group('GaleriaRostro', () {
+    const ancla = [1.0, 0.0];
+    const casiAncla = [0.8, 0.6]; // coseno 0.8 con el ancla
+
+    test('sin recientes, la referencia es el ancla', () {
+      final c = const GaleriaRostro(ancla).centroide;
+      expect(c[0], closeTo(1, 1e-9));
+      expect(c[1], closeTo(0, 1e-9));
+    });
+
+    test('el centroide pesa cada cara igual, sin importar su largo', () {
+      final c = const GaleriaRostro([2.0, 0.0], [
+        [0.0, 10.0],
+      ]).centroide;
+      expect(c[0], closeTo(sqrt1_2, 1e-9));
+      expect(c[1], closeTo(sqrt1_2, 1e-9));
+    });
+
+    test('aprende una cara que se parece con holgura', () {
+      final nueva = const GaleriaRostro(ancla).aprender(casiAncla);
+
+      expect(nueva, isNotNull);
+      expect(nueva!.ancla, ancla);
+      expect(nueva.recientes, [casiAncla]);
+    });
+
+    test('no aprende una que pasó raspando', () {
+      // Coseno 0.55: pasaría el umbral de identidad, no el de aprender.
+      expect(const GaleriaRostro(ancla).aprender([0.55, 0.835]), isNull);
+    });
+
+    test('el ancla frena a quien va corriendo la referencia', () {
+      // Recientes ya desviadas hacia otra cara: el centroide se parece al
+      // impostor, pero el ancla no.
+      const desviada = [0.6, 0.8];
+      const galeria = GaleriaRostro(ancla, [
+        desviada,
+        desviada,
+        desviada,
+        desviada,
+      ]);
+      const impostor = [0.3, 0.954];
+      expect(similitud(impostor, galeria.centroide),
+          greaterThan(GaleriaRostro.umbralParaAprender));
+
+      expect(galeria.aprender(impostor), isNull);
+    });
+
+    test('guarda las últimas cuatro y nunca suelta el ancla', () {
+      GaleriaRostro galeria = const GaleriaRostro(ancla);
+      for (var i = 0; i < 6; i++) {
+        galeria = galeria.aprender([0.9, 0.1 * i])!;
+      }
+
+      expect(galeria.recientes, hasLength(GaleriaRostro.maxRecientes));
+      expect(galeria.recientes.first, [0.9, 0.2]);
+      expect(galeria.recientes.last, [0.9, 0.5]);
+      expect(galeria.ancla, ancla);
+    });
+
+    test('ida y vuelta por el almacén', () {
+      final galeria = const GaleriaRostro(ancla, [casiAncla]);
+      final leida = GaleriaRostro.fromMap(galeria.toMap())!;
+
+      expect(leida.ancla, ancla);
+      expect(leida.recientes, [casiAncla]);
+    });
+
+    test('una referencia guardada con el formato viejo pasa a ser el ancla',
+        () {
+      final leida = GaleriaRostro.fromMap({
+        'version': 'mobile_facenet_qaihub_v0.65.0',
+        'vector': [0.5, 0.5],
+      })!;
+
+      expect(leida.ancla, [0.5, 0.5]);
+      expect(leida.recientes, isEmpty);
+    });
+
+    test('sin datos de cara no hay galería', () {
+      expect(GaleriaRostro.fromMap({'version': 'x'}), isNull);
+    });
   });
 }

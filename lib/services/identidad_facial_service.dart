@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../utils/rostro_vectores.dart';
 import 'reconocimiento_facial_service.dart';
 
 /// Lo que la verificación facial necesita para saber si quien está delante
@@ -14,10 +15,17 @@ abstract class IdentidadFacial {
   Future<List<double>?> embeddingDeFoto(String ruta);
 
   /// La cara de referencia del estudiante en este celular, o null si todavía
-  /// no se ha enrolado.
+  /// no se ha enrolado. Es el promedio de las que ha ido guardando (ver
+  /// [GaleriaRostro]), no una foto suelta.
   Future<List<double>?> referencia();
 
+  /// Empieza la referencia desde cero con [embedding] (al enrolarse).
   Future<void> guardarReferencia(List<double> embedding);
+
+  /// Tras una verificación que pasó, ofrece [embedding] para afinar la
+  /// referencia. Devuelve si se aprendió; puede no hacerlo si no se parece lo
+  /// bastante (ver [GaleriaRostro.aprender]).
+  Future<bool> aprender(List<double> embedding);
 
   /// El vector de la foto de Chairá, o null si no hay foto o no se ve una
   /// cara en ella.
@@ -63,17 +71,20 @@ class IdentidadEnCelular implements IdentidadFacial {
   /// modelo: es para el registro, que ya comparó la cara antes de que la
   /// cuenta existiera.
   static Future<void> guardarPara(String uid, List<double> embedding) =>
+      _escribir(uid, GaleriaRostro(embedding));
+
+  static Future<void> _escribir(String uid, GaleriaRostro galeria) =>
       _almacen.write(
         key: _clave(uid),
-        value: jsonEncode({'version': _version, 'vector': embedding}),
+        value: jsonEncode({'version': _version, ...galeria.toMap()}),
       );
 
-  static Future<List<double>?> _leer(String uid) async {
+  static Future<GaleriaRostro?> _leer(String uid) async {
     final texto = await _almacen.read(key: _clave(uid));
     if (texto == null) return null;
     final datos = jsonDecode(texto) as Map<String, dynamic>;
     if (datos['version'] != _version) return null;
-    return [for (final x in datos['vector'] as List) (x as num).toDouble()];
+    return GaleriaRostro.fromMap(datos);
   }
 
   @override
@@ -81,11 +92,19 @@ class IdentidadEnCelular implements IdentidadFacial {
       (await _reconocimiento).embeddingDeArchivo(ruta);
 
   @override
-  Future<List<double>?> referencia() => _leer(uid);
+  Future<List<double>?> referencia() async => (await _leer(uid))?.centroide;
 
   @override
   Future<void> guardarReferencia(List<double> embedding) =>
       guardarPara(uid, embedding);
+
+  @override
+  Future<bool> aprender(List<double> embedding) async {
+    final nueva = (await _leer(uid))?.aprender(embedding);
+    if (nueva == null) return false;
+    await _escribir(uid, nueva);
+    return true;
+  }
 
   @override
   Future<List<double>?> embeddingDeChaira() async {
@@ -135,6 +154,10 @@ class IdentidadParaRegistro implements IdentidadFacial {
   @override
   Future<void> guardarReferencia(List<double> embedding) async =>
       _vector = embedding;
+
+  /// Al registrarse no hay galería que afinar todavía.
+  @override
+  Future<bool> aprender(List<double> embedding) async => false;
 
   /// Se calcula una vez: la pantalla de registro la pide antes de abrir la
   /// cámara (para saber si hay con qué comparar) y la verificación otra vez.

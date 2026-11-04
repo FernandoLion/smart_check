@@ -287,6 +287,7 @@ class FaceVerificationViewModel extends ChangeNotifier {
         _similitud = similitud(vivo, referencia);
         _anotar('referencia', umbralIdentidad);
         if (_similitud! >= umbralIdentidad) {
+          await _aprender(identidad, vivo);
           return _confirmar(ResultadoIdentidad.coincide);
         }
         return _fallar('No pudimos confirmar que eres tú. Solo el dueño de '
@@ -322,6 +323,15 @@ class FaceVerificationViewModel extends ChangeNotifier {
       '[rostro] contra=$contra similitud=${_similitud!.toStringAsFixed(3)} '
       'umbral=$umbral pasa=${_similitud! >= umbral}',
     );
+  }
+
+  /// Cada verificación buena puede afinar la referencia (si se parece con
+  /// holgura). Si no se puede guardar, la verificación sigue valiendo.
+  Future<void> _aprender(IdentidadFacial identidad, List<double> vivo) async {
+    try {
+      final aprendida = await identidad.aprender(vivo);
+      if (kDebugMode) debugPrint('[rostro] aprendida=$aprendida');
+    } catch (_) {}
   }
 
   void _confirmar(ResultadoIdentidad resultado) {

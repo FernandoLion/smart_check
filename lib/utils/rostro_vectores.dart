@@ -29,6 +29,79 @@ double similitud(List<double> a, List<double> b) {
   return producto.clamp(-1.0, 1.0);
 }
 
+/// La referencia facial del estudiante en su celular, que se afina con el uso.
+///
+/// Una sola foto de referencia sale con una luz y un ángulo; con el tiempo el
+/// dueño pasa con más esfuerzo cuanto más distinta es la situación. Por eso
+/// se guardan también algunas verificaciones buenas, y se compara contra el
+/// promedio de todas.
+///
+/// - [ancla]: la cara con la que se enroló, la que se validó contra Chairá.
+///   Nunca se reemplaza: fija hasta dónde puede derivar la referencia.
+/// - [recientes]: las últimas verificaciones que pasaron con holgura, hasta
+///   [maxRecientes]. Al llegar una más, sale la más vieja.
+class GaleriaRostro {
+  final List<double> ancla;
+  final List<List<double>> recientes;
+
+  static const maxRecientes = 4;
+
+  /// Para aprender una cara no basta con que pase: tiene que parecerse con
+  /// holgura a la referencia actual **y** al ancla. Si no, un impostor que
+  /// pasara raspando podría, verificación a verificación, ir corriendo la
+  /// referencia hacia su propia cara (envenenamiento de plantilla).
+  static const umbralParaAprender = 0.60;
+  static const umbralAnclaParaAprender = 0.50;
+
+  const GaleriaRostro(this.ancla, [this.recientes = const []]);
+
+  /// El promedio de todas las caras guardadas, con largo 1. Cada una pesa lo
+  /// mismo sin importar el largo de su vector.
+  List<double> get centroide {
+    final suma = List<double>.filled(ancla.length, 0);
+    for (final v in [ancla, ...recientes]) {
+      final n = normalizar(v);
+      for (var i = 0; i < suma.length; i++) {
+        suma[i] += n[i];
+      }
+    }
+    return normalizar(suma);
+  }
+
+  /// La galería con [vivo] aprendido, o null si no se parece lo bastante
+  /// para fiarse de ella.
+  GaleriaRostro? aprender(List<double> vivo) {
+    if (similitud(vivo, centroide) < umbralParaAprender) return null;
+    if (similitud(vivo, ancla) < umbralAnclaParaAprender) return null;
+    final nuevas = [...recientes, vivo];
+    while (nuevas.length > maxRecientes) {
+      nuevas.removeAt(0);
+    }
+    return GaleriaRostro(ancla, nuevas);
+  }
+
+  Map<String, dynamic> toMap() => {
+        'formato': 2,
+        'ancla': ancla,
+        'recientes': recientes,
+      };
+
+  /// Lee las dos formas en que se ha guardado: la galería, y el vector
+  /// suelto de antes, que pasa a ser el ancla sin recientes (así nadie tiene
+  /// que volver a enrolarse).
+  static GaleriaRostro? fromMap(Map<String, dynamic> datos) {
+    List<double> vector(Object? v) =>
+        [for (final x in v as List) (x as num).toDouble()];
+    if (datos['ancla'] != null) {
+      return GaleriaRostro(vector(datos['ancla']), [
+        for (final r in (datos['recientes'] as List? ?? const [])) vector(r),
+      ]);
+    }
+    if (datos['vector'] != null) return GaleriaRostro(vector(datos['vector']));
+    return null;
+  }
+}
+
 /// Qué parte de la foto recortar para entregarle la cara al modelo: un
 /// cuadrado centrado en la cara y el giro que endereza la línea de los ojos.
 class RecorteCara {
