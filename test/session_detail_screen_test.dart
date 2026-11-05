@@ -71,7 +71,8 @@ void main() {
     expect(find.text('CARLOS MUÑOZ'), findsOneWidget);
     expect(find.text('ANA PÉREZ'), findsOneWidget);
     expect(find.text('Mateo Gómez Silva'), findsNothing);
-    expect(find.text('08:05'), findsOneWidget);
+    // A quien vino también se le puede corregir, y se ve.
+    expect(find.text('08:05 · Marcar ausente'), findsOneWidget);
     expect(find.text('Presentes (1)'), findsOneWidget);
     expect(find.text('Ausentes (1)'), findsOneWidget);
   });

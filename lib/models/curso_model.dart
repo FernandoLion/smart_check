@@ -90,6 +90,10 @@ class Curso {
   final List<String> clavesInscritos;
   final int totalInscritos;
 
+  /// Curso de un periodo que ya pasó: sale de la lista principal del docente
+  /// y su radar no se ofrece, pero conserva inscritos y asistencias.
+  final bool archivado;
+
   const Curso({
     this.id = '',
     required this.codigo,
@@ -103,6 +107,7 @@ class Curso {
     this.geocerca,
     this.clavesInscritos = const [],
     this.totalInscritos = 0,
+    this.archivado = false,
   });
 
   factory Curso.fromMap(String id, Map<String, dynamic> map) {
@@ -123,6 +128,7 @@ class Curso {
       clavesInscritos:
           List<String>.from(map['claves_inscritos'] as List? ?? const []),
       totalInscritos: map['total_inscritos'] as int? ?? 0,
+      archivado: map['archivado'] as bool? ?? false,
     );
   }
 
@@ -138,6 +144,7 @@ class Curso {
         'geocerca': geocerca?.toMap(),
         'claves_inscritos': clavesInscritos,
         'total_inscritos': totalInscritos,
+        'archivado': archivado,
       };
 
   /// Periodo académico de [momento]: "2026-1" (ene-jun) o "2026-2" (jul-dic).

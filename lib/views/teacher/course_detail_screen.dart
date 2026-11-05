@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/asistencia_resumen.dart';
 import '../../models/curso_model.dart';
+import '../../models/inscrito_model.dart';
+import '../../services/curso_service.dart';
+import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/course_detail_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
+import '../../widgets/hoja_geocerca.dart';
 import '../attendance/attendance_radar_screen.dart';
+import 'add_student_screen.dart';
+import 'create_course_screen.dart';
 import 'session_detail_screen.dart';
 
 class CourseDetailScreen extends StatefulWidget {
@@ -50,6 +57,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
   late final TabController _tabController;
   late final CourseDetailViewModel _vm;
+
+  /// El curso como está ahora; cambia al editarlo o al marcar la geocerca.
+  late Curso _curso = widget.curso;
+  bool _guardandoGeocerca = false;
   final _buscador = TextEditingController();
 
   // Colores exactos del HTML de Stitch
@@ -67,7 +78,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _vm = (widget.vm ?? CourseDetailViewModel())..vigilar(widget.curso.id);
+    _vm = (widget.vm ?? CourseDetailViewModel())..vigilar(_curso.id);
     _buscador.addListener(() => setState(() {}));
   }
 
@@ -132,62 +143,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       ),
       child: Column(
         children: [
-          // Dynamic Island Capsule
-          Container(
-            height: 28,
-            width: 176,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-            ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: _primaryIndigo,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'BLE Activo',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 18),
-                  const Row(
-                    children: [
-                      Icon(Icons.sensors, color: _primaryLight, size: 13),
-                      SizedBox(width: 4),
-                      Text(
-                        'SmartCheck',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
 
           // Navigation Bar (Back, Title & Actions)
           Row(
@@ -210,7 +165,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 child: Column(
                   children: [
                     Text(
-                      widget.curso.nombre,
+                      _curso.nombre,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 17,
@@ -222,8 +177,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       textAlign: TextAlign.center,
                     ),
                     Text(
-                      '${widget.curso.codigo} • Grupo '
-                      '${widget.curso.grupo}',
+                      '${_curso.codigo} • Grupo '
+                      '${_curso.grupo}',
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 11,
@@ -235,7 +190,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               ),
               Row(
                 children: [
-                  _buildActionCircle(Icons.person_add_outlined),
+                  _buildActionCircle(
+                    Icons.person_add_outlined,
+                    onTap: _agregarEstudiantes,
+                  ),
                   const SizedBox(width: 6),
                   _buildActionCircle(Icons.more_horiz, onTap: _mostrarOpciones),
                 ],
@@ -351,27 +309,340 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      builder: (hoja) {
+        Widget opcion(
+          IconData icono,
+          String titulo,
+          VoidCallback alTocar, {
+          Color color = Colors.white,
+          String? detalle,
+        }) =>
+            ListTile(
+              leading: Icon(icono, color: color),
+              title: Text(
+                titulo,
+                style: TextStyle(color: color, fontWeight: FontWeight.w600),
+              ),
+              subtitle: detalle == null
+                  ? null
+                  : Text(
+                      detalle,
+                      style: const TextStyle(color: AppTheme.textSecondary),
+                    ),
+              onTap: () {
+                Navigator.pop(hoja);
+                alTocar();
+              },
+            );
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                opcion(
+                  Icons.person_add_alt_1_outlined,
+                  'Agregar estudiantes',
+                  _agregarEstudiantes,
+                  detalle: 'Por cédula, por correo o pegando una lista',
+                ),
+                opcion(
+                  Icons.edit_outlined,
+                  'Editar curso',
+                  _editarCurso,
+                  detalle: 'Nombre, código, grupo, aula, horario',
+                ),
+                opcion(
+                  Icons.table_view_outlined,
+                  'Copiar asistencia (CSV)',
+                  _copiarAsistencia,
+                  detalle: 'Para pegar en Excel o en un correo',
+                ),
+                opcion(
+                  _curso.archivado
+                      ? Icons.unarchive_outlined
+                      : Icons.archive_outlined,
+                  _curso.archivado ? 'Activar curso' : 'Archivar curso',
+                  _alternarArchivo,
+                  detalle: _curso.archivado
+                      ? 'Vuelve a la lista activa'
+                      : 'Sale de la lista activa; no se borra nada',
+                ),
+                opcion(
+                  Icons.delete_outline,
+                  'Eliminar curso',
+                  _confirmarEliminar,
+                  color: _systemRed,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Abre la pantalla de agregar (que también ofrece pegar la lista de
+  /// Chairá) e inscribe a los que se agreguen allí.
+  Future<void> _agregarEstudiantes() async {
+    final teacherVM = context.read<TeacherViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+    final nuevos = await Navigator.push<List<Inscrito>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddStudentScreen(courseTitle: _curso.nombre),
+      ),
+    );
+    if (nuevos == null || nuevos.isEmpty || !mounted) return;
+    final listo = await teacherVM.inscribir(_curso.id, nuevos);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          !listo
+              ? teacherVM.error ?? 'No se pudieron inscribir.'
+              : nuevos.length == 1
+                  ? '${nuevos.single.nombre} quedó inscrito.'
+                  : '${nuevos.length} estudiantes quedaron inscritos.',
+        ),
+        backgroundColor: listo ? AppTheme.success : AppTheme.error,
+      ),
+    );
+  }
+
+  /// Lo que se sabe del inscrito y la opción de sacarlo del curso.
+  Future<void> _opcionesDelInscrito(InscritoAsistencia inscrito) async {
+    final i = inscrito.inscrito;
+    final a = inscrito.asistencia;
+    final quitar = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: _surfaceElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (hoja) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: ListTile(
-            leading: const Icon(Icons.delete_outline, color: _systemRed),
-            title: const Text(
-              'Eliminar curso',
-              style: TextStyle(color: _systemRed, fontWeight: FontWeight.w600),
-            ),
-            onTap: () {
-              Navigator.pop(hoja);
-              _confirmarEliminar();
-            },
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                i.nombre,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              if (i.cedula != null)
+                Text(
+                  'Documento ${i.cedula}',
+                  style: const TextStyle(color: AppTheme.textSecondary),
+                ),
+              if (i.email != null)
+                Text(
+                  i.email!,
+                  style: const TextStyle(color: AppTheme.textSecondary),
+                ),
+              const SizedBox(height: 6),
+              Text(
+                a.sesiones == 0
+                    ? 'Sin clases cerradas todavía.'
+                    : 'Asistió a ${a.asistidas} de ${a.sesiones} clases '
+                        '(${a.porcentaje}%).',
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.person_remove_outlined,
+                    color: _systemRed),
+                title: const Text(
+                  'Quitar del curso',
+                  style: TextStyle(
+                    color: _systemRed,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Deja de aparecer en la lista y en los porcentajes',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
+                onTap: () => Navigator.pop(hoja, true),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+    if (quitar != true || !mounted) return;
+    final confirma = await showDialog<bool>(
+      context: context,
+      builder: (dialogo) => AlertDialog(
+        backgroundColor: _surfaceElevated,
+        title: Text(
+          '¿Quitar a ${i.nombre}?',
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Puedes volver a inscribirlo después.',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogo, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogo, true),
+            style: TextButton.styleFrom(foregroundColor: _systemRed),
+            child: const Text('Quitar'),
+          ),
+        ],
+      ),
+    );
+    if (confirma != true || !mounted) return;
+    final teacherVM = context.read<TeacherViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+    final listo = await teacherVM.quitarInscrito(_curso.id, i);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          listo
+              ? '${i.nombre} ya no está en el curso.'
+              : teacherVM.error ?? 'No se pudo quitar.',
+        ),
+        backgroundColor: listo ? null : AppTheme.error,
+      ),
+    );
+  }
+
+  Future<void> _editarCurso() async {
+    final editado = await Navigator.push<Curso>(
+      context,
+      MaterialPageRoute(builder: (_) => CreateCourseScreen(curso: _curso)),
+    );
+    if (editado != null && mounted) setState(() => _curso = editado);
+  }
+
+  Future<void> _copiarAsistencia() async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (_vm.sesionesPasadas.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Todavía no hay clases cerradas que exportar.'),
+        ),
+      );
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: _vm.asistenciaEnCsv()));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Asistencia de ${_vm.totalInscritos} estudiantes en '
+          '${_vm.sesionesPasadas.length} clases copiada. Pégala en Excel.',
         ),
       ),
     );
   }
 
+  Future<void> _alternarArchivo() async {
+    final archivar = !_curso.archivado;
+    final teacherVM = context.read<TeacherViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+    final listo = await teacherVM.archivarCurso(_curso.id, archivado: archivar);
+    if (!mounted) return;
+    if (listo) {
+      setState(() {
+        _curso = Curso.fromMap(_curso.id, {
+          ..._curso.toMap(),
+          'archivado': archivar,
+        });
+      });
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          !listo
+              ? teacherVM.error ?? 'No se pudo cambiar el curso.'
+              : archivar
+                  ? 'Curso archivado.'
+                  : 'Curso activo otra vez.',
+        ),
+        backgroundColor: listo ? null : AppTheme.error,
+      ),
+    );
+  }
+
+  /// Marca la geocerca con la ubicación de ahora (o la quita) y la guarda.
+  void _editarGeocerca() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _surfaceElevated,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => HojaGeocerca(
+        geocerca: _curso.geocerca,
+        alMarcar: (radio) async {
+          try {
+            final posicion = await UbicacionService().posicionActual();
+            await _guardarGeocerca(
+              Geocerca(
+                latitud: posicion.latitude,
+                longitud: posicion.longitude,
+                radioMetros: radio,
+              ),
+            );
+          } on UbicacionException catch (e) {
+            _avisarError(e.mensaje);
+          }
+        },
+        alQuitar: () => _guardarGeocerca(null),
+      ),
+    );
+  }
+
+  Future<void> _guardarGeocerca(Geocerca? geocerca) async {
+    setState(() => _guardandoGeocerca = true);
+    try {
+      await CursoService().cambiarGeocerca(_curso.id, geocerca);
+      if (!mounted) return;
+      setState(() {
+        _curso = Curso.fromMap(_curso.id, {
+          ..._curso.toMap(),
+          'geocerca': geocerca?.toMap(),
+        });
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            geocerca == null
+                ? 'Geocerca quitada: el radar no comprobará el aula.'
+                : 'Geocerca guardada: ±${geocerca.radioMetros.round()} m '
+                    'de donde estás.',
+          ),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+    } on CursoException catch (e) {
+      _avisarError(e.mensaje);
+    } finally {
+      if (mounted) setState(() => _guardandoGeocerca = false);
+    }
+  }
+
+  void _avisarError(String mensaje) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensaje), backgroundColor: AppTheme.error),
+    );
+  }
+
   Future<void> _confirmarEliminar() async {
-    final curso = widget.curso;
+    final curso = _curso;
     final inscritos = _vm.totalInscritos;
     final sesiones = _vm.sesiones.length;
     final confirmado = await showDialog<bool>(
@@ -517,7 +788,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     final ahora = DateTime.now();
     final abierta = _vm.llamadoVigente;
     final bloqueHoy =
-        widget.curso.horarios.where((h) => h.dia == ahora.weekday).toList()
+        _curso.horarios.where((h) => h.dia == ahora.weekday).toList()
           ..sort((a, b) => a.inicioMinutos.compareTo(b.inicioMinutos));
 
     final String titulo;
@@ -546,12 +817,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     } else {
       titulo = 'SIN CLASE HOY';
       insignia = 'En reposo';
-      horario = widget.curso.horarios.isEmpty
+      horario = _curso.horarios.isEmpty
           ? 'Este curso no tiene horario asignado'
-          : 'Días de clase: ${widget.curso.horarios.map((h) => _dias[h.dia - 1]).join(', ')}';
+          : 'Días de clase: ${_curso.horarios.map((h) => _dias[h.dia - 1]).join(', ')}';
     }
 
-    final geocerca = widget.curso.geocerca;
+    final geocerca = _curso.geocerca;
     final promedio = _vm.promedio;
 
     return Container(
@@ -642,8 +913,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               Expanded(
                 child: Text(
                   geocerca == null
-                      ? '${widget.curso.aula} • Sin geocerca asignada'
-                      : '${widget.curso.aula} • Geocerca ±'
+                      ? '${_curso.aula} • Sin geocerca asignada'
+                      : '${_curso.aula} • Geocerca ±'
                             '${geocerca.radioMetros.round()}m',
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
@@ -674,9 +945,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   promedio.porcentaje == null
                       ? 'Sin clases aún'
                       : '${promedio.porcentaje}% asistencia',
-                  Icons.trending_up,
-                  _tertiaryGreen,
-                  promedio.porcentaje == null ? Colors.white : _tertiaryGreen,
+                  Icons.insights_outlined,
+                  AppTheme.textTertiary,
+                  // El color dice si el curso va bien, no adorna.
+                  switch (promedio.nivel) {
+                    _ when promedio.porcentaje == null => Colors.white,
+                    NivelAsistencia.alDia => _tertiaryGreen,
+                    NivelAsistencia.atencion => _systemAmber,
+                    NivelAsistencia.riesgo => _systemRed,
+                  },
                 ),
               ),
             ],
@@ -690,7 +967,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     context,
                     MaterialPageRoute(
                       builder: (_) =>
-                          AttendanceRadarScreen(curso: widget.curso),
+                          AttendanceRadarScreen(curso: _curso),
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -726,7 +1003,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: _guardandoGeocerca ? null : _editarGeocerca,
                   style: OutlinedButton.styleFrom(
                     backgroundColor: _surfaceControl,
                     foregroundColor: Colors.white,
@@ -827,7 +1104,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           context,
           MaterialPageRoute(
             builder: (context) => SessionDetailScreen(
-              curso: widget.curso,
+              curso: _curso,
               vm: _vm,
               franja: sesion.franja,
               fechaTitulo: _fechaLarga(sesion.franja),
@@ -1128,8 +1405,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     promedio.porcentaje == null
                         ? '—'
                         : '${promedio.porcentaje}%',
-                    style: const TextStyle(
-                      color: _tertiaryGreen,
+                    style: TextStyle(
+                      color: switch (promedio.nivel) {
+                        _ when promedio.porcentaje == null => Colors.white,
+                        NivelAsistencia.alDia => _tertiaryGreen,
+                        NivelAsistencia.atencion => _systemAmber,
+                        NivelAsistencia.riesgo => _systemRed,
+                      },
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1165,13 +1447,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         if (_vm.totalInscritos == 0)
           _buildAviso(
             'Este curso no tiene inscritos. Agrégalos por CSV, cédula o '
-            'correo desde el panel docente.',
+            'correo desde el menú ··· de arriba → Agregar estudiantes.',
           )
         else if (lista.isEmpty)
           _buildAviso('Ningún inscrito coincide con la búsqueda.')
         else
           for (final inscrito in lista) ...[
-            _buildStudentCard(inscrito),
+            GestureDetector(
+              onTap: () => _opcionesDelInscrito(inscrito),
+              child: _buildStudentCard(inscrito),
+            ),
             const SizedBox(height: 12),
           ],
 

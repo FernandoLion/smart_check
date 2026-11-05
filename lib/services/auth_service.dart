@@ -7,6 +7,14 @@ class AuthService {
 
   User? get currentUser => _auth.currentUser;
 
+  /// La sesión que Firebase guardó en este celular, si hay. Al arrancar la
+  /// app Firebase la carga en segundo plano: [currentUser] puede seguir en
+  /// null un momento, así que se espera su primer aviso.
+  Future<User?> sesionGuardada() => _auth
+      .authStateChanges()
+      .first
+      .timeout(const Duration(seconds: 5), onTimeout: () => _auth.currentUser);
+
   Future<String?> signInWithEmailPassword(String email, String password) async {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);

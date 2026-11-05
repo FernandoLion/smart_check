@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/curso_model.dart';
 import '../../models/sesion_model.dart';
@@ -136,8 +137,9 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
         ),
         content: Text(
           'Se deja de escuchar y el llamado queda cerrado antes de tiempo. '
-          '${_vm.detectados} de ${_vm.totalInscritos} quedarán como '
-          'asistencia; el resto cuenta como falta.',
+          'En este llamado van ${_vm.detectados} de ${_vm.totalInscritos}. '
+          'A quien falte lo puedes marcar a mano después, desde el detalle '
+          'de la sesión.',
           style: const TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
@@ -394,7 +396,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                           SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              'SENSOR OMNIDIRECCIONAL',
+                              'ESCANEO BLUETOOTH',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -617,7 +619,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                               ),
                             ),
                             child: const Text(
-                              'Docente Emisor',
+                              'Tu celular',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
@@ -1037,12 +1039,12 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
               const SizedBox(width: 8),
               Row(
                 children: [
-                  Icon(Icons.sort, color: _secondaryBlue, size: 14),
+                  Icon(Icons.sort, color: AppTheme.textTertiary, size: 14),
                   SizedBox(width: 4),
                   Text(
-                    'Recientes',
+                    'Recientes primero',
                     style: TextStyle(
-                      color: _secondaryBlue,
+                      color: AppTheme.textTertiary,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1413,13 +1415,17 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
           ),
           const SizedBox(width: 10),
 
-          // Botón Secundario Derecho: Exportar Acta
+          // Botón Secundario Derecho: copia el acta del llamado (CSV).
           GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Exportando acta de radar en vivo...'),
-                  duration: Duration(seconds: 1),
+            onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              await Clipboard.setData(ClipboardData(text: _vm.actaEnCsv()));
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Acta copiada: ${_vm.detectados} de '
+                    '${_vm.totalInscritos} presentes. Pégala en Excel.',
+                  ),
                 ),
               );
             },

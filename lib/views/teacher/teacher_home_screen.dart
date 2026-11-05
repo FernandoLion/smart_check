@@ -65,9 +65,43 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   static const Color _primaryLight = Color(0xFFC2C1FF);
   static const Color _tertiaryGreen = Color(0xFF47E266);
   static const Color _systemAmber = Color(0xFFFF9F0A);
-  static const Color _systemRed = Color(0xFFFF453A);
 
   int _selectedFilter = 0; // 0: Todos, 1: Activos, 2: Hoy, 3: Archivados
+
+  /// Lo que se escribe en el buscador: filtra por nombre, código o grupo.
+  final _buscador = TextEditingController();
+  String _busqueda = '';
+
+  @override
+  void dispose() {
+    _buscador.dispose();
+    super.dispose();
+  }
+
+  bool _coincide(TeacherCourseModel c) {
+    final q = _busqueda.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    return [c.name, c.code, c.group, c.location]
+        .any((campo) => campo.toLowerCase().contains(q));
+  }
+
+  Future<void> _archivar(TeacherCourseModel course, bool archivar) async {
+    final vm = context.read<TeacherViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+    final listo = await vm.archivarCurso(course.curso.id, archivado: archivar);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          !listo
+              ? vm.error ?? 'No se pudo cambiar el curso.'
+              : archivar
+                  ? '"${course.name}" archivado. Está en el filtro Archivados.'
+                  : '"${course.name}" está activo otra vez.',
+        ),
+        backgroundColor: listo ? null : AppTheme.error,
+      ),
+    );
+  }
 
 
   @override
@@ -81,19 +115,21 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     final uid = authVM.perfil?.uid;
     if (uid != null) teacherVM.vigilarCursos(uid);
     final ahora = DateTime.now();
-    final courses = teacherVM.cursos.map((c) => _aModelo(c, ahora)).toList();
+    final courses = teacherVM.cursos
+        .map((c) => _aModelo(c, ahora, teacherVM.promedioDe(c.id)?.porcentaje))
+        .toList();
 
-    List<TeacherCourseModel> filteredCourses = courses;
+    List<TeacherCourseModel> filteredCourses = courses.where(_coincide).toList();
     if (_selectedFilter == 1) {
-      filteredCourses = courses
+      filteredCourses = filteredCourses
           .where((c) => c.status != CourseStatus.archived)
           .toList();
     } else if (_selectedFilter == 2) {
-      filteredCourses = courses
+      filteredCourses = filteredCourses
           .where((c) => c.isSpecialToday || c.status == CourseStatus.today)
           .toList();
     } else if (_selectedFilter == 3) {
-      filteredCourses = courses
+      filteredCourses = filteredCourses
           .where((c) => c.status == CourseStatus.archived)
           .toList();
     }
@@ -126,6 +162,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                         (c) => c.isSpecialToday || c.status == CourseStatus.today,
                       )
                       .length,
+                  archivados: courses
+                      .where((c) => c.status == CourseStatus.archived)
+                      .length,
                 ),
 
                 // 5. LISTA DE CURSOS (WALLET PASS STYLE)
@@ -146,12 +185,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                           'agregar el primero.',
                         )
                       else if (filteredCourses.isEmpty)
-                        _buildMensajeLista('Ningún curso en este filtro.'),
+                        _buildMensajeLista(
+                          _busqueda.trim().isNotEmpty
+                              ? 'Ningún curso coincide con "${_busqueda.trim()}".'
+                              : 'Ningún curso en este filtro.',
+                        ),
                       ...filteredCourses.map(
                         (course) => Padding(
                           padding: const EdgeInsets.only(bottom: 16.0),
                           child: _TeacherCourseCard(
                             course: course,
+                            onArchivar: (activo) => _archivar(course, !activo),
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -186,12 +230,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   static const _dias = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
   /// Convierte un curso de Firestore al modelo que pintan las tarjetas.
-  TeacherCourseModel _aModelo(Curso curso, DateTime ahora) {
+  TeacherCourseModel _aModelo(Curso curso, DateTime ahora, int? promedio) {
     final minutoActual = ahora.hour * 60 + ahora.minute;
-    final enCurso = curso.horarioEn(ahora);
-    final pendienteHoy = curso.horarios
-        .where((h) => h.dia == ahora.weekday && h.inicioMinutos > minutoActual)
-        .toList();
+    // Un curso archivado no ofrece el radar aunque sea su hora.
+    final enCurso = curso.archivado ? null : curso.horarioEn(ahora);
+    final pendienteHoy = curso.archivado
+        ? const <Horario>[]
+        : curso.horarios
+            .where(
+              (h) => h.dia == ahora.weekday && h.inicioMinutos > minutoActual,
+            )
+            .toList();
     // Hay clase hoy que todavía no termina: se ofrece iniciar el radar.
     final hoy = enCurso != null || pendienteHoy.isNotEmpty;
     final dias = curso.horarios.map((h) => _dias[h.dia]).toSet().join(' / ');
@@ -208,11 +257,22 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
       schedule: primera == null
           ? 'Sin horario'
           : '$dias • ${primera.inicio} - ${primera.fin}',
+      attendancePercent: promedio,
       enrolledCount: curso.totalInscritos,
-      status: enCurso != null ? CourseStatus.today : CourseStatus.active,
-      statusLabel: enCurso != null ? 'En clase' : 'Activo',
+      status: curso.archivado
+          ? CourseStatus.archived
+          : enCurso != null
+              ? CourseStatus.today
+              : CourseStatus.active,
+      statusLabel: curso.archivado
+          ? 'Archivado'
+          : enCurso != null
+              ? 'En clase'
+              : 'Activo',
       isSpecialToday: hoy,
-      footer: enCurso != null
+      footer: curso.archivado
+          ? 'Archivado: sin radar. Actívalo con el interruptor.'
+          : enCurso != null
           ? 'Clase en curso hasta ${enCurso.fin}'
           : pendienteHoy.isNotEmpty
               ? 'Próxima clase hoy ${pendienteHoy.first.inicio}'
@@ -311,7 +371,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   children: [
                     const Flexible(
                       child: Text(
-                        'CAMPUS CENTRAL • FIIS',
+                        'UNIVERSIDAD DE LA AMAZONIA',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -367,41 +427,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           ),
           Row(
             children: [
-              // Campana de notificaciones
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _surfaceControl,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    const Icon(
-                      Icons.notifications_outlined,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    Positioned(
-                      top: 10,
-                      right: 10,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: _systemRed,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
               // Avatar con anillo verde
               Container(
                 width: 40,
@@ -537,6 +562,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     required int todos,
     required int activos,
     required int hoy,
+    required int archivados,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -559,10 +585,12 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   size: 20,
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: TextField(
-                    style: TextStyle(color: Colors.white, fontSize: 15),
-                    decoration: InputDecoration(
+                    controller: _buscador,
+                    onChanged: (texto) => setState(() => _busqueda = texto),
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    decoration: const InputDecoration(
                       hintText: 'Buscar asignatura, grupo o código...',
                       hintStyle: TextStyle(
                         color: AppTheme.textSecondary,
@@ -573,11 +601,18 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                     ),
                   ),
                 ),
-                const Icon(
-                  Icons.cancel,
-                  color: AppTheme.textTertiary,
-                  size: 18,
-                ),
+                if (_busqueda.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      _buscador.clear();
+                      _busqueda = '';
+                    }),
+                    child: const Icon(
+                      Icons.cancel,
+                      color: AppTheme.textTertiary,
+                      size: 18,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -608,7 +643,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 _buildFilterChip(
                   3,
                   'Archivados',
-                  null,
+                  '$archivados',
                   icon: Icons.archive_outlined,
                 ),
               ],
@@ -734,7 +769,14 @@ class _TeacherCourseCard extends StatelessWidget {
   final TeacherCourseModel course;
   final VoidCallback onTap;
 
-  const _TeacherCourseCard({required this.course, required this.onTap});
+  /// Activo (true) o archivado (false), según el interruptor.
+  final ValueChanged<bool> onArchivar;
+
+  const _TeacherCourseCard({
+    required this.course,
+    required this.onTap,
+    required this.onArchivar,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -825,13 +867,15 @@ class _TeacherCourseCard extends StatelessWidget {
                     CupertinoSwitch(
                       value: !isArchived,
                       activeTrackColor: const Color(0xFF30D158),
-                      onChanged: (_) {},
+                      onChanged: onArchivar,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       isArchived ? 'Archivado' : 'Activo',
-                      style: const TextStyle(
-                        color: Color(0xFF47E266),
+                      style: TextStyle(
+                        color: isArchived
+                            ? AppTheme.textSecondary
+                            : const Color(0xFF47E266),
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),

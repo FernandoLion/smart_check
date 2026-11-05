@@ -1,14 +1,17 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/curso_model.dart';
+import '../../models/inscrito_model.dart';
+import '../../models/sesion_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
 import '../login_screen.dart';
+import '../../widgets/ajustes_compartidos.dart';
 import 'import_csv_screen.dart';
-import '../../widgets/texto_sin_cortes.dart';
 
 class TeacherSettingsScreen extends StatefulWidget {
   const TeacherSettingsScreen({super.key});
@@ -17,69 +20,91 @@ class TeacherSettingsScreen extends StatefulWidget {
   State<TeacherSettingsScreen> createState() => _TeacherSettingsScreenState();
 }
 
-class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
-    with SingleTickerProviderStateMixin {
+class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
   // Colores exactos del HTML de Stitch (todos declarados para evitar errores)
   static const Color _surfaceBg = Color(0xFF131315); // surface / background
   static const Color _surfaceElevated = Color(0xFF1C1C1E);
   static const Color _surfaceControl = Color(0xFF2C2C2E);
-  static const Color _surfaceHigh = Color(0xFF2A2A2C);
   static const Color _primaryIndigo = Color(0xFF5E5CE6); // primary-container
   static const Color _primaryLight = Color(0xFFC2C1FF); // primary
   static const Color _onPrimary = Color(0xFF1800A7);
   static const Color _tertiaryGreen = Color(0xFF47E266); // tertiary
-  static const Color _tertiaryContainer = Color(0xFF00802D);
-  static const Color _systemAmber = Color(0xFFFF9F0A);
   static const Color _errorLight = Color(0xFFFFB4AB); // error
   static const Color _errorContainer = Color(0xFF93000A);
 
-  // Estados interactivos del Radar y Notificaciones
-  int _selectedRadarRange = 1; // 0: Cercano, 1: Medio, 2: Amplio
-  bool _autoCloseList = true;
-  bool _vibrateOnDetect = true;
-  bool _remindBeforeClass = true;
-  bool _summaryOnFinish = true;
+  static String _cursos(int n) => n == 1 ? '1 curso' : '$n cursos';
 
-  bool _isSyncing = false;
-  // Cursos, inscritos y sesiones llegan de Firestore en vivo.
-  String _syncTimestamp = 'En vivo';
-  late final AnimationController _syncController;
-
-  @override
-  void initState() {
-    super.initState();
-    _syncController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
+  /// La lista pegada va a un curso: primero se elige cuál, y al confirmar
+  /// quedan inscritos en él.
+  Future<void> _importarEstudiantes() async {
+    final teacherVM = context.read<TeacherViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+    final cursos = teacherVM.cursos.where((c) => !c.archivado).toList();
+    if (cursos.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Primero crea un curso para inscribir estudiantes.'),
+        ),
+      );
+      return;
+    }
+    final curso = cursos.length == 1
+        ? cursos.single
+        : await showModalBottomSheet<Curso>(
+            context: context,
+            backgroundColor: _surfaceElevated,
+            builder: (hoja) => SafeArea(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    child: Text(
+                      '¿A qué curso?',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  for (final c in cursos)
+                    ListTile(
+                      title: Text(
+                        c.nombre,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        [c.codigo, if (c.grupo.isNotEmpty) 'Grupo ${c.grupo}']
+                            .join(' • '),
+                        style: const TextStyle(color: AppTheme.textSecondary),
+                      ),
+                      onTap: () => Navigator.pop(hoja, c),
+                    ),
+                ],
+              ),
+            ),
+          );
+    if (curso == null || !mounted) return;
+    final nuevos = await Navigator.push<List<Inscrito>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ImportCsvScreen(courseName: curso.nombre),
+      ),
+    );
+    if (nuevos == null || nuevos.isEmpty) return;
+    final listo = await teacherVM.inscribir(curso.id, nuevos);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          listo
+              ? '${nuevos.length} inscritos en ${curso.nombre}.'
+              : teacherVM.error ?? 'No se pudieron inscribir.',
+        ),
+        backgroundColor: listo ? AppTheme.success : AppTheme.error,
+      ),
     );
   }
-
-  @override
-  void dispose() {
-    _syncController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleSyncNow() async {
-    if (_isSyncing) return;
-    setState(() {
-      _isSyncing = true;
-      _syncTimestamp = 'Sincronizando...';
-    });
-    _syncController.repeat();
-
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-
-    _syncController.stop();
-    _syncController.reset();
-    setState(() {
-      _isSyncing = false;
-      _syncTimestamp = 'Justo ahora';
-    });
-  }
-
-  static String _cursos(int n) => n == 1 ? '1 curso' : '$n cursos';
 
   Future<void> _handleLogout() async {
     final authVM = context.read<AuthViewModel>();
@@ -137,56 +162,28 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                     _buildNavRow(
                       icon: Icons.upload_file_outlined,
                       title: 'Importar estudiantes (CSV)',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ImportCsvScreen(),
-                          ),
-                        );
-                      },
+                      subtitle: 'Eliges el curso y pegas la lista',
+                      onTap: _importarEstudiantes,
                     ),
                     _buildDivider(),
                     _buildNavRow(
-                      icon: Icons.download_outlined,
-                      title: 'Descargar plantilla CSV',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Descargando plantilla oficial Chairá...',
-                            ),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      },
+                      icon: Icons.content_copy_outlined,
+                      title: 'Copiar plantilla CSV',
+                      subtitle: 'Los títulos que entiende la importación; '
+                          'la lista que exporta Chairá también sirve',
+                      onTap: _copiarPlantilla,
                     ),
                   ]),
                   const SizedBox(height: 24),
 
-                  // Section: RADAR DE ASISTENCIA
+                  // Section: RADAR DE ASISTENCIA (las reglas, no preferencias)
                   _buildSectionTitle('RADAR DE ASISTENCIA'),
-                  _buildRadarSettingsCard(),
+                  _buildRadarInfoCard(),
                   const SizedBox(height: 24),
 
-                  // Section: PERMISOS DE LA APP
+                  // Section: PERMISOS DE LA APP (leídos del celular)
                   _buildSectionTitle('PERMISOS DE LA APP'),
-                  _buildPermissionsCard(),
-                  const SizedBox(height: 24),
-
-                  // Section: APARIENCIA
-                  _buildSectionTitle('APARIENCIA'),
-                  _buildAppearanceCard(),
-                  const SizedBox(height: 24),
-
-                  // Section: NOTIFICACIONES
-                  _buildSectionTitle('NOTIFICACIONES'),
-                  _buildNotificationsCard(),
-                  const SizedBox(height: 24),
-
-                  // Section: DATOS
-                  _buildSectionTitle('DATOS'),
-                  _buildDataSectionCard(),
+                  const PermisosDelCelular(),
                   const SizedBox(height: 24),
 
                   // Section: CUENTA Y SEGURIDAD
@@ -195,13 +192,8 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                     _buildNavRow(
                       icon: Icons.lock_outline,
                       title: 'Cambiar contraseña',
-                      onTap: () {},
-                    ),
-                    _buildDivider(),
-                    _buildNavRow(
-                      icon: Icons.devices_outlined,
-                      title: 'Cerrar sesión en otros dispositivos',
-                      onTap: () {},
+                      subtitle: 'Te llega un enlace a tu correo institucional',
+                      onTap: () => pedirCambioDeContrasena(context),
                     ),
                   ]),
                   const SizedBox(height: 24),
@@ -211,20 +203,14 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                   _buildGroupedCard([
                     _buildNavRow(
                       icon: Icons.help_outline,
-                      title: 'Centro de ayuda',
-                      onTap: () {},
-                    ),
-                    _buildDivider(),
-                    _buildNavRow(
-                      icon: Icons.bug_report_outlined,
-                      title: 'Reportar un problema',
-                      onTap: () {},
+                      title: 'Cómo pasar lista',
+                      onTap: () => mostrarAyuda(context, docente: true),
                     ),
                     _buildDivider(),
                     _buildNavRow(
                       icon: Icons.policy_outlined,
-                      title: 'Términos y política de privacidad',
-                      onTap: () {},
+                      title: 'Datos y privacidad de los estudiantes',
+                      onTap: () => mostrarPrivacidad(context),
                     ),
                   ]),
                   const SizedBox(height: 28),
@@ -234,9 +220,6 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                 ],
               ),
             ),
-
-            // 3. BOTTOM NAVIGATION BAR (Cursos | Radar | Configuración)
-            _buildBottomNavigationBar(context),
           ],
         ),
       ),
@@ -265,13 +248,13 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
             child: const Row(
               children: [
                 Icon(
-                  Icons.verified_user_outlined,
+                  Icons.arrow_back_ios_new,
                   color: _primaryLight,
                   size: 24,
                 ),
                 SizedBox(width: 8),
                 Text(
-                  'Configuracion',
+                  'Configuración',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -322,29 +305,6 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: _surfaceHigh,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircleAvatar(radius: 4, backgroundColor: _tertiaryGreen),
-                  SizedBox(width: 6),
-                  Text(
-                    'Sincronizado',
-                    style: TextStyle(
-                      color: _tertiaryGreen,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
         const SizedBox(height: 4),
@@ -357,16 +317,10 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
   }
 
   Widget _buildTeacherProfileCard(VerificacionResult? data) {
-    final nombre = data?.nombre != null
-        ? 'Prof. ${data!.nombre}'
-        : 'Prof. Usuario';
+    final nombre = data?.nombre != null ? 'Prof. ${data!.nombre}' : '—';
     // El correo real de la cuenta; deducirlo del nombre puede no coincidir.
-    final email =
-        context.read<AuthViewModel>().perfil?.email ??
-        (data?.username != null
-            ? '${data!.username}@udla.edu.co'
-            : 'usuario@udla.edu.co');
-    final idText = data?.cedula != null ? 'ID #${data!.cedula}' : 'ID #88419';
+    final email = context.read<AuthViewModel>().perfil?.email ?? '';
+    final idText = data?.cedula != null ? 'Doc. ${data!.cedula}' : '';
     final fotoBytes = data?.imagenBytes;
 
     return Container(
@@ -477,38 +431,10 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: () {},
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _surfaceControl,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.edit_outlined,
-                          color: _primaryLight,
-                          size: 16,
-                        ),
-                        SizedBox(width: 6),
-                        Text(
-                          'Editar perfil',
-                          style: TextStyle(
-                            color: _primaryLight,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Tus datos vienen de Chairá.',
+                  style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
                 ),
               ],
             ),
@@ -518,312 +444,55 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
     );
   }
 
-  Widget _buildRadarSettingsCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _surfaceElevated,
-        borderRadius: BorderRadius.circular(18),
+  /// Cómo funciona el radar. No son preferencias: son las reglas que cumple
+  /// la app y que el servidor vuelve a comprobar.
+  Widget _buildRadarInfoCard() {
+    return _buildGroupedCard([
+      _buildInfoRow(
+        Icons.timer_outlined,
+        'Duración del llamado',
+        '${Sesion.minutosLlamado} min',
       ),
-      child: Column(
+      _buildDivider(),
+      _buildInfoRow(Icons.lock_clock_outlined, 'Cierre', 'Solo, al vencer'),
+      _buildDivider(),
+      _buildInfoRow(
+        Icons.event_available_outlined,
+        'Se abre',
+        'En el horario del curso',
+      ),
+      _buildDivider(),
+      _buildInfoRow(Icons.place_outlined, 'Dónde', 'Dentro de la geocerca'),
+    ]);
+  }
+
+  Widget _buildInfoRow(IconData icon, String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
         children: [
-          // Alcance de detección (BLE Micro-Zone)
-          const Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Alcance de detección',
-                  style: TextStyle(color: Colors.white, fontSize: 17),
-                ),
-              ),
-              SizedBox(width: 8),
-              Text(
-                'BLE Micro-Zone',
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.all(4),
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: _surfaceControl,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
-              children: [
-                _buildRangeSegment(0, 'Cercano'),
-                _buildRangeSegment(1, 'Medio'),
-                _buildRangeSegment(2, 'Amplio'),
-              ],
-            ),
+            child: Icon(icon, color: AppTheme.textSecondary, size: 20),
           ),
-          const SizedBox(height: 16),
-          _buildFullWidthDivider(),
-          const SizedBox(height: 14),
-
-          // Duración del escaneo (10 min)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Text(
-                  'Duración del escaneo',
-                  style: TextStyle(color: Colors.white, fontSize: 17),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Row(
-                children: const [
-                  Text(
-                    '10 min',
-                    style: TextStyle(color: _primaryLight, fontSize: 17),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(
-                    Icons.chevron_right,
-                    color: AppTheme.textTertiary,
-                    size: 18,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _buildFullWidthDivider(),
-          const SizedBox(height: 14),
-
-          // Tolerancia de llegada tarde (15 min)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Text(
-                  'Tolerancia de llegada tarde',
-                  style: TextStyle(color: Colors.white, fontSize: 17),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Row(
-                children: const [
-                  Text(
-                    '15 min',
-                    style: TextStyle(color: _primaryLight, fontSize: 17),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(
-                    Icons.chevron_right,
-                    color: AppTheme.textTertiary,
-                    size: 18,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _buildFullWidthDivider(),
-          const SizedBox(height: 12),
-
-          // Switch 1: Cerrar lista automáticamente
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Cerrar lista automáticamente',
-                      style: TextStyle(color: Colors.white, fontSize: 17),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Bloquea registro al expirar el tiempo',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              CupertinoSwitch(
-                value: _autoCloseList,
-                activeTrackColor: _primaryIndigo,
-                onChanged: (val) => setState(() => _autoCloseList = val),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildFullWidthDivider(),
-          const SizedBox(height: 12),
-
-          // Switch 2: Vibrar al detectar estudiante
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Vibrar al detectar estudiante',
-                      style: TextStyle(color: Colors.white, fontSize: 17),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Feedback háptico por check-in',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              CupertinoSwitch(
-                value: _vibrateOnDetect,
-                activeTrackColor: _primaryIndigo,
-                onChanged: (val) => setState(() => _vibrateOnDetect = val),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRangeSegment(int index, String label) {
-    final isSelected = _selectedRadarRange == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedRadarRange = index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isSelected ? _primaryIndigo : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : AppTheme.textSecondary,
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPermissionsCard() {
-    return _buildGroupedCard([
-      _buildPermissionItem(
-        icon: Icons.bluetooth,
-        iconColor: _primaryLight,
-        title: 'Bluetooth',
-        isGranted: true,
-      ),
-      _buildDivider(),
-      _buildPermissionItem(
-        icon: Icons.devices_other,
-        iconColor: _primaryLight,
-        title: 'Dispositivos cercanos',
-        isGranted: true,
-      ),
-      _buildDivider(),
-      _buildPermissionItem(
-        icon: Icons.location_on_outlined,
-        iconColor: _primaryLight,
-        title: 'Ubicación',
-        subtitle: 'Necesaria para escanear balizas Bluetooth',
-        isGranted: true,
-      ),
-      _buildDivider(),
-      _buildPermissionItem(
-        icon: Icons.notifications_active_outlined,
-        iconColor: _systemAmber,
-        title: 'Notificaciones',
-        isGranted: false,
-      ),
-    ]);
-  }
-
-  Widget _buildPermissionItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    String? subtitle,
-    required bool isGranted,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
+          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(icon, color: iconColor, size: 22),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextoSinCortes(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 34),
-                    child: Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+            child: Text(
+              title,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: isGranted
-                  ? _tertiaryContainer.withValues(alpha: 0.3)
-                  : _systemAmber.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isGranted ? Icons.check : Icons.schedule,
-                  color: isGranted ? _tertiaryGreen : _systemAmber,
-                  size: 14,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  isGranted ? 'Concedido' : 'Pendiente',
-                  style: TextStyle(
-                    color: isGranted ? _tertiaryGreen : _systemAmber,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(color: _primaryLight, fontSize: 14),
             ),
           ),
         ],
@@ -831,239 +500,19 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
     );
   }
 
-  Widget _buildAppearanceCard() {
-    return _buildGroupedCard([
-      Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: _surfaceControl,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.dark_mode_outlined,
-                      color: _primaryLight,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Tema actual',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.white, fontSize: 17),
-                        ),
-                        Text(
-                          'Optimizado para OLED',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _surfaceControl,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircleAvatar(radius: 4, backgroundColor: _primaryIndigo),
-                  SizedBox(width: 6),
-                  Text(
-                    'Oscuro (Activo)',
-                    style: TextStyle(color: Color(0xFFE4E2E4), fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-          ],
+  Future<void> _copiarPlantilla() async {
+    await Clipboard.setData(
+      const ClipboardData(text: 'Cédula;Nombre;Correo\n'),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Plantilla copiada. Pégala en Excel, llena una fila por '
+          'estudiante y pega el resultado en "Importar estudiantes".',
         ),
-      ),
-      _buildDivider(),
-      _buildNavRow(
-        icon: Icons.translate,
-        title: 'Idioma',
-        trailingText: 'Español',
-        onTap: () {},
-      ),
-    ]);
-  }
-
-  Widget _buildNotificationsCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _surfaceElevated,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Recordatorio antes de clase',
-                      style: TextStyle(color: Colors.white, fontSize: 17),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Aviso 10 minutos antes de iniciar',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              CupertinoSwitch(
-                value: _remindBeforeClass,
-                activeTrackColor: _primaryIndigo,
-                onChanged: (val) => setState(() => _remindBeforeClass = val),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildFullWidthDivider(),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Resumen al finalizar',
-                      style: TextStyle(color: Colors.white, fontSize: 17),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Reporte automático de presentes y ausentes',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              CupertinoSwitch(
-                value: _summaryOnFinish,
-                activeTrackColor: _primaryIndigo,
-                onChanged: (val) => setState(() => _summaryOnFinish = val),
-              ),
-            ],
-          ),
-        ],
       ),
     );
-  }
-
-  Widget _buildDataSectionCard() {
-    return _buildGroupedCard([
-      _buildNavRow(
-        icon: Icons.file_download_outlined,
-        title: 'Exportar historial de asistencia',
-        subtitle: '(CSV / PDF)',
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Exportando historial docente...'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-        },
-      ),
-      _buildDivider(),
-      InkWell(
-        onTap: _handleSyncNow,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    RotationTransition(
-                      turns: _syncController,
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: _surfaceControl,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.sync,
-                          color: _primaryLight,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Flexible(
-                      child: Text(
-                        'Sincronizar ahora',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.white, fontSize: 17),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Row(
-                children: [
-                  Text(
-                    _syncTimestamp,
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Icon(
-                    Icons.chevron_right,
-                    color: AppTheme.textTertiary,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    ]);
   }
 
   Widget _buildLogoutAndFooter() {
@@ -1102,101 +551,10 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
         ),
         const SizedBox(height: 2),
         const Text(
-          'Universidad de la Amazonia • ID Campus 04',
+          'Universidad de la Amazonia',
           style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
         ),
       ],
-    );
-  }
-
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    return Container(
-      height: 68,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: _surfaceElevated.withValues(alpha: 0.92),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 12,
-            offset: const Offset(0, -1),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          // Tab 1: Cursos -> Vuelve al Panel Docente Home (Pantalla 9)
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.school_outlined,
-                  color: AppTheme.textSecondary,
-                  size: 24,
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Cursos',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Tab 2: Radar -> Próxima conexión con Flujo 4 (Pantalla 19 / 21)
-          GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Pronto conectaremos con el Flujo 4: Radar BLE en Vivo',
-                  ),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.sensors, color: AppTheme.textSecondary, size: 24),
-                SizedBox(height: 4),
-                Text(
-                  'Radar',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Tab 3: Configuración (Activo)
-          const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.settings, color: _primaryIndigo, size: 25),
-              SizedBox(height: 4),
-              TextoSinCortes(
-                'Configuración',
-                style: TextStyle(
-                  color: _primaryIndigo,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -1227,10 +585,6 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen>
   }
 
   Widget _buildDivider() {
-    return Container(height: 1, color: Colors.white.withValues(alpha: 0.08));
-  }
-
-  Widget _buildFullWidthDivider() {
     return Container(height: 1, color: Colors.white.withValues(alpha: 0.08));
   }
 

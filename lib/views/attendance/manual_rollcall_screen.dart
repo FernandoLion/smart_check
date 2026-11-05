@@ -34,7 +34,9 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
   /// Los que el BLE no oyó, congelados al entrar para que la lista no se
   /// mueva mientras el docente los pasa uno por uno.
   late final List<Inscrito> _pendientes = widget.radar.lista
-      .where((f) => !f.detectado)
+      // Los que aún no tienen marca: al que ya se marcó (presente o
+      // ausente) no se le vuelve a preguntar.
+      .where((f) => !f.registrado)
       .map((f) => f.inscrito)
       .toList();
 
@@ -143,16 +145,6 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
     }
   }
 
-  void _handleAddJustificationNote() {
-    final current = _students[_currentIndex];
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Nota / justificante añadido para ${current.name}'),
-        duration: const Duration(seconds: 1),
-      ),
-    );
-  }
-
   Widget _buildTodosDetectados() {
     return Center(
       child: Padding(
@@ -251,48 +243,6 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Píldora superior con los que faltan por oír.
-          Center(
-            child: Container(
-              height: 28,
-              width: 122,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              margin: const EdgeInsets.only(bottom: 10),
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 9,
-                    height: 9,
-                    decoration: const BoxDecoration(
-                      color: _systemRed,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      const Icon(Icons.sensors, color: _primaryLight, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${_students.length} BLE',
-                        style: const TextStyle(
-                          color: _primaryLight,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
           // Navigation Bar (< Radar | Restantes: 1 de 5 | More)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -348,22 +298,8 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                   ],
                 ),
               ),
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: _surfaceControl,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.more_horiz,
-                  color: AppTheme.textSecondary,
-                  size: 19,
-                ),
-              ),
+              // Equilibra el "< Radar" de la izquierda.
+              const SizedBox(width: 36),
             ],
           ),
           const SizedBox(height: 10),
@@ -1228,32 +1164,12 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                   ),
                 ),
 
-                // Botón 4: Comentario / Justificante médico
-                GestureDetector(
-                  onTap: _handleAddJustificationNote,
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: _surfaceControl,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.edit_note,
-                      color: _primaryLight,
-                      size: 22,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
           const SizedBox(height: 10),
 
-          // Alternative Action Link Footer ("O pulsa aquí para pasar a lista en tabla tradicional")
+          // Volver al radar, que tiene la lista completa
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: const Row(
@@ -1261,7 +1177,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
               children: [
                 Flexible(
                   child: Text(
-                    'O pulsa aquí para pasar a lista en tabla tradicional',
+                    'O vuelve al radar, donde está la lista completa',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.textSecondary,

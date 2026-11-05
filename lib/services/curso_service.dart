@@ -132,6 +132,48 @@ class CursoService {
     }
   }
 
+  /// Guarda lo que el docente puede editar del curso. Los inscritos, el
+  /// periodo y el docente no se tocan aquí.
+  Future<void> editarCurso(Curso curso) async {
+    try {
+      await _cursos.doc(curso.id).update({
+        'codigo': curso.codigo,
+        'nombre': curso.nombre,
+        'grupo': curso.grupo,
+        'aula': curso.aula,
+        'horarios': curso.horarios.map((h) => h.toMap()).toList(),
+        'geocerca': curso.geocerca?.toMap(),
+      }).timeout(_timeout);
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'guardar el curso'));
+    }
+  }
+
+  /// Archiva el curso o lo devuelve a la lista activa. Solo cambia esa
+  /// bandera: inscritos y asistencias se quedan como estaban.
+  Future<void> archivarCurso(String cursoId, {required bool archivado}) async {
+    try {
+      await _cursos
+          .doc(cursoId)
+          .update({'archivado': archivado}).timeout(_timeout);
+    } catch (e) {
+      throw CursoException(
+        _mensaje(e, archivado ? 'archivar el curso' : 'activar el curso'),
+      );
+    }
+  }
+
+  /// Cambia la geocerca del aula, o la quita con null.
+  Future<void> cambiarGeocerca(String cursoId, Geocerca? geocerca) async {
+    try {
+      await _cursos
+          .doc(cursoId)
+          .update({'geocerca': geocerca?.toMap()}).timeout(_timeout);
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'guardar la geocerca'));
+    }
+  }
+
   // --- Inscritos ------------------------------------------------------------
 
   Stream<List<Inscrito>> inscritos(String cursoId) => _inscritos(cursoId)
@@ -379,6 +421,43 @@ class CursoService {
     } catch (e) {
       throw CursoException(_mensaje(e, 'leer las asistencias'));
     }
+  }
+
+  /// Asistencia media del curso: de las clases ya cerradas, cuántas veces
+  /// vinieron los inscritos de ahora. Es la misma cuenta del detalle del
+  /// curso, para la tarjeta del panel docente.
+  Future<AsistenciaResumen> promedioDelCurso(String cursoId) async {
+    final lista = await inscritos(cursoId).first;
+    final franjas = franjasTerminadas(
+      await sesiones(cursoId).first,
+      DateTime.now(),
+    );
+    final marcas = await asistenciasDeSesiones(cursoId, [
+      for (final llamados in franjas.values) ...llamados.map((s) => s.id),
+    ]);
+    return promedioDe(lista, franjas, marcas);
+  }
+
+  /// La cuenta de [promedioDelCurso], sin consultas, para probarla.
+  static AsistenciaResumen promedioDe(
+    List<Inscrito> inscritos,
+    Map<DateTime, List<Sesion>> franjas,
+    Map<String, List<Asistencia>> marcas,
+  ) {
+    final claves = {for (final i in inscritos) i.clave};
+    var asistidas = 0;
+    for (final llamados in franjas.values) {
+      asistidas += {
+        for (final s in llamados)
+          for (final a in marcas[s.id] ?? const <Asistencia>[])
+            if (a.cuentaComoAsistio && claves.contains(a.claveInscrito))
+              a.claveInscrito,
+      }.length;
+    }
+    return AsistenciaResumen(
+      sesiones: franjas.length * inscritos.length,
+      asistidas: asistidas,
+    );
   }
 
   Future<Asistencia?> _marcaDe(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../models/asistencia_resumen.dart';
 import '../../models/curso_model.dart';
 import '../../models/sesion_model.dart';
 import '../../utils/app_theme.dart';
@@ -282,8 +283,11 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                 porcentaje == null
                     ? 'Sin inscritos'
                     : '${porcentaje.round()}% asistió',
-                style: const TextStyle(
-                  color: _tertiaryGreen,
+                style: TextStyle(
+                  color: porcentaje == null ||
+                          porcentaje >= AsistenciaResumen.minimo
+                      ? _tertiaryGreen
+                      : const Color(0xFFFF9F0A),
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
                 ),
@@ -812,16 +816,16 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
               else
                 GestureDetector(
                   onTap: () => _corregir(fila),
+                  // A quien quedó presente también se le puede corregir: la
+                  // acción se ve, no se esconde detrás de la hora.
                   child: Text(
-                    fila.presente ? _hora(marca!.hora) : 'Marcar presente',
-                    style: TextStyle(
-                      color: fila.presente
-                          ? AppTheme.textTertiary
-                          : _primaryLight,
+                    fila.presente
+                        ? '${_hora(marca!.hora)} · Marcar ausente'
+                        : 'Marcar presente',
+                    style: const TextStyle(
+                      color: _primaryLight,
                       fontSize: 12,
-                      fontWeight: fila.presente
-                          ? FontWeight.normal
-                          : FontWeight.w600,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),

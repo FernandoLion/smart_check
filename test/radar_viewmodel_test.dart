@@ -406,6 +406,29 @@ void main() {
       final fila = vm.lista.firstWhere((i) => i.inscrito.clave == carlos.clave);
       expect(fila.asistencia!.estado, EstadoAsistencia.ausente);
       expect(fila.asistencia!.metodo, MetodoAsistencia.manual);
+      // Tiene marca, pero no está: ni cuenta como detectado ni se le vuelve
+      // a preguntar en el llamado manual.
+      expect(fila.registrado, isTrue);
+      expect(fila.detectado, isFalse);
+      expect(vm.detectados, 0);
+      expect(vm.faltantes, 2);
+    });
+
+    test('el acta del llamado sale en CSV con cada estado', () async {
+      await vm.iniciar(cursoEnClase(), 'uid-docente');
+      final carlos = cursos.inscritosPorCurso['c1']!['ca.munoz@udla.edu.co']!;
+      ble.oir('1117000000');
+      await pumpEventQueue();
+      await vm.marcarManual(carlos, presente: false);
+
+      final filas = vm.actaEnCsv().split('\n');
+      expect(filas.first, 'Estudiante;Identificación;Estado;Cómo se marcó;Hora');
+      expect(filas[1], startsWith('ANA PÉREZ;1117000000;Presente;Bluetooth;'));
+      expect(
+        filas[2],
+        startsWith('CARLOS MUÑOZ;ca.munoz@udla.edu.co;Ausente;A mano;'),
+      );
+      expect(vm.detectados, 1);
     });
   });
 

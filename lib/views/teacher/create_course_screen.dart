@@ -5,13 +5,19 @@ import '../../models/curso_model.dart';
 import '../../models/inscrito_model.dart';
 import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/hoja_geocerca.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
 import 'add_student_screen.dart';
 import 'import_csv_screen.dart';
 
+/// Crea un curso, o edita [curso] si llega uno: mismo formulario, con sus
+/// datos cargados. Al editar, devuelve con `Navigator.pop` el curso como
+/// quedó guardado.
 class CreateCourseScreen extends StatefulWidget {
-  const CreateCourseScreen({super.key});
+  final Curso? curso;
+
+  const CreateCourseScreen({super.key, this.curso});
 
   @override
   State<CreateCourseScreen> createState() => _CreateCourseScreenState();
@@ -44,7 +50,24 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
 
   static const _dias = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
-  static String get _periodo => Curso.periodoActual();
+  /// El periodo del curso que se edita, o el de ahora si es nuevo.
+  String get _periodo => widget.curso?.periodo ?? Curso.periodoActual();
+
+  bool get _editando => widget.curso != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final curso = widget.curso;
+    if (curso != null) {
+      _courseNameController.text = curso.nombre;
+      _courseCodeController.text = curso.codigo;
+      _groupController.text = curso.grupo;
+      _classroomController.text = curso.aula;
+      _horarios.addAll(curso.horarios);
+      _geocerca = curso.geocerca;
+    }
+  }
 
   String get _resumenHorario {
     if (_horarios.isEmpty) return 'Toca para agregar';
@@ -95,6 +118,36 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
       return _mostrarError('Tu sesión expiró. Vuelve a entrar.');
     }
 
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final original = widget.curso;
+    if (original != null) {
+      final editado = Curso.fromMap(original.id, {
+        ...original.toMap(),
+        'codigo': codigo,
+        'nombre': nombre,
+        'grupo': _groupController.text.trim(),
+        'aula': _classroomController.text.trim(),
+        'horarios': _horarios.map((h) => h.toMap()).toList(),
+        'geocerca': _geocerca?.toMap(),
+      });
+      final guardado = await teacherVM.editarCurso(editado, _pendientes);
+      if (!mounted) return;
+      if (!guardado) {
+        _mostrarError(teacherVM.error ?? 'No se pudo guardar el curso.');
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Curso "$nombre" actualizado'),
+          backgroundColor: AppTheme.success,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      navigator.pop(editado);
+      return;
+    }
+
     final curso = Curso(
       codigo: codigo,
       nombre: nombre,
@@ -106,8 +159,6 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
       horarios: List.of(_horarios),
       geocerca: _geocerca,
     );
-    final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
     final id = await teacherVM.crearCurso(curso, _pendientes);
     if (!mounted) return;
     if (id == null) {
@@ -235,12 +286,12 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           ),
           const SizedBox(width: 8),
           // El título se encoge antes que los botones de los lados.
-          const Flexible(
+          Flexible(
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                'Crear Curso',
-                style: TextStyle(
+                _editando ? 'Editar Curso' : 'Crear Curso',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -683,7 +734,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => _HojaGeocerca(
+      builder: (_) => HojaGeocerca(
         geocerca: _geocerca,
         alMarcar: _marcarAula,
         alQuitar: () => setState(() => _geocerca = null),
@@ -1355,172 +1406,5 @@ class _EditorHorarioState extends State<_EditorHorario> {
         ),
       ),
     );
-  }
-}
-
-/// Hoja para marcar dónde queda el aula y con cuánto margen.
-class _HojaGeocerca extends StatefulWidget {
-  final Geocerca? geocerca;
-  final Future<void> Function(double radio) alMarcar;
-  final VoidCallback alQuitar;
-
-  const _HojaGeocerca({
-    required this.geocerca,
-    required this.alMarcar,
-    required this.alQuitar,
-  });
-
-  @override
-  State<_HojaGeocerca> createState() => _HojaGeocercaState();
-}
-
-class _HojaGeocercaState extends State<_HojaGeocerca> {
-  static const _radios = [15.0, 25.0, 50.0, 100.0];
-
-  late double _radio = widget.geocerca?.radioMetros ?? 25;
-  bool _marcando = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final geocerca = widget.geocerca;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        16,
-        20,
-        20 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Geocerca del aula',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Párate en el aula y marca el punto. El radar solo abrirá la '
-            'clase si estás dentro de este radio.',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 13,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'RADIO',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.8,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: _radios
-                .map(
-                  (r) => ChoiceChip(
-                    label: Text('${r.round()} m'),
-                    selected: _radio == r,
-                    onSelected: (_) => setState(() => _radio = r),
-                  ),
-                )
-                .toList(),
-          ),
-          if (geocerca != null) ...[
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                const Icon(
-                  Icons.my_location,
-                  color: Color(0xFF47E266),
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Marcada en ${geocerca.latitud.toStringAsFixed(5)}, '
-                    '${geocerca.longitud.toStringAsFixed(5)}',
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _marcando ? null : _marcar,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5E5CE6),
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: _marcando
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(
-                      geocerca == null
-                          ? 'Usar mi ubicación actual'
-                          : 'Volver a marcar aquí',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-            ),
-          ),
-          if (geocerca != null)
-            TextButton(
-              onPressed: () {
-                widget.alQuitar();
-                Navigator.pop(context);
-              },
-              child: const Text(
-                'Quitar la geocerca',
-                style: TextStyle(color: Color(0xFFFF453A)),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _marcar() async {
-    setState(() => _marcando = true);
-    await widget.alMarcar(_radio);
-    if (mounted) Navigator.pop(context);
   }
 }

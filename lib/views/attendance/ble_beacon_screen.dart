@@ -342,7 +342,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                     Icon(Icons.verified_user, color: _primaryIndigo, size: 14),
                     SizedBox(width: 6),
                     Text(
-                      'UDLA • Campus Seguro',
+                      'Universidad de la Amazonia',
                       style: TextStyle(
                         color: AppTheme.textSecondary,
                         fontSize: 12,
@@ -385,7 +385,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Transmisión Segura',
+                      'Firmada por el servidor',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 28,
@@ -654,7 +654,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Mantén la app abierta cerca del receptor del aula para validar tu presencia sin contacto.',
+            'Mantén la app abierta y cerca del celular del docente hasta que aparezcas en su radar.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppTheme.textSecondary,
@@ -680,7 +680,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                 Icon(Icons.radar, color: _primaryLight, size: 15),
                 SizedBox(width: 6),
                 Text(
-                  'Ver alumnos en Radar BLE',
+                  '¿Me está oyendo el docente?',
                   style: TextStyle(
                     color: _primaryLight,
                     fontSize: 12,
@@ -746,7 +746,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Estudiante Acreditado',
+                            'Estudiante',
                             style: TextStyle(
                               color: AppTheme.textSecondary,
                               fontSize: 12,

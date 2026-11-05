@@ -186,6 +186,25 @@ class AuthViewModel extends ChangeNotifier {
     return true;
   }
 
+  /// Si Firebase ya guarda una sesión en este celular, carga su perfil para
+  /// entrar sin pedir la contraseña cada vez que se abre la app. Devuelve
+  /// false si no hay sesión o si el perfil no se pudo leer: entonces se pide
+  /// el ingreso como siempre.
+  Future<bool> restaurarSesion() async {
+    final usuario = await _authService.sesionGuardada();
+    if (usuario == null) return false;
+    try {
+      final perfil = await _perfilService.obtener(usuario.uid);
+      if (perfil == null) return false;
+      _perfil = perfil;
+    } on PerfilException {
+      return false;
+    }
+    notifyListeners();
+    _cargarFotoPerfil();
+    return true;
+  }
+
   /// 2. Verificar cédula/documento en Chaira (para smart_register_screen)
   Future<bool> verificarEnChaira(String documento) async {
     _isVerifyingChaira = true;
@@ -349,14 +368,29 @@ class AuthViewModel extends ChangeNotifier {
     return false;
   }
 
+  /// Esperas entre intentos de bajar la foto. Chairá a veces tarda más de
+  /// lo que aguanta una descarga (8 s), sobre todo en la primera consulta
+  /// del día; con un solo intento la foto se quedaba sin cargar.
+  static const _esperasFoto = [
+    Duration.zero,
+    Duration(seconds: 3),
+    Duration(seconds: 10),
+  ];
+
   /// La foto no se guarda en la base de datos: se descarga de Chairá.
   Future<void> _cargarFotoPerfil() async {
     final perfil = _perfil;
     if (perfil?.fotoUrl == null) return;
-    final bytes = await _chairaService.descargarFoto(perfil!.fotoUrl!);
-    if (bytes != null && identical(_perfil, perfil)) {
-      _fotoPerfil = bytes;
-      notifyListeners();
+    for (final espera in _esperasFoto) {
+      await Future<void>.delayed(espera);
+      // Cerró sesión o entró con otra cuenta mientras tanto.
+      if (!identical(_perfil, perfil)) return;
+      final bytes = await _chairaService.descargarFoto(perfil!.fotoUrl!);
+      if (bytes != null && identical(_perfil, perfil)) {
+        _fotoPerfil = bytes;
+        notifyListeners();
+        return;
+      }
     }
   }
 

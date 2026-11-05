@@ -33,7 +33,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   static const Color _primaryFixed = Color(0xFFE2DFFF);
   static const Color _tertiaryGreen = Color(0xFF47E266);
   static const Color _tertiaryContainer = Color(0xFF00802D);
-  static const Color _secondaryBlue = Color(0xFF3E90FF);
 
   late final TextEditingController _searchController;
 
@@ -129,6 +128,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
     // Según el Roadmap: 11 -> Botón Modal rápido -> 12 (Modal Agregar Estudiantes)
     AddStudentsModal.show(
       context,
+      courseName: widget.courseTitle,
       onImportCsvTap: () async {
         // Al tocar "Importar CSV", abrimos la pantalla 13
         final nuevos = await Navigator.push<List<Inscrito>>(
@@ -447,17 +447,16 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
   }
 
   Widget _buildVerifiedStudentCard(VerificacionResult? liveResult) {
+    // Solo se llama con una consulta exitosa: todo sale de Chairá.
     final hasLiveMatch = liveResult != null && liveResult.success;
-    final nombre = hasLiveMatch
-        ? (liveResult.nombre ?? 'Carlos Andrés Muñoz Rivera')
-        : 'Carlos Andrés Muñoz Rivera';
-    final cedula = hasLiveMatch
-        ? (liveResult.cedula ?? _searchController.text)
-        : '1.117.000.000';
-    final programa = hasLiveMatch
-        ? '${liveResult.programa ?? 'Ing. de Sistemas'} • Semestre VI'
-        : 'Ing. de Sistemas • Semestre VI';
-    final fotoBytes = hasLiveMatch ? liveResult.imagenBytes : null;
+    final nombre = liveResult?.nombre ?? '—';
+    final cedula = liveResult?.cedula ?? _searchController.text.trim();
+    final programa = liveResult?.programa ?? '';
+    final tipo = liveResult?.tipoUsuario ?? '';
+    final correo = liveResult?.correoVerificado == true
+        ? '${liveResult!.username}${AuthViewModel.dominioInstitucional}'
+        : null;
+    final fotoBytes = liveResult?.imagenBytes;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -504,7 +503,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                       SizedBox(width: 6),
                       Flexible(
                         child: Text(
-                          'Coincidencia Chairá DB Verificada',
+                          'Encontrado en Chairá',
                           style: TextStyle(
                             color: _tertiaryGreen,
                             fontSize: 12,
@@ -607,15 +606,14 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                           fontSize: 13,
                         ),
                         children: [
-                          const TextSpan(text: 'ID: '),
-                          const TextSpan(
-                            text: '2022-3810',
-                            style: TextStyle(
+                          const TextSpan(text: 'Documento '),
+                          TextSpan(
+                            text: cedula,
+                            style: const TextStyle(
                               color: Color(0xFFE4E2E4),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          TextSpan(text: ' • CC $cedula'),
                         ],
                       ),
                     ),
@@ -625,13 +623,15 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                       spacing: 8,
                       runSpacing: 4,
                       children: [
-                        Text(
-                          programa,
-                          style: const TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12,
+                        if (programa.isNotEmpty)
+                          Text(
+                            programa,
+                            style: const TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
+                        if (tipo.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -644,9 +644,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                               color: _primaryIndigo.withValues(alpha: 0.4),
                             ),
                           ),
-                          child: const Text(
-                            'Estudiante Activo',
-                            style: TextStyle(
+                          child: Text(
+                            tipo,
+                            style: const TextStyle(
                               color: _primaryFixed,
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
@@ -664,105 +664,8 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
           Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
           const SizedBox(height: 12),
 
-          // 3. Biometrics and Security Status Badges Row (2 columns)
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _surfaceControl.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.face, color: _tertiaryGreen, size: 18),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Biometría',
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 11,
-                              ),
-                            ),
-                            Text(
-                              'Face ID Enrolado ✓',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _surfaceControl.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.contactless, color: _secondaryBlue, size: 18),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Credencial',
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 11,
-                              ),
-                            ),
-                            Text(
-                              'BLE Pass Activo ✓',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // 4. Academic Validation Info Callout
+          // 3. Con qué quedará inscrito: la cédula siempre, y el correo
+          //    solo si Chairá lo confirmó.
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
@@ -772,31 +675,25 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.event_available,
+                Icon(
+                  correo != null
+                      ? Icons.mark_email_read_outlined
+                      : Icons.badge_outlined,
                   color: _tertiaryGreen,
                   size: 16,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text.rich(
-                    const TextSpan(
-                      style: TextStyle(
-                        color: Color(0xFFE4E2E4),
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
-                      children: [
-                        TextSpan(text: 'Habilitado para matricular en '),
-                        TextSpan(
-                          text: 'Grupo 302-B',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        TextSpan(text: ' (Sin conflicto de horario).'),
-                      ],
+                  child: Text(
+                    correo != null
+                        ? 'Se inscribe con su documento y con $correo, '
+                            'confirmado por Chairá.'
+                        : 'Se inscribe con su documento. Chairá no confirmó '
+                            'su correo; él lo verá igual al registrarse.',
+                    style: const TextStyle(
+                      color: Color(0xFFE4E2E4),
+                      fontSize: 12,
+                      height: 1.3,
                     ),
                   ),
                 ),
@@ -841,27 +738,6 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                   'Añadir a la Clase',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Secondary Context Link
-          GestureDetector(
-            onTap: () {},
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Ver historial académico completo',
-                  style: TextStyle(
-                    color: _primaryLight,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(width: 4),
-                Icon(Icons.arrow_forward_ios, color: _primaryLight, size: 12),
               ],
             ),
           ),
@@ -1113,7 +989,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
           SizedBox(width: 6),
           Flexible(
             child: Text(
-              'Sincronizado con base de datos central Chairá UDLA. Registro auditado por profesor titular.',
+              'La cédula se consulta en Chairá; el correo se agrega tal cual. Los estudiantes quedan inscritos al tocar Listo.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppTheme.textTertiary,

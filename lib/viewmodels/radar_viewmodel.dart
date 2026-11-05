@@ -20,7 +20,12 @@ class InscritoEnRadar {
 
   const InscritoEnRadar(this.inscrito, this.asistencia, this.rssi);
 
-  bool get detectado => asistencia != null;
+  /// Ya tiene marca en este llamado, sea presente o ausente.
+  bool get registrado => asistencia != null;
+
+  /// Cuenta como presente: lo oyó el radar o el docente lo marcó presente.
+  /// Uno marcado ausente a mano tiene marca, pero no está.
+  bool get detectado => asistencia?.cuentaComoAsistio ?? false;
 }
 
 /// ViewModel del radar del docente: abre el llamado de asistencia de la clase
@@ -107,8 +112,9 @@ class RadarViewModel extends ChangeNotifier {
   bool get escaneando => _escaneando;
   String? get error => _error;
   int get totalInscritos => _inscritos.length;
-  int get detectados => _asistencias.length;
-  int get faltantes => _inscritos.length - _asistencias.length;
+  int get detectados =>
+      _asistencias.values.where((a) => a.cuentaComoAsistio).length;
+  int get faltantes => _inscritos.length - detectados;
 
   /// Lo que queda de ventana del llamado, para la cuenta atrás de la
   /// pantalla.
@@ -133,6 +139,38 @@ class RadarViewModel extends ChangeNotifier {
       return a.inscrito.nombre.compareTo(b.inscrito.nombre);
     });
     return lista;
+  }
+
+  /// El acta del llamado en CSV, como está en este momento: cada inscrito
+  /// con su estado, cómo se marcó y a qué hora.
+  String actaEnCsv() {
+    String dos(int n) => n.toString().padLeft(2, '0');
+    String celda(String v) =>
+        v.contains(RegExp('[;"\n]')) ? '"${v.replaceAll('"', '""')}"' : v;
+    final filas = [...lista]
+      ..sort((a, b) => a.inscrito.nombre.compareTo(b.inscrito.nombre));
+    return [
+      'Estudiante;Identificación;Estado;Cómo se marcó;Hora',
+      for (final f in filas)
+        [
+          f.inscrito.nombre,
+          f.inscrito.cedula ?? f.inscrito.email ?? '',
+          switch (f.asistencia?.estado) {
+            null => 'Sin registro',
+            EstadoAsistencia.ausente => 'Ausente',
+            EstadoAsistencia.tarde => 'Tarde',
+            _ => 'Presente',
+          },
+          switch (f.asistencia?.metodo) {
+            null => '',
+            MetodoAsistencia.ble => 'Bluetooth',
+            _ => 'A mano',
+          },
+          f.asistencia == null
+              ? ''
+              : '${dos(f.asistencia!.hora.hour)}:${dos(f.asistencia!.hora.minute)}',
+        ].map(celda).join(';'),
+    ].join('\n');
   }
 
   /// Abre el llamado de la clase de ahora y empieza a escuchar. Devuelve

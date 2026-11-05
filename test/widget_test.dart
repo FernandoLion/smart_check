@@ -160,6 +160,9 @@ void main() {
           child: const MaterialApp(home: LoginScreen()),
         ),
       );
+      // Primero mira si hay una sesión guardada; sin ella, pide el ingreso.
+      await tester.pump();
+      await tester.pump();
       await tester.enterText(find.byType(TextFormField).at(0), 'an.perez');
       await tester.enterText(find.byType(TextFormField).at(1), 'Clave123!');
       await tester.tap(find.widgetWithText(ElevatedButton, 'Iniciar Sesión'));
@@ -189,6 +192,53 @@ void main() {
       expect(find.byType(TeacherHomeScreen), findsOneWidget);
       // Sin perfil de estudiante no se ofrece cambiar de panel.
       expect(find.text('Estudiante'), findsNothing);
+    });
+
+    testWidgets('con la sesión guardada entra sin pedir la contraseña', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final auth = FakeAuthService()
+        ..cuentas['an.perez@udla.edu.co'] = 'Clave123!';
+      // Como si la app se hubiera cerrado después de entrar.
+      await auth.signInWithEmailPassword('an.perez@udla.edu.co', 'Clave123!');
+      final perfiles = FakePerfilService()
+        ..perfiles['uid-an.perez@udla.edu.co'] = perfilDe(
+          'an.perez@udla.edu.co',
+          'ANA MARÍA PÉREZ GÓMEZ',
+          [Rol.estudiante],
+        );
+
+      final restaurar = ignorarDesbordes();
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (_) => AuthViewModel(
+                authService: auth,
+                perfilService: perfiles,
+                chairaService: chairaFalso(),
+              ),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => StudentViewModel(servicio: FakeCursoService()),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => TeacherViewModel(servicio: FakeCursoService()),
+            ),
+          ],
+          child: const MaterialApp(home: LoginScreen()),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      restaurar();
+
+      expect(find.byType(TextFormField), findsNothing);
+      expect(find.byType(StudentHomeScreen), findsOneWidget);
     });
 
     testWidgets('solo al docente que también cursa materias se le pregunta', (

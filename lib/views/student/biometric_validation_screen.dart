@@ -193,7 +193,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
           ),
         ),
 
-        // Pill Central: "UDLA SECURE ACCESS"
+        // Pill central: "CARNÉ UDLA"
         const SizedBox(width: 8),
         Flexible(
           child: Container(
@@ -210,7 +210,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                 SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    'UDLA SECURE ACCESS',
+                    'CARNÉ UDLA',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -252,7 +252,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(Icons.contactless, color: _tertiaryGreen, size: 16),
+              const Icon(Icons.verified_user, color: _tertiaryGreen, size: 16),
             ],
           ),
         ),
@@ -263,8 +263,8 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
   Widget _buildDigitalWalletPass(VerificacionResult? data) {
     final nombre = data?.nombre ?? 'Usuario';
     final cedula = data?.cedula ?? data?.documentoConsultado ?? '—';
-    final programa = data?.programa ?? 'Ingeniería de Sistemas';
-    final rol = (data?.tipoUsuario ?? 'DOCENTE').toUpperCase();
+    final programa = data?.programa ?? '';
+    final rol = (data?.tipoUsuario ?? '').toUpperCase();
     final fotoBytes = data?.imagenBytes;
 
     return Container(
@@ -353,7 +353,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  'CARNÉ DIGITAL INTELIGENTE',
+                                  'CARNÉ DIGITAL',
                                   style: TextStyle(
                                     color: _primaryLight,
                                     fontSize: 11,
@@ -385,7 +385,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                           ),
                           SizedBox(width: 5),
                           Text(
-                            'ACTIVO',
+                            'VERIFICADO',
                             style: TextStyle(
                               color: _tertiaryGreen,
                               fontSize: 11,
@@ -568,6 +568,8 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                           ),
                         ],
                       ),
+                      if (context.watch<AuthViewModel>().dispositivoVinculado !=
+                          null)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -606,7 +608,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                 ),
                 const SizedBox(height: 14),
 
-                // 4. Footer dentro del Carné: "Acerca al lector del torniquete o aula"
+                // 4. Pie del carné: cómo se marca la asistencia de verdad.
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -616,7 +618,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                         end: 1.0,
                       ).animate(_pulseController),
                       child: const Icon(
-                        Icons.contactless_outlined,
+                        Icons.bluetooth,
                         color: _primaryLight,
                         size: 20,
                       ),
@@ -624,7 +626,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                     const SizedBox(width: 8),
                     const Flexible(
                       child: Text(
-                        'Acerca al lector del torniquete o aula',
+                        'Tu asistencia se marca desde el celular vinculado',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 14,

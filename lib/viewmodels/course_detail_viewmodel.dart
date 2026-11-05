@@ -96,6 +96,47 @@ class CourseDetailViewModel extends ChangeNotifier {
     return null;
   }
 
+  /// La asistencia del curso en CSV (separado por punto y coma, como lo abre
+  /// Excel en español): un estudiante por fila, una columna por clase
+  /// cerrada con A (asistió) o F (faltó), y al final el total y el
+  /// porcentaje.
+  String asistenciaEnCsv() {
+    String dos(int n) => n.toString().padLeft(2, '0');
+    String celda(String v) =>
+        v.contains(RegExp('[;"\n]')) ? '"${v.replaceAll('"', '""')}"' : v;
+
+    final franjas = CursoService.franjasTerminadas(_sesiones, _ahora()).keys
+        .toList()
+      ..sort();
+    final presentes = {
+      for (final f in franjas)
+        f: {
+          for (final fila in detalleDeFranja(f))
+            if (fila.presente) fila.inscrito.clave,
+        },
+    };
+    final porNombre = [...inscritos]
+      ..sort((a, b) => a.nombre.compareTo(b.nombre));
+    return [
+      [
+        'Estudiante',
+        'Identificación',
+        for (final f in franjas) '${f.year}-${dos(f.month)}-${dos(f.day)}',
+        'Asistidas',
+        'Porcentaje',
+      ].map(celda).join(';'),
+      for (final i in porNombre)
+        [
+          i.nombre,
+          i.identificacion,
+          for (final f in franjas)
+            presentes[f]!.contains(i.inscrito.clave) ? 'A' : 'F',
+          '${i.asistencia.asistidas}/${i.asistencia.sesiones}',
+          i.asistencia.porcentaje == null ? '' : '${i.asistencia.porcentaje}%',
+        ].map(celda).join(';'),
+    ].join('\n');
+  }
+
   /// Una fila por franja de clase, no por llamado: el docente pudo abrir el
   /// radar dos veces en el mismo bloque y eso sigue siendo una sola clase,
   /// igual que en el porcentaje que ve el estudiante.

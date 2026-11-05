@@ -103,6 +103,48 @@ void main() {
     expect(vm.promedio.porcentaje, 75);
   });
 
+  test('exporta la asistencia en CSV: una columna por clase', () async {
+    servicio.sesionesPorCurso['c1'] = [sesion('s1', 6), sesion('s2', 8)];
+    servicio.asistenciasPorSesion['s1'] = [
+      presente('ana'),
+      presente('carlos'),
+    ];
+    servicio.asistenciasPorSesion['s2'] = [presente('ana'), ausente('carlos')];
+
+    vm.vigilar('c1');
+    await pumpEventQueue();
+
+    expect(vm.asistenciaEnCsv().split('\n'), [
+      'Estudiante;Identificación;2026-10-06;2026-10-08;Asistidas;Porcentaje',
+      'ANA PÉREZ;ana;A;A;2/2;100%',
+      'CARLOS MUÑOZ;carlos;A;F;1/2;50%',
+    ]);
+  });
+
+  test('el promedio del panel docente es el mismo del detalle', () async {
+    servicio.sesionesPorCurso['c1'] = [sesion('s1', 6), sesion('s2', 8)];
+    servicio.asistenciasPorSesion['s1'] = [
+      presente('ana'),
+      presente('carlos'),
+    ];
+    servicio.asistenciasPorSesion['s2'] = [presente('ana'), ausente('carlos')];
+
+    vm.vigilar('c1');
+    await pumpEventQueue();
+    final franjas = CursoService.franjasTerminadas(
+      servicio.sesionesPorCurso['c1']!,
+      elLunes26,
+    );
+    final resumen = CursoService.promedioDe(
+      servicio.inscritosPorCurso['c1']!.values.toList(),
+      franjas,
+      servicio.asistenciasPorSesion,
+    );
+
+    expect(resumen.porcentaje, vm.promedio.porcentaje);
+    expect(resumen.porcentaje, 75);
+  });
+
   test('la sesión abierta no cuenta como falta todavía', () async {
     servicio.sesionesPorCurso['c1'] = [
       sesion('s1', 6),

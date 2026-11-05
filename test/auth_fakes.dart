@@ -28,6 +28,9 @@ class FakeAuthService extends Fake implements AuthService {
   User? get currentUser => _actual;
 
   @override
+  Future<User?> sesionGuardada() async => _actual;
+
+  @override
   Future<String?> signInWithEmailPassword(String email, String password) async {
     if (cuentas[email] != password) return 'Credenciales incorrectas.';
     _actual = FakeUser('uid-$email', email);

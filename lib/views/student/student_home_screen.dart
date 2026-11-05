@@ -12,6 +12,7 @@ import '../attendance/face_verification_screen.dart';
 import '../teacher/teacher_home_screen.dart';
 import '../attendance/ble_beacon_screen.dart';
 import 'attendance_detail_screen.dart';
+import 'biometric_validation_screen.dart';
 import 'student_settings_screen.dart';
 
 class StudentHomeScreen extends StatelessWidget {
@@ -38,8 +39,8 @@ class StudentHomeScreen extends StatelessWidget {
     final studentVM = context.watch<StudentViewModel>();
 
     final chairaData = authVM.usuarioActual;
-    final nombre = chairaData?.nombre ?? 'Usuario';
-    final programa = chairaData?.programa ?? 'Ingeniería de Sistemas';
+    final nombre = chairaData?.nombre ?? '—';
+    final programa = chairaData?.programa ?? '';
     final fotoBytes = chairaData?.imagenBytes;
 
     final perfil = authVM.perfil;
@@ -223,20 +224,22 @@ class StudentHomeScreen extends StatelessWidget {
                         crossAxisAlignment: WrapCrossAlignment.center,
                         spacing: 6,
                         children: [
-                          Text(
-                            programa,
-                            style: const TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 13,
+                          if (programa.isNotEmpty) ...[
+                            Text(
+                              programa,
+                              style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 13,
+                              ),
                             ),
-                          ),
-                          const Text(
-                            '•',
-                            style: TextStyle(
-                              color: AppTheme.textTertiary,
-                              fontSize: 13,
+                            const Text(
+                              '•',
+                              style: TextStyle(
+                                color: AppTheme.textTertiary,
+                                fontSize: 13,
+                              ),
                             ),
-                          ),
+                          ],
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
@@ -270,45 +273,6 @@ class StudentHomeScreen extends StatelessWidget {
           // Botones de Notificaciones y Configuración (Pantalla 8)
           Row(
             children: [
-              // Notificaciones con punto rojo
-              GestureDetector(
-                onTap: () {},
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceElevated,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      const Icon(
-                        Icons.notifications_none,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _systemRed,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.black, width: 1.5),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
               // Botón Ajustes -> Navega a Pantalla 8 (Configuración Estudiante)
               GestureDetector(
                 onTap: () => _onSettingsTap(context),
@@ -794,6 +758,10 @@ class StudentHomeScreen extends StatelessWidget {
     // para después decirle que está a trescientos metros del aula.
     if (!await _estaEnElAula(context, vigente.$1) || !context.mounted) return;
 
+    // Y el celular, que también es inmediato: sin el vinculado no se puede
+    // firmar, así que pedirle la cara antes sería hacerle perder el tiempo.
+    if (!await _esElCelularVinculado(context) || !context.mounted) return;
+
     // Después, que sea el dueño de la cuenta y no un compañero con su
     // celular: prueba de vida y comparación con su cara.
     final rostro = await verificarRostro(context, curso: vigente.$1);
@@ -813,6 +781,40 @@ class StudentHomeScreen extends StatelessWidget {
     );
     // Al volver de marcar, la asistencia ya cambió: hay que releerla.
     await estudiante.refrescar();
+  }
+
+  /// Si este es el celular atado a la cuenta. Si no, lo dice y ofrece ir a
+  /// vincularlo. El servidor lo vuelve a comprobar al firmar.
+  Future<bool> _esElCelularVinculado(BuildContext context) async {
+    final auth = context.read<AuthViewModel>();
+    final String mensaje;
+    if (auth.dispositivoVinculado == null) {
+      mensaje = 'Primero vincula este celular: tu asistencia solo se firma '
+          'desde el celular vinculado.';
+    } else if (!await auth.esEsteDispositivo()) {
+      mensaje = 'Tu asistencia está atada a otro celular. Márcala con él, o '
+          'vincula este.';
+    } else {
+      return true;
+    }
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensaje),
+          duration: const Duration(seconds: 6),
+          action: SnackBarAction(
+            label: 'Vincular',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const BiometricValidationScreen(),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return false;
   }
 
   /// Si el estudiante está dentro de la geocerca del curso. La baliza lo

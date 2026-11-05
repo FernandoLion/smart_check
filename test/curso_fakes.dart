@@ -256,4 +256,56 @@ class FakeCursoService extends Fake implements CursoService {
     });
     _cambios.add(null);
   }
+
+  @override
+  Future<AsistenciaResumen> promedioDelCurso(String cursoId) async {
+    final franjas = CursoService.franjasTerminadas(
+      sesionesPorCurso[cursoId] ?? const [],
+      DateTime.now(),
+    );
+    return CursoService.promedioDe(
+      (inscritosPorCurso[cursoId] ?? const {}).values.toList(),
+      franjas,
+      {
+        for (final llamados in franjas.values)
+          for (final s in llamados) s.id: asistenciasPorSesion[s.id] ?? const [],
+      },
+    );
+  }
+
+  @override
+  Future<void> editarCurso(Curso curso) async {
+    if (fallo != null) throw fallo!;
+    final antes = cursos[curso.id]!;
+    cursos[curso.id] = Curso.fromMap(curso.id, {
+      ...antes.toMap(),
+      'codigo': curso.codigo,
+      'nombre': curso.nombre,
+      'grupo': curso.grupo,
+      'aula': curso.aula,
+      'horarios': curso.horarios.map((h) => h.toMap()).toList(),
+      'geocerca': curso.geocerca?.toMap(),
+    });
+    _cambios.add(null);
+  }
+
+  @override
+  Future<void> archivarCurso(String cursoId, {required bool archivado}) async {
+    if (fallo != null) throw fallo!;
+    final curso = cursos[cursoId]!;
+    cursos[cursoId] =
+        Curso.fromMap(cursoId, {...curso.toMap(), 'archivado': archivado});
+    _cambios.add(null);
+  }
+
+  @override
+  Future<void> cambiarGeocerca(String cursoId, Geocerca? geocerca) async {
+    if (fallo != null) throw fallo!;
+    final curso = cursos[cursoId]!;
+    cursos[cursoId] = Curso.fromMap(
+      cursoId,
+      {...curso.toMap(), 'geocerca': geocerca?.toMap()},
+    );
+    _cambios.add(null);
+  }
 }

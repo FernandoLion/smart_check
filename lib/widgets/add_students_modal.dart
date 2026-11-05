@@ -11,7 +11,7 @@ class AddStudentsModal extends StatelessWidget {
 
   const AddStudentsModal({
     super.key,
-    this.courseName = 'Ingeniería de Software II (Grupo 302-B)',
+    this.courseName = '',
     this.onImportCsvTap,
     this.onManualCedulaTap,
   });
@@ -19,7 +19,7 @@ class AddStudentsModal extends StatelessWidget {
   // Helper estático para abrir el modal desde cualquier pantalla (10, 11 o 14)
   static Future<void> show(
     BuildContext context, {
-    String courseName = 'Ingeniería de Software II (Grupo 302-B)',
+    String courseName = '',
     VoidCallback? onImportCsvTap,
     VoidCallback? onManualCedulaTap,
   }) {
@@ -112,7 +112,9 @@ class AddStudentsModal extends StatelessWidget {
                                   text: 'Selecciona cómo deseas registrar a los alumnos en ',
                                 ),
                                 TextSpan(
-                                  text: courseName,
+                                  text: courseName.isEmpty
+                                      ? 'este curso'
+                                      : courseName,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,
@@ -153,18 +155,7 @@ class AddStudentsModal extends StatelessWidget {
                     child: GestureDetector(
                       onTap: () {
                         Navigator.pop(context);
-                        if (onImportCsvTap != null) {
-                          onImportCsvTap!();
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Ir a Pantalla 13: Importar CSV Chairá',
-                              ),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        }
+                        onImportCsvTap?.call();
                       },
                       child: Container(
                         constraints: const BoxConstraints(minHeight: 175),
@@ -409,7 +400,7 @@ class AddStudentsModal extends StatelessWidget {
                           ),
                           children: [
                             TextSpan(
-                              text: 'Sincronización directa con base de datos institucional ',
+                              text: 'Los datos salen de ',
                             ),
                             TextSpan(
                               text: 'Chairá',
@@ -419,7 +410,7 @@ class AddStudentsModal extends StatelessWidget {
                               ),
                             ),
                             TextSpan(
-                              text: '. Los derechos de matrícula serán validados en tiempo real.',
+                              text: ': la cédula se verifica allá; la lista pegada se toma tal cual.',
                             ),
                           ],
                         ),

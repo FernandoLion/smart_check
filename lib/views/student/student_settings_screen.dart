@@ -1,8 +1,9 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/asistencia_resumen.dart';
+import '../../models/sesion_model.dart';
 import '../../models/student_subject_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../services/identidad_facial_service.dart';
@@ -14,6 +15,7 @@ import '../attendance/face_verification_screen.dart';
 import '../login_screen.dart';
 import 'attendance_detail_screen.dart';
 import 'biometric_validation_screen.dart';
+import '../../widgets/ajustes_compartidos.dart';
 import '../../widgets/texto_sin_cortes.dart';
 
 class StudentSettingsScreen extends StatefulWidget {
@@ -29,19 +31,10 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
   static const Color _surfaceBg = Color(0xFF131315); // surface / background
   static const Color _surfaceElevated = Color(0xFF1C1C1E);
   static const Color _surfaceControl = Color(0xFF2C2C2E);
-  static const Color _surfaceHigh = Color(0xFF2A2A2C);
-  static const Color _primaryIndigo = Color(0xFF5E5CE6); // primary-container
   static const Color _primaryLight = Color(0xFFC2C1FF); // primary
   static const Color _onPrimary = Color(0xFF1800A7);
   static const Color _tertiaryGreen = Color(0xFF47E266); // tertiary
-  static const Color _systemAmber = Color(0xFFFF9F0A);
   static const Color _systemRed = Color(0xFFFF453A);
-
-  // Estados de los Switches y Micro-interacciones
-  bool _autoBeacon = true;
-  bool _batterySaver = false;
-  bool _classReminder = true;
-  bool _attendanceSummary = true;
 
   bool _isCopied = false;
   bool _isSyncing = false;
@@ -117,7 +110,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
     _syncController.reset();
     setState(() {
       _isSyncing = false;
-      _lastSyncText = 'Hace un momento';
+      _lastSyncText = 'Recién';
     });
   }
 
@@ -182,75 +175,18 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                       trailingText: _porcentajeGlobal(
                         context.watch<StudentViewModel>().globalAttendance,
                       ),
-                      trailingTextColor: _tertiaryGreen,
+                      trailingTextColor: _colorDe(
+                        context.watch<StudentViewModel>().globalAttendance,
+                      ),
                       trailingTextBold: true,
                       onTap: _verHistorial,
                     ),
                   ]),
                   const SizedBox(height: 24),
 
-                  // 4. Sección "BALIZA"
-                  _buildSectionTitle('BALIZA'),
+                  // 4. Sección "CELULAR": el que firma la asistencia.
+                  _buildSectionTitle('CELULAR'),
                   _buildGroupedCard([
-                    // Estado de la baliza
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                _buildIconBox(Icons.podcasts),
-                                const SizedBox(width: 12),
-                                const Flexible(
-                                  child: Text(
-                                    'Estado de la baliza',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _tertiaryGreen.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircleAvatar(
-                                  radius: 4,
-                                  backgroundColor: _tertiaryGreen,
-                                ),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Activa',
-                                  style: TextStyle(
-                                    color: _tertiaryGreen,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    _buildDivider(),
-
                     // ID de mi dispositivo + Botón Copiar
                     Padding(
                       padding: const EdgeInsets.all(16),
@@ -276,7 +212,9 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'ID: $_idDelDispositivo',
+                                        _idDelDispositivo == 'sin vincular'
+                                            ? 'Todavía no has vinculado uno'
+                                            : 'ID: $_idDelDispositivo',
                                         style: const TextStyle(
                                           color: AppTheme.textSecondary,
                                           fontSize: 12,
@@ -289,6 +227,11 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                               ],
                             ),
                           ),
+                          // Sin celular vinculado no hay nada que copiar.
+                          if (context
+                                  .watch<AuthViewModel>()
+                                  .dispositivoVinculado !=
+                              null)
                           GestureDetector(
                             onTap: _handleCopyDeviceId,
                             child: Container(
@@ -327,139 +270,43 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                       ),
                     ),
                     _buildDivider(),
-
-                    // Activar baliza automáticamente
-                    _buildSwitchRow(
-                      icon: Icons.schedule,
-                      title: 'Activar baliza automáticamente',
-                      subtitle: 'En horario programado de clase según geocerca',
-                      value: _autoBeacon,
-                      onChanged: (val) => setState(() => _autoBeacon = val),
-                    ),
-                    _buildDivider(),
-
-                    // Modo ahorro de batería
-                    _buildSwitchRow(
-                      icon: Icons.battery_saver,
-                      title: 'Modo ahorro de batería',
-                      subtitle: 'Reduce la frecuencia de emisión de baliza',
-                      value: _batterySaver,
-                      onChanged: (val) => setState(() => _batterySaver = val),
-                    ),
-                  ]),
-                  const SizedBox(height: 24),
-
-                  // 5. Sección "PERMISOS DE LA APP"
-                  _buildSectionTitle('PERMISOS DE LA APP'),
-                  _buildGroupedCard([
-                    _buildPermissionRow(
-                      icon: Icons.bluetooth,
-                      title: 'Bluetooth',
-                      isGranted: true,
-                    ),
-                    _buildDivider(),
-                    _buildPermissionRow(
-                      icon: Icons.sensors,
-                      title: 'Dispositivos cercanos',
-                      isGranted: true,
-                    ),
-                    _buildDivider(),
-                    _buildPermissionRow(
-                      icon: Icons.near_me_outlined,
-                      title: 'Ubicación',
-                      subtitle: 'Necesaria para escanear balizas Bluetooth',
-                      isGranted: true,
-                    ),
-                    _buildDivider(),
-                    _buildPermissionRow(
-                      icon: Icons.notifications_active_outlined,
-                      title: 'Notificaciones',
-                      isGranted: false,
-                    ),
-                  ]),
-                  const SizedBox(height: 24),
-
-                  // 6. Sección "APARIENCIA"
-                  _buildSectionTitle('APARIENCIA'),
-                  _buildGroupedCard([
                     _buildNavRow(
-                      icon: Icons.language,
-                      title: 'Idioma',
-                      trailingText: 'Español',
-                      onTap: () {},
-                    ),
-                    _buildDivider(),
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildIconBox(
-                            Icons.light_mode_outlined,
-                            iconColor: _systemAmber,
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Tema actual',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'Modo Claro (Activo)',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.end,
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
+                      icon: Icons.phonelink_setup,
+                      title: 'Vincular o cambiar de celular',
+                      subtitle: 'Tu asistencia solo se firma desde el '
+                          'celular vinculado',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const BiometricValidationScreen(),
+                        ),
                       ),
                     ),
-                  ]),
-                  const SizedBox(height: 24),
-
-                  // 7. Sección "NOTIFICACIONES"
-                  _buildSectionTitle('NOTIFICACIONES'),
-                  _buildGroupedCard([
-                    _buildSwitchRow(
-                      icon: Icons.alarm,
-                      title: 'Recordatorio antes de clase',
-                      subtitle: '15 min antes del inicio',
-                      value: _classReminder,
-                      onChanged: (val) => setState(() => _classReminder = val),
-                    ),
                     _buildDivider(),
-                    _buildSwitchRow(
-                      icon: Icons.assignment_turned_in_outlined,
-                      title: 'Resumen de asistencia al finalizar',
-                      subtitle: 'Notificación con estado de la sesión',
-                      value: _attendanceSummary,
-                      onChanged: (val) =>
-                          setState(() => _attendanceSummary = val),
+                    _buildNavRow(
+                      icon: Icons.podcasts,
+                      title: 'Baliza Bluetooth',
+                      subtitle: 'Se enciende sola al marcar asistencia y se '
+                          'apaga al cerrarse el llamado',
+                      onTap: () => mostrarAyuda(context, docente: false),
                     ),
                   ]),
                   const SizedBox(height: 24),
 
-                  // 8. Sección "DATOS"
+                  // 5. Sección "PERMISOS DE LA APP": leídos del celular.
+                  _buildSectionTitle('PERMISOS DE LA APP'),
+                  const PermisosDelCelular(),
+                  const SizedBox(height: 24),
+
+                  // 6. Sección "DATOS"
                   _buildSectionTitle('DATOS'),
                   _buildGroupedCard([
                     _buildNavRow(
-                      icon: Icons.file_download_outlined,
-                      title: 'Exportar historial de asistencia',
-                      subtitle: 'Reporte en PDF o CSV de inasistencias',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Generando reporte de asistencia...'),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      },
+                      icon: Icons.content_copy_outlined,
+                      title: 'Copiar mi historial de asistencia',
+                      subtitle: 'Todas tus clases en CSV, para pegar en '
+                          'Excel o en un correo',
+                      onTap: _copiarHistorial,
                     ),
                     _buildDivider(),
                     InkWell(
@@ -491,7 +338,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                         ),
                                         SizedBox(height: 2),
                                         TextoSinCortes(
-                                          'Última sincronización',
+                                          'Vuelve a pedir tu asistencia',
                                           style: TextStyle(
                                             color: AppTheme.textSecondary,
                                             fontSize: 12,
@@ -536,19 +383,14 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                   ]),
                   const SizedBox(height: 24),
 
-                  // 9. Sección "CUENTA Y SEGURIDAD"
+                  // 7. Sección "CUENTA Y SEGURIDAD"
                   _buildSectionTitle('CUENTA Y SEGURIDAD'),
                   _buildGroupedCard([
                     _buildNavRow(
                       icon: Icons.lock_reset,
                       title: 'Cambiar contraseña',
-                      onTap: () {},
-                    ),
-                    _buildDivider(),
-                    _buildNavRow(
-                      icon: Icons.devices,
-                      title: 'Cerrar sesión en otros dispositivos',
-                      onTap: () {},
+                      subtitle: 'Te llega un enlace a tu correo institucional',
+                      onTap: () => pedirCambioDeContrasena(context),
                     ),
                     _buildDivider(),
                     _buildNavRow(
@@ -571,25 +413,19 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                   ]),
                   const SizedBox(height: 24),
 
-                  // 10. Sección "AYUDA"
+                  // 8. Sección "AYUDA"
                   _buildSectionTitle('AYUDA'),
                   _buildGroupedCard([
                     _buildNavRow(
                       icon: Icons.help_center_outlined,
-                      title: 'Centro de ayuda',
-                      onTap: () {},
-                    ),
-                    _buildDivider(),
-                    _buildNavRow(
-                      icon: Icons.feedback_outlined,
-                      title: 'Reportar un problema',
-                      onTap: () {},
+                      title: 'Cómo marcar asistencia',
+                      onTap: () => mostrarAyuda(context, docente: false),
                     ),
                     _buildDivider(),
                     _buildNavRow(
                       icon: Icons.security_outlined,
-                      title: 'Términos y política de privacidad',
-                      onTap: () {},
+                      title: 'Tus datos y privacidad',
+                      onTap: () => mostrarPrivacidad(context),
                     ),
                   ]),
                   const SizedBox(height: 28),
@@ -599,9 +435,6 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                 ],
               ),
             ),
-
-            // BOTTOM NAVIGATION BAR (Cursos | Radar | Configuración)
-            _buildBottomNavigationBar(context),
           ],
         ),
       ),
@@ -629,7 +462,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                   width: 36,
                   height: 36,
                   child: Icon(
-                    Icons.verified_user_outlined,
+                    Icons.arrow_back_ios_new,
                     color: _primaryLight,
                     size: 24,
                   ),
@@ -650,7 +483,8 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
           Row(
             children: [
               IconButton(
-                onPressed: () {},
+                tooltip: 'Tus datos y privacidad',
+                onPressed: () => mostrarPrivacidad(context),
                 icon: const Icon(
                   Icons.shield_outlined,
                   color: Color(0xFFC7C4D7),
@@ -704,45 +538,19 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
             ],
           ),
         ),
-        const SizedBox(width: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: _surfaceHigh,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(radius: 4, backgroundColor: _tertiaryGreen),
-              SizedBox(width: 6),
-              Text(
-                'Sincronizado',
-                style: TextStyle(
-                  color: _tertiaryGreen,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
 
   Widget _buildStudentProfileCard(VerificacionResult? data) {
-    final nombre = data?.nombre ?? 'Carlos Andrés Muñoz Rivera';
+    final nombre = data?.nombre ?? '—';
     // El correo real de la cuenta; deducirlo del nombre puede no coincidir.
-    final email =
-        context.read<AuthViewModel>().perfil?.email ??
-        (data?.username != null
-            ? '${data!.username}@udla.edu.co'
-            : 'c.munoz@udla.edu.co');
-    final idInfo = data?.cedula != null
-        ? 'ID #${data!.cedula} • Semestre VI'
-        : 'ID #2022-3810 • Semestre VI';
+    final email = context.read<AuthViewModel>().perfil?.email ?? '';
+    // Lo que de verdad dice Chairá: el documento y el programa.
+    final idInfo = [
+      if (data?.cedula != null) 'Doc. ${data!.cedula}',
+      if ((data?.programa ?? '').isNotEmpty) data!.programa!,
+    ].join(' • ');
     final fotoBytes = data?.imagenBytes;
 
     return Container(
@@ -868,37 +676,11 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: () {},
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: _surfaceControl,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.edit_outlined, color: _primaryLight, size: 15),
-                    SizedBox(width: 6),
-                    Text(
-                      'Editar perfil',
-                      style: TextStyle(
-                        color: _primaryLight,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          const SizedBox(height: 10),
+          // Estos datos no se editan aquí: son los de Chairá.
+          const Text(
+            'Tus datos vienen de Chairá. Si algo está mal, corrígelo allá.',
+            style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
           ),
         ],
       ),
@@ -1035,6 +817,86 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
         builder: (_) => AttendanceDetailScreen(subject: elegida),
       ),
     );
+  }
+
+  /// Todas las clases cerradas de todas sus materias, en CSV y al
+  /// portapapeles: sin dependencias de archivos, y se pega igual en Excel
+  /// que en un correo.
+  Future<void> _copiarHistorial() async {
+    final vm = context.read<StudentViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+    void avisar(String texto) =>
+        messenger.showSnackBar(SnackBar(content: Text(texto)));
+
+    final materias = vm.subjects;
+    if (materias.isEmpty) {
+      avisar('Todavía no estás inscrito en ninguna materia.');
+      return;
+    }
+    final filas = <String>[
+      'Materia;Código;Grupo;Fecha;Estado;Cómo se marcó;Hora',
+    ];
+    try {
+      for (final m in materias) {
+        for (final clase in await vm.historialDe(m.cursoId)) {
+          final marca = clase.marca;
+          final estado = marca == null
+              ? 'Faltó'
+              : switch (marca.estado) {
+                  EstadoAsistencia.tarde => 'Tarde',
+                  EstadoAsistencia.ausente => 'Faltó',
+                  _ => 'Asistió',
+                };
+          final como = marca == null
+              ? ''
+              : marca.metodo == MetodoAsistencia.ble
+                  ? 'Bluetooth'
+                  : 'A mano';
+          filas.add(
+            [
+              m.name,
+              m.code,
+              m.group,
+              _fechaCsv(clase.franja),
+              estado,
+              como,
+              marca == null ? '' : _horaCsv(marca.hora),
+            ].map(_celdaCsv).join(';'),
+          );
+        }
+      }
+    } catch (_) {
+      avisar('No se pudo leer tu historial. Revisa la conexión.');
+      return;
+    }
+    final clases = filas.length - 1;
+    if (clases == 0) {
+      avisar('Todavía no hay clases cerradas en tus materias.');
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: filas.join('\n')));
+    avisar(
+      clases == 1
+          ? 'Copiada 1 clase. Pégala en Excel o en un correo.'
+          : 'Copiadas $clases clases. Pégalas en Excel o en un correo.',
+    );
+  }
+
+  static String _dos(int n) => n.toString().padLeft(2, '0');
+  static String _fechaCsv(DateTime d) =>
+      '${d.year}-${_dos(d.month)}-${_dos(d.day)}';
+  static String _horaCsv(DateTime d) => '${_dos(d.hour)}:${_dos(d.minute)}';
+
+  /// Entre comillas si trae el separador, comillas o saltos de línea.
+  static String _celdaCsv(String v) =>
+      v.contains(RegExp('[;"\n]')) ? '"${v.replaceAll('"', '""')}"' : v;
+
+  /// Verde si cumple el mínimo, ámbar si apenas, rojo si no.
+  static Color _colorDe(int? porcentaje) {
+    if (porcentaje == null) return AppTheme.textSecondary;
+    if (porcentaje >= 90) return _tertiaryGreen;
+    if (porcentaje >= AsistenciaResumen.minimo) return const Color(0xFFFF9F0A);
+    return AppTheme.error;
   }
 
   static String _materias(int n) => n == 1 ? '1 asignatura' : '$n asignaturas';
@@ -1201,138 +1063,6 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
     );
   }
 
-  Widget _buildSwitchRow({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                _buildIconBox(icon),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextoSinCortes(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          CupertinoSwitch(
-            value: value,
-            activeTrackColor: _primaryIndigo,
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPermissionRow({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    required bool isGranted,
-  }) {
-    final badgeColor = isGranted ? _tertiaryGreen : _systemAmber;
-    final badgeText = isGranted ? 'Concedido' : 'Pendiente';
-    final badgeIcon = isGranted
-        ? Icons.check_circle_outline
-        : Icons.pending_outlined;
-
-    final badge = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: badgeColor.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(badgeIcon, color: badgeColor, size: 15),
-          const SizedBox(width: 5),
-          Text(
-            badgeText,
-            style: TextStyle(
-              color: badgeColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      // Con poco ancho (pantalla angosta o letra grande) la etiqueta baja
-      // debajo del título, para que el título no quede apretado.
-      child: LayoutBuilder(
-        builder: (context, caja) {
-          final etiquetaAbajo =
-              caja.maxWidth < MediaQuery.textScalerOf(context).scale(300);
-          return Row(
-            children: [
-              _buildIconBox(icon),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextoSinCortes(
-                      title,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                    if (etiquetaAbajo) ...[const SizedBox(height: 6), badge],
-                  ],
-                ),
-              ),
-              if (!etiquetaAbajo) ...[const SizedBox(width: 8), badge],
-            ],
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildLogoutFooter() {
     return Column(
       children: [
@@ -1369,94 +1099,6 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
           style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
         ),
       ],
-    );
-  }
-
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.only(top: 10, bottom: 20),
-      decoration: BoxDecoration(
-        color: _surfaceBg.withValues(alpha: 0.9),
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          // Tab 1: Cursos -> Vuelve al Portal Estudiante Home (Pantalla 5)
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.school_outlined, color: Color(0xFFC7C4D7), size: 24),
-                SizedBox(height: 4),
-                Text(
-                  'Cursos',
-                  style: TextStyle(
-                    color: Color(0xFFC7C4D7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Tab 2: Radar -> Abre Validación Biométrica / Radar (Pantalla 6)
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const BiometricValidationScreen(),
-                ),
-              );
-            },
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.radar, color: Color(0xFFC7C4D7), size: 24),
-                SizedBox(height: 4),
-                Text(
-                  'Radar',
-                  style: TextStyle(
-                    color: Color(0xFFC7C4D7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Tab 3: Configuración (Activo)
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: _primaryIndigo.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.tune, color: Colors.white, size: 22),
-              ),
-              const SizedBox(height: 4),
-              const TextoSinCortes(
-                'Configuración',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

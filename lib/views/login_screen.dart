@@ -24,6 +24,31 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   int _segmentedControlGroupValue = 0; // 0 para Login, 1 para Registro
 
+  /// Mientras se mira si ya hay una sesión guardada en este celular.
+  bool _restaurando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restaurar());
+  }
+
+  /// Quien ya entró en este celular no vuelve a escribir la contraseña.
+  Future<void> _restaurar() async {
+    final auth = context.read<AuthViewModel>();
+    var entro = false;
+    try {
+      entro = await auth.restaurarSesion();
+    } catch (_) {
+      // Sin red o sin Firebase: se pide el ingreso como siempre.
+    }
+    if (!mounted) return;
+    if (entro) {
+      _entrarSegunRol(auth.perfil!);
+    }
+    setState(() => _restaurando = false);
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -35,6 +60,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     // Escuchamos el ViewModel (MVVM)
     final authViewModel = context.watch<AuthViewModel>();
+    if (_restaurando) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.black, // bg-surface-oled
@@ -546,12 +577,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Modo Docente (Gestionar Clases)',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                            Expanded(
+                              child: Text(
+                                'Modo Docente (Gestionar Clases)',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                             Icon(
@@ -611,12 +644,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Modo Estudiante (Asistencia)',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                            Expanded(
+                              child: Text(
+                                'Modo Estudiante (Asistencia)',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                             Icon(
