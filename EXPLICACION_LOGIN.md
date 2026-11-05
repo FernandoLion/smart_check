@@ -1,6 +1,6 @@
 # SmartCheck: el login explicado paso a paso
 
-Esta rama (`login-sustentacion`) tiene **solo el inicio de sesión** de SmartCheck. Se armó desde cero y en orden: cada commit es un paso de esta explicación. Para seguirla en vivo:
+Esta rama (`login-sustentacion`) tiene **solo el inicio de sesión y el registro** de SmartCheck. Se armó desde cero y en orden: cada commit es un paso de esta explicación. Para seguirla en vivo:
 
 ```bash
 git log --oneline --reverse
@@ -13,6 +13,8 @@ git log --oneline --reverse
 | paso 3 | ViewModel del inicio de sesión |
 | paso 4 | Pantalla de login y pantalla de inicio |
 | paso 5 | Pruebas del login |
+| paso 6 | Este documento |
+| paso 7 | Registro verificado con Chairá |
 
 ---
 
@@ -25,6 +27,15 @@ git log --oneline --reverse
 3. Con la sesión abierta, la app lee el **perfil** de la persona en **Cloud Firestore** (`usuarios/{uid}`). Ahí está su nombre y sus **roles** (`docente`, `estudiante` o los dos).
 4. Según el rol, entra como docente, como estudiante o, si tiene los dos, se le pregunta con cuál quiere entrar.
 5. Si la persona ya había entrado en ese celular, la próxima vez entra directo sin escribir la contraseña (**sesión guardada**).
+
+### Qué hace el registro (paso 7)
+
+1. La persona escribe su cédula y la app la consulta en **Chairá**, el sistema académico de la Universidad de la Amazonia.
+2. Chairá devuelve su nombre, programa, foto y tipo de usuario: si es docente o estudiante. La app lo muestra en una tarjeta.
+3. La persona pone su contraseña y crea la cuenta en Firebase Auth. La app guarda en Firestore el perfil con los datos de Chairá y **el rol que dijo Chairá**.
+4. Con la cuenta creada, entra directo a la app.
+
+> En la app completa, al registrarse además se compara el rostro con la foto de Chairá usando la cámara. Esa parte **no está en esta rama**.
 
 ### Por qué hacen falta dos servicios de Firebase
 
@@ -80,19 +91,26 @@ lib/
 ├── main.dart                       ← arranca la app (pasos 1 y 4)
 ├── firebase_options.dart           ← datos de conexión a Firebase (paso 1)
 ├── models/
-│   └── usuario_perfil_model.dart   ← Modelo (paso 2)
+│   ├── usuario_perfil_model.dart   ← Modelo del perfil (paso 2)
+│   └── verificacion_result_model.dart ← lo que responde Chairá (paso 7)
 ├── services/
 │   ├── auth_service.dart           ← Firebase Auth (paso 2)
-│   └── perfil_service.dart         ← Firestore (paso 2)
+│   ├── perfil_service.dart         ← Firestore (paso 2)
+│   ├── chaira_service.dart         ← consulta a Chairá por internet (paso 7)
+│   └── chaira_parser.dart          ← lee la respuesta de Chairá (paso 7)
 ├── viewmodels/
 │   └── auth_viewmodel.dart         ← ViewModel (paso 3)
 ├── utils/
 │   ├── usuario_input_formatter.dart← limpia lo que se escribe en "usuario" (paso 3)
 │   └── app_theme.dart              ← colores y estilos (paso 4)
+├── widgets/
+│   └── selector_ingreso.dart       ← pestañas "Iniciar Sesión | Registrarse" (paso 7)
 └── views/
     ├── login_screen.dart           ← Vista del login (paso 4)
-    └── home_screen.dart            ← Vista de llegada (paso 4)
-test/                               ← pruebas (paso 5)
+    ├── home_screen.dart            ← Vista de llegada (paso 4)
+    └── smart_register_screen.dart  ← Vista del registro (paso 7)
+assets/certs/sectigo_r46.pem        ← certificado para hablar con Chairá (paso 7)
+test/                               ← pruebas (pasos 5 y 7)
 ```
 
 ---
@@ -419,6 +437,124 @@ Son **22 pruebas** y ninguna toca el Firebase real.
 
 ---
 
+## Paso 7: el registro verificado con Chairá
+
+Hasta el paso 6 las cuentas se tenían que crear con la app completa. Este paso agrega el registro. La idea clave: **el rol no lo elige la persona, lo dice Chairá**. Así nadie se registra como docente si no lo es.
+
+```
+Escribe la cédula y toca "Verificar"
+   │
+   ▼
+AuthViewModel.verificarEnChaira()
+   └─ ChairaService.verificarDocumento()  ──▶ Chairá (internet)
+         ├─ consulta el carné (nombre, programa, foto, tipo)   } las dos
+         └─ consulta el usuario institucional                  } a la vez
+   │
+   ▼
+Tarjeta "VERIFICADO EN SISTEMA" + usuario propuesto (an.perez)
+   │  (si es docente: interruptor "También curso materias")
+   ▼
+Escribe la contraseña y toca "CREAR CUENTA"
+   │
+   ▼
+AuthViewModel.register()
+   ├─ AuthService.registerWithEmailPassword()  ──▶ Firebase Auth (crea la cuenta)
+   ├─ UsuarioPerfil.desdeVerificacion()          (rol según Chairá)
+   └─ PerfilService.guardar()                  ──▶ Firestore usuarios/{uid}
+   │
+   ▼
+Vuelve al LoginScreen → encuentra la sesión guardada → HomeScreen
+```
+
+### `models/verificacion_result_model.dart`
+
+Lo que respondió Chairá: `success`, `nombre`, `cedula`, `programa`, `tipoUsuario`, `fotoUrl`, la foto ya descargada (`imagenBytes`) y el `error` si falló.
+
+- `VerificacionResult.fallido(documento, error)`: un constructor corto para los casos de error.
+- **`esDocente`**: `true` si el tipo que da Chairá contiene "DOCENTE" (puede venir como "DOCENTE CATEDRA", por ejemplo).
+- **`username`**: el usuario del correo. Si Chairá lo dio (`usuarioChaira`), es ese. Si no, se **deduce del nombre**: "Ana María Pérez Gómez" → `an.perez` (dos letras del primer nombre + primer apellido, sin tildes).
+- **`correoVerificado`**: si el usuario vino de Chairá. En ese caso la pantalla no deja editarlo. Si se dedujo, la persona puede corregirlo, porque la deducción falla con algunos nombres compuestos.
+
+### `services/chaira_service.dart`
+
+Chairá no tiene una API pública. Lo que sí tiene es una página pública, **VerificaCarne.aspx**, donde cualquiera puede verificar un carné. El servicio **envía la misma petición que hace esa página al tocar "Buscar"**:
+
+- Es un `POST` con el documento en `oTBusqueda` y en `submitDirectEventConfig`. Así lo arma la librería Ext.NET que usa la página.
+- Usa el paquete **`http`** y espera como máximo 30 segundos (`timeout`).
+- El documento debe tener al menos 3 caracteres, como pide Chairá.
+- **Dos consultas a la vez**: el carné (`_consultarCarne`) y el usuario institucional (`buscarUsuario`, la opción "¿Olvidó su nombre de usuario?" de la página de ingreso). Se lanzan juntas y luego se espera a las dos con `await`. Encadenarlas duplicaría la espera.
+- Si la persona tiene foto, se descarga aparte con 8 segundos de límite. Si no llega, se muestra un ícono genérico.
+- Cada error se convierte en un mensaje claro: sin conexión, tiempo agotado, error HTTP.
+
+**¿Por qué el archivo `assets/certs/sectigo_r46.pem`?** Chairá usa HTTPS con un certificado firmado por Sectigo R46. Esa autoridad es de 2021 y varios Android viejos no la traen, así que la conexión fallaba con `CERTIFICATE_VERIFY_FAILED`. La app **agrega** ese certificado a los del sistema (`_ClienteConRaizSectigo`). No reemplaza ninguno, así que la conexión sigue siendo segura.
+
+### `services/chaira_parser.dart`
+
+Chairá no responde un JSON ordenado. Responde **un script** que pinta la página, por ejemplo `App.DFNombre.setText("ANA PÉREZ")`. El parser lee esos valores con **expresiones regulares**:
+
+1. Saca el script de dentro de la etiqueta `<textarea>`.
+2. Busca cada llamada `App.<control>.setText("valor")` y arma un mapa `control → valor`: `DFNombre` es el nombre, `DFCedula` la cédula, `DFPrograma` el programa, `LTipoUsuario` el tipo e `Image1` la foto.
+3. Deshace los escapes de JavaScript (`Á` → `Á`) y de HTML (`&aacute;` → `á`).
+4. Si hay nombre, la verificación salió bien. Si no, busca el mensaje de "no encontrado" que muestra Chairá.
+
+Hace lo mismo con la respuesta de "¿Olvidó su nombre de usuario?". Ahí, además, **solo acepta algo con forma de usuario** (`formatoUsuario`). Así, un mensaje de error de Chairá nunca termina convertido en un correo.
+
+### Cambios en el modelo y los servicios del paso 2
+
+- **`UsuarioPerfil`** ahora guarda también `cedula`, `programa`, `tipoUsuario` y `fotoUrl`, y tiene dos métodos nuevos:
+  - **`desdeVerificacion(...)`** arma el perfil con lo que dijo Chairá. El rol sale de `verificacion.esDocente`:
+    - docente → `['docente']`, o `['docente', 'estudiante']` si activó "También curso materias";
+    - si no es docente → `['estudiante']`.
+  - **`toMap()`** es lo contrario de `fromMap`: el documento que se guarda en Firestore.
+- **`AuthService.registerWithEmailPassword`** llama a `createUserWithEmailAndPassword` y traduce los errores: contraseña débil (Firebase pide al menos 6 caracteres), usuario ya registrado, sin conexión.
+- **`PerfilService.guardar`** escribe el perfil en `usuarios/{uid}` con `.set(...)`.
+
+### Cambios en el ViewModel
+
+Ahora también recibe un `ChairaService` por el constructor, igual que los otros servicios, para poder pasarle uno falso en las pruebas. Tiene dos datos nuevos de estado: `isVerifyingChaira` (para el spinner del botón "Verificar") y `verificacionResult` (lo que respondió Chairá).
+
+- **`verificarEnChaira(documento)`**: activa el spinner, consulta, guarda el resultado y avisa a la pantalla.
+- **`register(usuario, password, tambienEstudiante)`**:
+  1. Si no se verificó antes en Chairá, no sigue. Sin eso no se sabe quién es ni su rol.
+  2. Valida el usuario `@udla.edu.co`, igual que en el login.
+  3. Crea la cuenta en Firebase Auth. Al crearla, Firebase deja la sesión iniciada.
+  4. Con el uid de la cuenta nueva arma el perfil (`desdeVerificacion`) y lo guarda en Firestore.
+- **`clearState()`**: borra la consulta y el error anteriores al abrir la pantalla de registro.
+
+### `views/smart_register_screen.dart`
+
+Un `ListView` con dos pasos:
+
+- **Paso 1, validación de identidad**: el campo de cédula con el botón "Verificar". Si Chairá encuentra a la persona, aparece la **tarjeta** con foto, tipo, documento, nombre y programa. Si es docente, aparece además el interruptor **"También curso materias"**. Si falla, aparece el error en rojo.
+- **Paso 2, credenciales**:
+  - el usuario (lo llena Chairá; si viene verificado, no se puede editar) con `@udla.edu.co` fijo;
+  - la contraseña, con el **medidor de fuerza**: tres barritas que se pintan por largo, mayúscula y número o símbolo.
+- **"CREAR CUENTA"** llama a `register`. Si sale bien, vuelve al `LoginScreen` con `pushAndRemoveUntil`, que borra toda la pila de pantallas. El login encuentra la sesión de la cuenta nueva (la misma `restaurarSesion` del paso 4) y entra directo según el rol. Así no hay que repetir la lógica de "a dónde entra cada rol".
+
+### `widgets/selector_ingreso.dart`
+
+Las pestañas **Iniciar Sesión | Registrarse** de arriba. Las usan las dos pantallas, cada una marcando la suya (`enRegistro`). Tocar la otra pestaña la reemplaza con `pushReplacement`. Está en un archivo aparte para no escribir el mismo código en las dos pantallas.
+
+### Pruebas del registro
+
+Ahora son **63 pruebas** (`flutter test`):
+
+- **`chaira_parser_test.dart`** y **`chaira_service_test.dart`**: con respuestas de Chairá guardadas en `chaira_fixtures.dart`. Prueban que se lean bien el nombre, las tildes y la foto, que funcione "no encontrado", y los errores de red, de tiempo y de HTTP. No se conectan a Chairá de verdad: usan un `MockClient` de `http`.
+- **`auth_viewmodel_test.dart`** (grupo "registro"):
+  - verificar trae los datos;
+  - un estudiante queda con el rol `estudiante`;
+  - el docente solo es estudiante si activa el interruptor;
+  - no se registra sin verificar ni con otro dominio;
+  - avisa si la cuenta se creó pero el perfil no se guardó.
+- **`register_screen_test.dart`**: la pantalla en un teléfono de 360×640:
+  - desde el login se llega al registro;
+  - verificar muestra la tarjeta;
+  - al docente le aparece el interruptor;
+  - sin verificar no deja crear la cuenta;
+  - crear la cuenta guarda el perfil y entra a la app.
+
+---
+
 ## Cómo correrlo
 
 ```bash
@@ -429,7 +565,7 @@ flutter pub get
 flutter run
 ```
 
-Hace falta un celular o emulador Android: Firebase solo está configurado para Android. Para entrar se necesita una cuenta que exista en Firebase Auth **y** que tenga su documento en `usuarios/{uid}` con `nombre` y `roles`. Las cuentas creadas con la app completa ya lo tienen.
+Hace falta un celular o emulador Android: Firebase solo está configurado para Android. Para entrar se puede usar una cuenta creada con la app completa o crear una nueva en la pestaña **Registrarse**, con una cédula que exista en Chairá.
 
 ---
 
@@ -458,3 +594,18 @@ Para que el login salga de la pila de pantallas: con "atrás" no se vuelve al fo
 
 **¿Por qué solo cuentas `@udla.edu.co`?**
 La app es para la universidad. Se valida dos veces: el formateador limpia lo que se escribe y el ViewModel rechaza cualquier otro dominio **antes** de llamar a Firebase.
+
+**¿Por qué el rol lo decide Chairá y no un botón "Soy docente"?**
+Con un botón, cualquiera podría registrarse como docente. El tipo de usuario sale del registro oficial de la universidad. La persona solo decide si un docente *además* es estudiante.
+
+**¿Cómo se conecta con Chairá si no tiene API?**
+Envía la misma petición que hace la página pública de verificación de carné al tocar "Buscar", y lee la respuesta con expresiones regulares (`ChairaParser`).
+
+**¿Qué pasa si Chairá no responde?**
+A los 30 segundos se muestra "Tiempo de espera agotado al consultar Chairá" y no se puede crear la cuenta, porque sin verificar no se sabe el rol. Si solo falla la consulta del usuario, se deduce del nombre y la persona lo puede corregir.
+
+**¿Qué pasa si se crea la cuenta pero falla guardar el perfil?**
+Se avisa: "Tu cuenta se creó, pero no se pudo guardar tu perfil". Si luego intenta entrar, el login cierra la sesión porque la cuenta no tiene perfil (paso 3).
+
+**¿Qué le falta a este registro respecto a la app completa?**
+La verificación del rostro. En la app completa, antes de crear la cuenta, la cámara compara la cara de la persona con su foto de Chairá. Así se evita que alguien cree la cuenta de otro solo con su cédula. En esta rama se dejó por fuera para enfocarse en el registro y el login.

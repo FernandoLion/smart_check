@@ -1,6 +1,6 @@
-# SmartCheck: solo el login
+# SmartCheck: login y registro
 
-Rama de sustentación con únicamente el inicio de sesión de SmartCheck
+Rama de sustentación con únicamente el inicio de sesión y el registro de SmartCheck
 (Flutter + Firebase Auth + Firestore, arquitectura MVVM con Provider).
 
 La explicación completa, archivo por archivo y en orden, está en

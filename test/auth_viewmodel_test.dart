@@ -14,8 +14,83 @@ void main() {
     perfiles = FakePerfilService();
   });
 
-  AuthViewModel crear() =>
-      AuthViewModel(authService: auth, perfilService: perfiles);
+  AuthViewModel crear({String tipoChaira = 'ESTUDIANTE'}) => AuthViewModel(
+    authService: auth,
+    perfilService: perfiles,
+    chairaService: chairaFalso(tipo: tipoChaira),
+  );
+
+  group('registro', () {
+    test('verificar en Chairá trae los datos de la persona', () async {
+      final vm = crear();
+
+      expect(await vm.verificarEnChaira('1117000000'), isTrue);
+      expect(vm.verificacionResult!.nombre, 'ANA MARÍA PÉREZ GÓMEZ');
+      expect(vm.verificacionResult!.username, 'an.perez');
+      expect(vm.isVerifyingChaira, isFalse);
+    });
+
+    test('guarda el perfil verificado con rol de estudiante', () async {
+      final vm = crear();
+      await vm.verificarEnChaira('1117000000');
+
+      expect(await vm.register('an.perez', 'Clave123!'), isTrue);
+
+      final guardado = perfiles.perfiles['uid-an.perez@udla.edu.co']!;
+      expect(guardado.nombre, 'ANA MARÍA PÉREZ GÓMEZ');
+      expect(guardado.email, 'an.perez@udla.edu.co');
+      expect(guardado.roles, [Rol.estudiante]);
+      expect(vm.perfil, isNotNull);
+    });
+
+    test('un docente solo es estudiante si activa "También curso materias"',
+        () async {
+      final vm = crear(tipoChaira: 'DOCENTE');
+      await vm.verificarEnChaira('1117000000');
+      await vm.register('solo.docente', 'Clave123!');
+      await vm.verificarEnChaira('1117000000');
+      await vm.register('dual', 'Clave123!', tambienEstudiante: true);
+
+      expect(perfiles.perfiles['uid-solo.docente@udla.edu.co']!.roles,
+          [Rol.docente]);
+      expect(perfiles.perfiles['uid-dual@udla.edu.co']!.esDual, isTrue);
+    });
+
+    test('no registra sin verificar el documento', () async {
+      final vm = crear();
+
+      expect(await vm.register('an.perez', 'Clave123!'), isFalse);
+      expect(auth.cuentas, isEmpty);
+    });
+
+    test('solo crea cuentas @udla.edu.co', () async {
+      final vm = crear();
+      await vm.verificarEnChaira('1117000000');
+
+      expect(await vm.register('an.perez@gmail.com', 'Clave123!'), isFalse);
+      expect(auth.cuentas, isEmpty);
+      expect(await vm.register('an.perez@udla.edu.co', 'Clave123!'), isTrue);
+      expect(auth.cuentas.keys, ['an.perez@udla.edu.co']);
+    });
+
+    test('avisa si la cuenta se creó pero el perfil no se guardó', () async {
+      final vm = crear();
+      await vm.verificarEnChaira('1117000000');
+      perfiles.fallo = const PerfilException('permiso denegado');
+
+      expect(await vm.register('an.perez', 'Clave123!'), isFalse);
+      expect(vm.errorMessage, contains('no se pudo guardar tu perfil'));
+    });
+
+    test('el perfil se guarda con los mismos campos que lee el login', () {
+      final perfil = perfilDe('an.perez@udla.edu.co', 'ANA', [Rol.estudiante]);
+      final releido = UsuarioPerfil.fromMap(perfil.uid, perfil.toMap());
+
+      expect(releido.nombre, 'ANA');
+      expect(releido.cedula, '1117000001');
+      expect(releido.roles, [Rol.estudiante]);
+    });
+  });
 
   group('inicio de sesión', () {
     test('carga el perfil y los roles guardados', () async {

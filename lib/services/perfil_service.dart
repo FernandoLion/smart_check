@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/usuario_perfil_model.dart';
 
-/// Error al leer un perfil, con un mensaje listo para mostrar.
+/// Error al leer o guardar un perfil, con un mensaje listo para mostrar.
 class PerfilException implements Exception {
   final String mensaje;
   const PerfilException(this.mensaje);
@@ -13,7 +13,7 @@ class PerfilException implements Exception {
   String toString() => mensaje;
 }
 
-/// Lee los perfiles de usuario en Firestore (`usuarios/{uid}`).
+/// Lee y guarda los perfiles de usuario en Firestore (`usuarios/{uid}`).
 class PerfilService {
   /// Si Firestore no responde en este tiempo, se da por fallido.
   static const _timeout = Duration(seconds: 15);
@@ -30,6 +30,15 @@ class PerfilService {
       return data == null ? null : UsuarioPerfil.fromMap(doc.id, data);
     } catch (e) {
       throw PerfilException(_mensaje(e, 'leer tu perfil'));
+    }
+  }
+
+  /// Guarda el perfil en `usuarios/{uid}` (al registrarse).
+  Future<void> guardar(UsuarioPerfil perfil) async {
+    try {
+      await _usuarios.doc(perfil.uid).set(perfil.toMap()).timeout(_timeout);
+    } catch (e) {
+      throw PerfilException(_mensaje(e, 'guardar tu perfil'));
     }
   }
 

@@ -48,6 +48,34 @@ class AuthService {
     }
   }
 
+  /// Crea la cuenta en Firebase Auth. Si sale bien, la sesión queda iniciada
+  /// con la cuenta nueva. Devuelve null si salió bien, o el mensaje de error.
+  Future<String?> registerWithEmailPassword(
+    String email,
+    String password,
+  ) async {
+    try {
+      await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'weak-password') {
+        return 'La contraseña es demasiado débil.';
+      } else if (e.code == 'email-already-in-use') {
+        return 'Ya existe una cuenta con el usuario ${email.split('@').first}.';
+      } else if (e.code == 'invalid-email') {
+        return 'El usuario no es válido.';
+      } else if (e.code == 'network-request-failed') {
+        return 'Sin conexión. Revisa tu internet e inténtalo de nuevo.';
+      }
+      return e.message ?? 'Ocurrió un error al registrarse.';
+    } catch (e) {
+      return 'Error desconocido: ${e.toString()}';
+    }
+  }
+
   Future<void> signOut() async {
     await _auth.signOut();
   }

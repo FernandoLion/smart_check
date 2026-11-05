@@ -1,8 +1,15 @@
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:smart_check/models/usuario_perfil_model.dart';
 import 'package:smart_check/services/auth_service.dart';
+import 'package:smart_check/services/chaira_service.dart';
 import 'package:smart_check/services/perfil_service.dart';
+
+import 'chaira_fixtures.dart';
 
 /// Servicios falsos en memoria: las pruebas no tocan el Firebase real.
 
@@ -33,6 +40,17 @@ class FakeAuthService extends Fake implements AuthService {
   }
 
   @override
+  Future<String?> registerWithEmailPassword(
+    String email,
+    String password,
+  ) async {
+    if (cuentas.containsKey(email)) return 'Ya existe una cuenta con ese correo.';
+    cuentas[email] = password;
+    _actual = FakeUser('uid-$email', email);
+    return null;
+  }
+
+  @override
   Future<void> signOut() async => _actual = null;
 }
 
@@ -46,7 +64,35 @@ class FakePerfilService extends Fake implements PerfilService {
     if (fallo != null) throw fallo!;
     return perfiles[uid];
   }
+
+  @override
+  Future<void> guardar(UsuarioPerfil perfil) async {
+    if (fallo != null) throw fallo!;
+    perfiles[perfil.uid] = perfil;
+  }
 }
 
+/// Chairá simulado: siempre encuentra a "ANA MARÍA PÉREZ GÓMEZ" con [tipo].
+/// La consulta del usuario (GET a logon.aspx) falla, así que el usuario se
+/// deduce del nombre: "an.perez".
+ChairaService chairaFalso({String tipo = 'ESTUDIANTE'}) => ChairaService(
+  client: MockClient((request) async {
+    if (request.method == 'GET') return http.Response('', 404);
+    return http.Response.bytes(
+      utf8.encode(respuestaExito(tipo: tipo)),
+      200,
+      headers: {'content-type': 'text/html; charset=utf-8'},
+    );
+  }),
+);
+
 UsuarioPerfil perfilDe(String email, String nombre, List<String> roles) =>
-    UsuarioPerfil(uid: 'uid-$email', email: email, nombre: nombre, roles: roles);
+    UsuarioPerfil(
+      uid: 'uid-$email',
+      email: email,
+      nombre: nombre,
+      cedula: '1117000001',
+      programa: 'INGENIERÍA DE SISTEMAS',
+      tipoUsuario: roles.contains(Rol.docente) ? 'DOCENTE' : 'ESTUDIANTE',
+      roles: roles,
+    );

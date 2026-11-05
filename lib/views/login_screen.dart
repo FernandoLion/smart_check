@@ -5,6 +5,7 @@ import '../models/usuario_perfil_model.dart';
 import '../utils/app_theme.dart';
 import '../utils/usuario_input_formatter.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import '../widgets/selector_ingreso.dart';
 import 'home_screen.dart';
 
 /// Vista (la V de MVVM) del inicio de sesión.
@@ -99,7 +100,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const SizedBox(height: 24),
                   _buildHeaderBranding(),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+                  // Pestañas "Iniciar Sesión" | "Registrarse".
+                  const SelectorIngreso(enRegistro: false),
+                  const SizedBox(height: 24),
                   // El formulario recibe del ViewModel si está cargando.
                   _buildLoginForm(authViewModel.isLoading),
                   const SizedBox(height: 24),

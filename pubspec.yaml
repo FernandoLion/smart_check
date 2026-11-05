@@ -22,6 +22,9 @@ dependencies:
   # cambia (patrón MVVM).
   provider: ^6.1.5+1
 
+  # Registro: consulta la cédula en Chairá (Universidad de la Amazonia).
+  http: ^1.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -32,3 +35,8 @@ dev_dependencies:
 flutter:
   # Para poder usar los íconos de Material (Icons.lock_outline, etc.).
   uses-material-design: true
+
+  assets:
+    # Raíz de Sectigo (R46) con la que se firma el certificado de Chairá.
+    # Varios Android todavía en uso no la traen, así que la app la lleva.
+    - assets/certs/sectigo_r46.pem
