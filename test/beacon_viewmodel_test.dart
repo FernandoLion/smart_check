@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
-import 'package:smart_check/services/biometria_service.dart';
 import 'package:smart_check/services/curso_service.dart';
 import 'package:smart_check/services/ubicacion_service.dart';
 import 'package:smart_check/viewmodels/beacon_viewmodel.dart';
@@ -13,7 +12,6 @@ void main() {
   late FakeCursoService cursos;
   late FakeBleService ble;
   late FakeUbicacionService ubicacion;
-  late FakeBiometriaService biometria;
   late BeaconViewModel vm;
   // El celular que la cuenta tiene atado, y desde cuándo.
   final atado = DateTime(2026, 3, 1, 8);
@@ -45,12 +43,10 @@ void main() {
     enAula = cursoEnClase(geocerca: aula);
     ble = FakeBleService();
     ubicacion = FakeUbicacionService();
-    biometria = FakeBiometriaService();
     vm = BeaconViewModel(
       cursos: cursos,
       ble: ble,
       ubicacion: ubicacion,
-      biometria: biometria,
       dispositivos: FakeDispositivoService(),
     );
   });
@@ -158,42 +154,55 @@ void main() {
     expect(vm.sesion!.id, 'llamado-2');
   });
 
-  test('si el celular no reconoce a su dueño, no anuncia', () async {
+  test('con el GPS impreciso no anuncia, aunque diga que está en el aula',
+      () async {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
-    biometria.resultado = ResultadoBiometria.rechazada;
+    // Justo en el centro, pero con ±2 km de error: es lo que da la ubicación
+    // aproximada, y así parecería que todo el barrio está en clase.
+    ubicacion.posicion =
+        posicionEn(aula.latitud, aula.longitud, precision: 2000);
 
     expect(await marcar([enAula]), isFalse);
 
-    expect(vm.error, contains('confirmar que eres tú'));
+    expect(vm.error, contains('±2000 m'));
+    expect(ble.anunciando, isNull);
+    expect(cursos.presenciasPorSesion, isEmpty);
+  });
+
+  test('con una ubicación simulada no anuncia', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+    ubicacion.posicion =
+        posicionEn(aula.latitud, aula.longitud, simulada: true);
+
+    expect(await marcar([enAula]), isFalse);
+
+    expect(vm.error, contains('simulada'));
     expect(ble.anunciando, isNull);
   });
 
-  test('un celular sin huella ni PIN sí marca, pero queda dicho', () async {
+  test('la firma lleva a cuántos metros del aula estaba', () async {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
-    biometria.resultado = ResultadoBiometria.noDisponible;
+    // ~22 m al norte del centro, dentro del radio de 50 m.
+    ubicacion.posicion =
+        posicionEn(aula.latitud + 0.0002, aula.longitud, precision: 8);
 
     expect(await marcar([enAula]), isTrue);
 
-    expect(ble.anunciando, '1117000000');
-    expect(vm.biometriaUsada, ResultadoBiometria.noDisponible);
-    expect(vm.biometriaUsada!.comoDato, 'no_disponible');
+    final firma = cursos.presenciasPorSesion['llamado-1']!.single;
+    expect(firma.distanciaAula, 22);
+    expect(firma.precisionGps, 8);
+    expect(firma.toMap()['distancia_aula'], 22);
+    expect(vm.aula!.dentro, isTrue);
   });
 
-  test('no se le pide la huella a quien está lejos del aula', () async {
+  test('sin geocerca la firma no inventa la distancia', () async {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
-    ubicacion.posicion = posicionEn(aula.latitud + 0.01, aula.longitud);
 
-    await marcar([enAula]);
+    expect(await marcar([cursoEnClase()]), isTrue);
 
-    // Sería cruel pedirle el dedo para después decirle que está a un
-    // kilómetro: la ubicación va antes porque es inmediata.
-    expect(biometria.veces, 0);
-  });
-
-  test('tampoco si no hay ningún llamado abierto', () async {
-    await marcar([enAula]);
-
-    expect(biometria.veces, 0);
+    final mapa = cursos.presenciasPorSesion['llamado-1']!.single.toMap();
+    expect(mapa.containsKey('distancia_aula'), isFalse);
+    expect(mapa.containsKey('precision_gps'), isFalse);
   });
 
   test('sin celular vinculado no anuncia', () async {
@@ -203,7 +212,6 @@ void main() {
 
     expect(vm.error, contains('vincúlalo'));
     expect(ble.anunciando, isNull);
-    expect(biometria.veces, 0);
   });
 
   test('desde el celular de otro no anuncia', () async {
@@ -226,7 +234,7 @@ void main() {
     expect(firma.claveInscrito, '1117000000');
     expect(firma.dispositivo, celularDePrueba);
     expect(firma.vinculadoEn, atado);
-    expect(firma.biometria, 'biometrica');
+    expect(firma.toMap().containsKey('biometria'), isFalse);
     // El orden importa: cuando el radar oiga la baliza, la firma ya está, y
     // sin ella el servidor le rechazaría la asistencia al docente.
     expect(ble.anunciando, '1117000000');
@@ -276,17 +284,5 @@ void main() {
 
     expect(ble.anunciando, isNull);
     expect(vm.error, contains('firmar tu asistencia'));
-  });
-
-  test('sin huella ni PIN la firma lo deja dicho', () async {
-    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
-    biometria.resultado = ResultadoBiometria.noDisponible;
-
-    expect(await marcar([enAula]), isTrue);
-
-    expect(
-      cursos.presenciasPorSesion['llamado-1']!.single.biometria,
-      'no_disponible',
-    );
   });
 }

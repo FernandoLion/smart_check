@@ -820,8 +820,15 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
     final celular = _vm.celularRecienVinculado(fila.inscrito.clave)
         ? ' • celular vinculado hoy'
         : '';
+    // Lo que midió su GPS al firmar: sirve para ver quién marcó en el borde
+    // de la geocerca.
+    final ubicacion = _vm.ubicacionAlFirmar(fila.inscrito.clave);
+    final lugar = ubicacion == null
+        ? ''
+        : ' • a ${ubicacion.distancia} m del aula '
+            '(GPS ±${ubicacion.precision} m)';
     return '${tarde ? 'Llegó tarde' : 'Detectado por BLE'}'
-        '$senal$rostro$celular';
+        '$senal$lugar$rostro$celular';
   }
 
   /// De -40 dBm (pegado al docente) a -100 dBm (al límite del aula).
@@ -1235,7 +1242,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                                         : AppTheme.textTertiary,
                                     fontSize: 12,
                                   ),
-                                  maxLines: 1,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),

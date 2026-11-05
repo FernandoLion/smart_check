@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../models/curso_model.dart';
 import '../models/presencia_model.dart';
 import '../models/sesion_model.dart';
-import '../services/biometria_service.dart';
 import '../services/ble_service.dart';
 import '../services/curso_service.dart';
 import '../services/dispositivo_service.dart';
@@ -18,19 +17,16 @@ class BeaconViewModel extends ChangeNotifier {
   final CursoService _cursos;
   final BleService _ble;
   final UbicacionService _ubicacion;
-  final BiometriaService _biometria;
   final DispositivoService _dispositivos;
 
   BeaconViewModel({
     CursoService? cursos,
     BleService? ble,
     UbicacionService? ubicacion,
-    BiometriaService? biometria,
     DispositivoService? dispositivos,
   })  : _cursos = cursos ?? CursoService(),
         _ble = ble ?? BleService(),
         _ubicacion = ubicacion ?? UbicacionService(),
-        _biometria = biometria ?? BiometriaService(),
         _dispositivos = dispositivos ?? DispositivoService();
 
   Curso? _curso;
@@ -43,11 +39,10 @@ class BeaconViewModel extends ChangeNotifier {
   /// Deja de anunciar en cuanto se acaba la ventana del llamado.
   Timer? _ventana;
 
-  /// Con qué comprobó el teléfono a su dueño en este marcaje. Va a la
-  /// presencia firmada, para que quede dicho cuando no había nada que
-  /// comprobar.
-  ResultadoBiometria? _biometriaUsada;
-  ResultadoBiometria? get biometriaUsada => _biometriaUsada;
+  /// Dónde quedó el celular respecto al aula en este marcaje, o null si el
+  /// curso no tiene geocerca. Va a la presencia firmada.
+  ComprobacionAula? _aula;
+  ComprobacionAula? get aula => _aula;
 
   Curso? get curso => _curso;
   Sesion? get sesion => _sesion;
@@ -91,12 +86,12 @@ class BeaconViewModel extends ChangeNotifier {
       }
       // La ubicación se comprueba también en este celular, no solo en el del
       // docente: emitir la baliza desde la cafetería no es asistir a clase.
-      final metros = await metrosFueraDelAula(_ubicacion, abierto.$1.geocerca);
-      if (metros != null) {
-        _error = 'Estás a $metros m del aula. Acércate para registrar tu '
-            'asistencia.';
+      final aula = await comprobarAula(_ubicacion, abierto.$1.geocerca);
+      if (aula != null && !aula.dentro) {
+        _error = '${aula.estasA}. Acércate para registrar tu asistencia.';
         return false;
       }
+      _aula = aula;
       // El celular tiene que ser el que la cuenta tiene atado. El servidor lo
       // vuelve a comprobar al firmar; esto solo evita el viaje y da un motivo
       // claro en vez de un "permiso denegado".
@@ -112,18 +107,6 @@ class BeaconViewModel extends ChangeNotifier {
         return false;
       }
 
-      // Y el teléfono pregunta por su dueño antes de emitir nada. Lo que
-      // prueba es que alguien registrado en este celular lo autorizó; quién
-      // es ese celular lo comprueba el servidor al firmar la presencia.
-      final biometria = await _biometria.comprobar();
-      if (!biometria.deja) {
-        _error = 'No se pudo confirmar que eres tú. Vuelve a intentarlo '
-            'mientras quede llamado, o pídele al docente que te marque a '
-            'mano.';
-        return false;
-      }
-      _biometriaUsada = biometria;
-
       // Firmar va antes de emitir, y no después, por dos razones: si la firma
       // falla no sirve de nada anunciarse, porque el servidor le rechazará la
       // asistencia al docente; y cuando el radar oiga la baliza, la firma ya
@@ -135,7 +118,8 @@ class BeaconViewModel extends ChangeNotifier {
           claveInscrito: clave,
           dispositivo: esteCelular!,
           vinculadoEn: vinculadoEn,
-          biometria: biometria.comoDato,
+          distanciaAula: aula?.distancia,
+          precisionGps: aula?.precision,
           rostro: rostro,
           similitudRostro: similitudRostro,
         ),

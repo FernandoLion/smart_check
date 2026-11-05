@@ -247,7 +247,6 @@ void main() {
           claveInscrito: '1117000000',
           dispositivo: 'android-1',
           vinculadoEn: DateTime(2026, 10, 1),
-          biometria: 'biometrica',
           rostro: 'enrolado',
         ),
       );
@@ -258,7 +257,6 @@ void main() {
           claveInscrito: 'ca.munoz@udla.edu.co',
           dispositivo: 'android-2',
           vinculadoEn: DateTime(2026, 10, 1),
-          biometria: 'biometrica',
           rostro: 'coincide',
         ),
       );
@@ -277,7 +275,6 @@ void main() {
             claveInscrito: clave,
             dispositivo: 'android-$clave',
             vinculadoEn: vinculado,
-            biometria: 'biometrica',
             rostro: 'coincide',
           );
       // Uno ató el celular hace una hora; el otro, hace semanas.

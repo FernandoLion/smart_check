@@ -29,16 +29,21 @@ class Presencia {
   /// no se puede falsear.
   final DateTime vinculadoEn;
 
-  /// Con qué comprobó el teléfono a su dueño: `biometrica`, `credencial` o
-  /// `no_disponible`.
-  final String biometria;
+  /// A cuántos metros del centro del aula estaba al firmar, y con qué margen
+  /// de error del GPS. Null si el curso no tiene geocerca.
+  ///
+  /// Como el rostro, lo dice la app del estudiante: el servidor no lo puede
+  /// comprobar, pero le deja ver al docente si alguien firmó en el límite.
+  /// No se guardan sus coordenadas, solo la distancia al aula.
+  final int? distanciaAula;
+  final int? precisionGps;
 
   /// Cómo se comprobó su cara antes de firmar: `coincide` (con la que tenía
   /// guardada el celular) o `enrolado` (era la primera vez y se comparó con
   /// la foto de Chairá). Null si no pasó por la verificación facial.
   ///
-  /// Como la huella, lo dice la app del estudiante: el servidor no lo puede
-  /// comprobar, pero le sirve al docente para mirar dos veces.
+  /// Lo dice la app del estudiante: el servidor no lo puede comprobar, pero
+  /// le sirve al docente para mirar dos veces.
   final String? rostro;
 
   /// La similitud de esa comparación (de -1 a 1), para calibrar umbrales.
@@ -48,7 +53,8 @@ class Presencia {
     required this.claveInscrito,
     required this.dispositivo,
     required this.vinculadoEn,
-    required this.biometria,
+    this.distanciaAula,
+    this.precisionGps,
     this.creadoEn,
     this.rostro,
     this.similitudRostro,
@@ -61,7 +67,8 @@ class Presencia {
         'creado_en': FieldValue.serverTimestamp(),
         'dispositivo': dispositivo,
         'vinculado_en': Timestamp.fromDate(vinculadoEn),
-        'biometria': biometria,
+        if (distanciaAula != null) 'distancia_aula': distanciaAula,
+        if (precisionGps != null) 'precision_gps': precisionGps,
         if (rostro != null) 'rostro': rostro,
         if (similitudRostro != null)
           'similitud_rostro':
@@ -75,7 +82,8 @@ class Presencia {
         dispositivo: map['dispositivo'] as String? ?? '',
         vinculadoEn:
             (map['vinculado_en'] as Timestamp?)?.toDate() ?? DateTime(0),
-        biometria: map['biometria'] as String? ?? 'no_disponible',
+        distanciaAula: (map['distancia_aula'] as num?)?.round(),
+        precisionGps: (map['precision_gps'] as num?)?.round(),
         rostro: map['rostro'] as String?,
         similitudRostro: (map['similitud_rostro'] as num?)?.toDouble(),
       );
@@ -88,7 +96,4 @@ class Presencia {
   /// querría mirar dos veces.
   bool celularReciente(DateTime ahora) =>
       ahora.difference(vinculadoEn) < const Duration(hours: 24);
-
-  /// Si el teléfono no tenía con qué comprobar a su dueño.
-  bool get sinBiometria => biometria == 'no_disponible';
 }

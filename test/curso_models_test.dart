@@ -221,12 +221,15 @@ void main() {
   group('Presencia', () {
     final atado = DateTime(2026, 3, 1, 8);
 
-    Presencia leer({DateTime? vinculadoEn, String biometria = 'biometrica'}) =>
+    Presencia leer({DateTime? vinculadoEn}) =>
         Presencia.fromMap('1117000000', {
           'creado_en': Timestamp.fromDate(DateTime(2026, 3, 1, 9)),
           'dispositivo': 'android-1234567890',
           'vinculado_en': Timestamp.fromDate(vinculadoEn ?? atado),
-          'biometria': biometria,
+          // Las firmas de antes traían el resultado de la huella: se ignora.
+          'biometria': 'biometrica',
+          'distancia_aula': 12,
+          'precision_gps': 6.4,
         });
 
     test('se lee lo que el estudiante firmó', () {
@@ -236,7 +239,8 @@ void main() {
       expect(firma.dispositivo, 'android-1234567890');
       expect(firma.vinculadoEn, atado);
       expect(firma.creadoEn, DateTime(2026, 3, 1, 9));
-      expect(firma.sinBiometria, isFalse);
+      expect(firma.distanciaAula, 12);
+      expect(firma.precisionGps, 6);
     });
 
     test('avisa del celular recién vinculado', () {
@@ -250,7 +254,7 @@ void main() {
       final firma = Presencia.fromMap('1117000000', const {});
 
       expect(firma.dispositivo, '');
-      expect(firma.sinBiometria, isTrue);
+      expect(firma.distanciaAula, isNull);
       expect(firma.creadoEn, isNull);
     });
   });

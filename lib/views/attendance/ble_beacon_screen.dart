@@ -63,6 +63,13 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
       _vm.curso?.nombre ?? 'Buscando el llamado abierto...';
   String get _classroom => _vm.curso?.aula ?? '—';
 
+  /// El aula y, si el curso tiene geocerca, a cuánto de ella midió el GPS.
+  String get _aulaYDistancia {
+    final aula = _vm.aula;
+    if (aula == null) return _classroom;
+    return '$_classroom · a ${aula.distancia} m (GPS ±${aula.precision} m)';
+  }
+
   /// Lo que queda de ventana para marcar.
   int get _totalSeconds => _vm.restante.inSeconds;
 
@@ -897,7 +904,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          _classroom,
+                          _aulaYDistancia,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: _tertiaryGreen,

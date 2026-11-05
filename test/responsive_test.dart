@@ -214,7 +214,6 @@ final Map<String, Future<Widget> Function(_Mundo)> _vistas = {
           cursos: m.cursos,
           ble: FakeBleService(),
           ubicacion: FakeUbicacionService(),
-          biometria: FakeBiometriaService(),
           dispositivos: FakeDispositivoService(),
         ),
       ),

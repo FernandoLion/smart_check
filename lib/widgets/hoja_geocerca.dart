@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/curso_model.dart';
+import '../services/ubicacion_service.dart';
 import '../utils/app_theme.dart';
 
 /// Hoja para marcar dónde queda el aula y con cuánto margen.
@@ -21,10 +22,46 @@ class HojaGeocerca extends StatefulWidget {
 }
 
 class _HojaGeocercaState extends State<HojaGeocerca> {
-  static const _radios = [15.0, 25.0, 50.0, 100.0];
+  static const _radios = [10.0, 15.0, 25.0, 50.0, 100.0];
 
   late double _radio = widget.geocerca?.radioMetros ?? 25;
   bool _marcando = false;
+  bool _probando = false;
+
+  /// Lo que salió de "Comprobar dónde estoy", para probar la geocerca sin
+  /// abrir un llamado.
+  String? _prueba;
+
+  Future<void> _probar() async {
+    final geocerca = widget.geocerca;
+    if (geocerca == null) return;
+    setState(() {
+      _probando = true;
+      _prueba = null;
+    });
+    String texto;
+    try {
+      // Con el radio elegido en la hoja, aunque aún no se haya guardado: así
+      // se ve cuál sirve antes de cambiarlo.
+      final aula = (await comprobarAula(
+        UbicacionService(),
+        Geocerca(
+          latitud: geocerca.latitud,
+          longitud: geocerca.longitud,
+          radioMetros: _radio,
+        ),
+      ))!;
+      texto = '${aula.dentro ? 'Dentro' : 'Fuera'}: a ${aula.distancia} m '
+          'del centro (GPS ±${aula.precision} m), radio de ${aula.radio} m.';
+    } on UbicacionException catch (e) {
+      texto = e.mensaje;
+    }
+    if (!mounted) return;
+    setState(() {
+      _probando = false;
+      _prueba = texto;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,8 +98,10 @@ class _HojaGeocercaState extends State<HojaGeocerca> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Párate en el aula y marca el punto. El radar solo abrirá la '
-            'clase si estás dentro de este radio.',
+            'Párate en el centro del aula y marca el punto. El radar solo '
+            'abre y el estudiante solo marca dentro de este radio. El GPS se '
+            'equivoca de 5 a 20 m bajo techo: con menos de 15 m puede dejar '
+            'por fuera a quien sí está.',
             style: TextStyle(
               color: AppTheme.textSecondary,
               fontSize: 13,
@@ -112,8 +151,25 @@ class _HojaGeocercaState extends State<HojaGeocerca> {
                     ),
                   ),
                 ),
+                TextButton(
+                  onPressed: _probando ? null : _probar,
+                  child: Text(
+                    _probando ? 'Midiendo...' : 'Comprobar dónde estoy',
+                  ),
+                ),
               ],
             ),
+            if (_prueba != null)
+              Text(
+                _prueba!,
+                style: TextStyle(
+                  color: _prueba!.startsWith('Dentro')
+                      ? const Color(0xFF47E266)
+                      : const Color(0xFFFF9F0A),
+                  fontSize: 13,
+                  height: 1.35,
+                ),
+              ),
           ],
           const SizedBox(height: 20),
           SizedBox(

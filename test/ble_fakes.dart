@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:geolocator/geolocator.dart';
 import 'package:smart_check/models/curso_model.dart';
-import 'package:smart_check/services/biometria_service.dart';
 import 'package:smart_check/services/ble_service.dart';
 import 'package:smart_check/services/dispositivo_service.dart';
 import 'package:smart_check/services/ubicacion_service.dart';
@@ -13,11 +12,19 @@ import 'package:smart_check/services/ubicacion_service.dart';
 /// Aula de prueba en Florencia, Caquetá.
 const aula = Geocerca(latitud: 1.62, longitud: -75.605, radioMetros: 50);
 
-Position posicionEn(double lat, double lng) => Position(
+Position posicionEn(
+  double lat,
+  double lng, {
+  double precision = 5,
+  DateTime? hora,
+  bool simulada = false,
+}) =>
+    Position(
       latitude: lat,
       longitude: lng,
-      timestamp: DateTime(2026),
-      accuracy: 5,
+      timestamp: hora ?? DateTime(2026),
+      accuracy: precision,
+      isMocked: simulada,
       altitude: 0,
       altitudeAccuracy: 0,
       heading: 0,
@@ -30,10 +37,22 @@ class FakeUbicacionService implements UbicacionService {
   Position posicion = posicionEn(aula.latitud, aula.longitud);
   UbicacionException? fallo;
 
+  /// La precisión que pidió quien preguntó la última vez.
+  double? precisionPedida;
+
+  /// Como el servicio de verdad: la lectura pasa por [elegirLectura], así
+  /// que una posición imprecisa o simulada se rechaza igual.
   @override
-  Future<Position> posicionActual() async {
+  Future<Position> posicionActual({
+    double precisionMaxima = UbicacionService.precisionMaxima,
+  }) async {
+    precisionPedida = precisionMaxima;
     if (fallo != null) throw fallo!;
-    return posicion;
+    return elegirLectura(
+      [posicion],
+      ahora: posicion.timestamp,
+      precisionMaxima: precisionMaxima,
+    );
   }
 }
 
@@ -102,20 +121,6 @@ Curso cursoEnClase({
 
 String hhmm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-
-/// Un teléfono que contesta siempre lo mismo cuando se le pregunta por su
-/// dueño. Por defecto, que sí.
-class FakeBiometriaService implements BiometriaService {
-  FakeBiometriaService([this.resultado = ResultadoBiometria.biometrica]);
-  ResultadoBiometria resultado;
-  int veces = 0;
-
-  @override
-  Future<ResultadoBiometria> comprobar() async {
-    veces++;
-    return resultado;
-  }
-}
 
 /// Un celular con un identificador fijo, o ninguno si la plataforma no lo da.
 class FakeDispositivoService implements DispositivoService {

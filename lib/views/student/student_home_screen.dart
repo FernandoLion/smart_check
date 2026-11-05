@@ -767,7 +767,7 @@ class StudentHomeScreen extends StatelessWidget {
     final rostro = await verificarRostro(context, curso: vigente.$1);
     if (rostro == null || !context.mounted) return;
 
-    // Las otras puertas —el celular vinculado, la huella y la firma de la
+    // Las otras puertas —el celular vinculado, la geocerca y la firma de la
     // presencia— las lleva la pantalla de la baliza, que es donde se marca.
     await Navigator.push(
       context,
@@ -822,14 +822,9 @@ class StudentHomeScreen extends StatelessWidget {
   Future<bool> _estaEnElAula(BuildContext context, Curso curso) async {
     String mensaje;
     try {
-      final metros = await metrosFueraDelAula(
-        UbicacionService(),
-        curso.geocerca,
-      );
-      if (metros == null) return true;
-      mensaje =
-          'Estás a $metros m del aula. Acércate para registrar tu '
-          'asistencia.';
+      final aula = await comprobarAula(UbicacionService(), curso.geocerca);
+      if (aula == null || aula.dentro) return true;
+      mensaje = '${aula.estasA}. Acércate para registrar tu asistencia.';
     } on UbicacionException catch (e) {
       mensaje = e.mensaje;
     }

@@ -595,6 +595,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 longitud: posicion.longitude,
                 radioMetros: radio,
               ),
+              precision: posicion.accuracy.round(),
             );
           } on UbicacionException catch (e) {
             _avisarError(e.mensaje);
@@ -605,7 +606,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  Future<void> _guardarGeocerca(Geocerca? geocerca) async {
+  /// [precision] es el margen del GPS con el que se marcó el centro.
+  Future<void> _guardarGeocerca(Geocerca? geocerca, {int? precision}) async {
     setState(() => _guardandoGeocerca = true);
     try {
       await CursoService().cambiarGeocerca(_curso.id, geocerca);
@@ -621,8 +623,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           content: Text(
             geocerca == null
                 ? 'Geocerca quitada: el radar no comprobará el aula.'
-                : 'Geocerca guardada: ±${geocerca.radioMetros.round()} m '
-                    'de donde estás.',
+                : 'Geocerca guardada: ${geocerca.radioMetros.round()} m '
+                    'alrededor de donde estás'
+                    '${precision == null ? '' : ' (GPS ±$precision m)'}.',
           ),
           backgroundColor: AppTheme.success,
         ),

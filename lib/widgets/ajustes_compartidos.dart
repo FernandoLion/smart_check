@@ -18,7 +18,17 @@ import '../viewmodels/auth_viewmodel.dart';
 // --- Permisos --------------------------------------------------------------
 
 /// Cómo está un requisito del celular para marcar o pasar lista.
-enum EstadoPermiso { listo, falta, apagado, noDisponible, revisando }
+///
+/// [aproximada] es la ubicación con permiso pero sin "ubicación precisa":
+/// sirve para el clima, no para saber si alguien está en un aula.
+enum EstadoPermiso {
+  listo,
+  falta,
+  apagado,
+  aproximada,
+  noDisponible,
+  revisando,
+}
 
 /// Los permisos y radios que la asistencia necesita, leídos del celular cada
 /// vez que se muestra la pantalla o se vuelve a ella desde los ajustes del
@@ -118,9 +128,13 @@ class _PermisosDelCelularState extends State<PermisosDelCelular>
           permiso == LocationPermission.unableToDetermine) {
         return EstadoPermiso.falta;
       }
-      return await Geolocator.isLocationServiceEnabled()
-          ? EstadoPermiso.listo
-          : EstadoPermiso.apagado;
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        return EstadoPermiso.apagado;
+      }
+      return await Geolocator.getLocationAccuracy() ==
+              LocationAccuracyStatus.reduced
+          ? EstadoPermiso.aproximada
+          : EstadoPermiso.listo;
     } catch (_) {
       return EstadoPermiso.noDisponible;
     }
@@ -149,6 +163,14 @@ class _PermisosDelCelularState extends State<PermisosDelCelular>
   Future<void> _arreglarUbicacion() async {
     if (_ubicacion == EstadoPermiso.apagado) {
       await Geolocator.openLocationSettings();
+    } else if (_ubicacion == EstadoPermiso.aproximada) {
+      // Android muestra su diálogo para pasar a la precisa; si ya lo
+      // rechazó antes, solo queda cambiarlo en los ajustes.
+      await Geolocator.requestPermission();
+      if (await Geolocator.getLocationAccuracy() ==
+          LocationAccuracyStatus.reduced) {
+        await Geolocator.openAppSettings();
+      }
     } else {
       final permiso = await Geolocator.requestPermission();
       if (permiso == LocationPermission.deniedForever ||
@@ -187,7 +209,7 @@ class _PermisosDelCelularState extends State<PermisosDelCelular>
           const _Separador(),
           _fila(
             icono: Icons.near_me_outlined,
-            titulo: 'Ubicación',
+            titulo: 'Ubicación precisa',
             detalle: 'Comprueba que estés dentro del aula',
             estado: _ubicacion,
             arreglar: _arreglarUbicacion,
@@ -208,11 +230,13 @@ class _PermisosDelCelularState extends State<PermisosDelCelular>
       EstadoPermiso.listo => ('Listo', AppTheme.success),
       EstadoPermiso.falta => ('Falta', const Color(0xFFFF9F0A)),
       EstadoPermiso.apagado => ('Apagado', const Color(0xFFFF9F0A)),
+      EstadoPermiso.aproximada => ('Aproximada', const Color(0xFFFF9F0A)),
       EstadoPermiso.noDisponible => ('No disponible', AppTheme.textTertiary),
       EstadoPermiso.revisando => ('Revisando...', AppTheme.textTertiary),
     };
-    final puedeArreglar =
-        estado == EstadoPermiso.falta || estado == EstadoPermiso.apagado;
+    final puedeArreglar = estado == EstadoPermiso.falta ||
+        estado == EstadoPermiso.apagado ||
+        estado == EstadoPermiso.aproximada;
     final etiqueta = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -378,8 +402,9 @@ Future<void> mostrarAyuda(BuildContext context, {required bool docente}) {
           ),
           (
             'Los estudiantes marcan',
-            'Cada uno confirma su rostro y su huella o PIN, y su celular se '
-                'anuncia por Bluetooth. El radar lo marca solo.',
+            'Cada uno confirma su rostro, la app comprueba que esté dentro '
+                'de la geocerca y su celular se anuncia por Bluetooth. El '
+                'radar lo marca solo.',
           ),
           (
             'Cierra y corrige',
@@ -390,8 +415,9 @@ Future<void> mostrarAyuda(BuildContext context, {required bool docente}) {
       : const [
           (
             'Vincula tu celular',
-            'En Carné → "Vincular este celular". Tu asistencia solo se firma '
-                'desde el celular vinculado.',
+            'Queda vinculado al crear la cuenta. Si entras desde otro '
+                'celular, te pide tu rostro para pasarte a ese. Tu asistencia '
+                'solo se firma desde el celular vinculado.',
           ),
           (
             'Registra tu rostro',
@@ -401,8 +427,8 @@ Future<void> mostrarAyuda(BuildContext context, {required bool docente}) {
           (
             'Marca en clase',
             'Cuando el docente abra el radar, toca "Registrar asistencia": '
-                'confirmas tu rostro y tu huella o PIN, y tu celular se '
-                'anuncia por Bluetooth.',
+                'confirmas tu rostro, la app comprueba que estés en el aula y '
+                'tu celular se anuncia por Bluetooth.',
           ),
           (
             'Espera a aparecer',
@@ -418,7 +444,10 @@ Future<void> mostrarAyuda(BuildContext context, {required bool docente}) {
   final problemas = docente
       ? const [
           '"Fuera del horario": el radar solo abre en el bloque del curso.',
-          '"Estás a X m del aula": acércate o vuelve a marcar la geocerca.',
+          '"Estás a X m del aula": acércate o vuelve a marcar la geocerca. '
+              'En la geocerca, "Comprobar dónde estoy" muestra la distancia.',
+          '"Solo tu ubicación aproximada": activa "Usar ubicación precisa" '
+              'para SmartCheck en los ajustes del celular.',
           'Un estudiante no aparece: que tenga el Bluetooth encendido, la app '
               'abierta y el celular vinculado. Si no, márcalo a mano.',
         ]
@@ -427,6 +456,8 @@ Future<void> mostrarAyuda(BuildContext context, {required bool docente}) {
               'el docente abra el radar.',
           '"Tu asistencia está atada a otro celular": vincula este desde '
               'Carné, o marca con el otro.',
+          '"Estás a X m del aula" o "ubicación aproximada": acércate al '
+              'aula y activa "Usar ubicación precisa" para SmartCheck.',
           'No apareces en el radar: revisa los permisos en Ajustes y no '
               'cierres la app.',
         ];
@@ -465,15 +496,12 @@ Future<void> mostrarPrivacidad(BuildContext context) {
         'Al marcar, viaja al docente el resultado de la comparación (si '
         'coincidió y qué tanto), nunca la imagen.',
       ),
-      _Subtitulo('Huella o PIN'),
-      _Vineta(
-        'Los comprueba el propio teléfono. SmartCheck solo sabe si se '
-        'confirmó o no.',
-      ),
       _Subtitulo('Ubicación y Bluetooth'),
       _Vineta(
         'La ubicación se consulta al abrir el radar o al marcar, para ver si '
-        'estás en el aula. No se guarda.',
+        'estás en el aula. Tus coordenadas no se guardan: al marcar, el '
+        'docente solo ve a cuántos metros del aula estabas y con qué margen '
+        'de error.',
       ),
       _Vineta(
         'Por Bluetooth tu celular anuncia una huella de 4 bytes calculada a '

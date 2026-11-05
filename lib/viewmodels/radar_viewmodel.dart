@@ -102,6 +102,16 @@ class RadarViewModel extends ChangeNotifier {
   bool celularRecienVinculado(String clave) =>
       _firmas[clave]?.celularReciente(_ahora()) ?? false;
 
+  /// A cuántos metros del aula dijo estar al firmar, con el margen del GPS,
+  /// o null si el curso no tiene geocerca o aún no firma.
+  ({int distancia, int precision})? ubicacionAlFirmar(String clave) {
+    final firma = _firmas[clave];
+    final distancia = firma?.distanciaAula;
+    final precision = firma?.precisionGps;
+    if (distancia == null || precision == null) return null;
+    return (distancia: distancia, precision: precision);
+  }
+
   bool _ocupado = false;
   bool _escaneando = false;
   String? _error;
@@ -236,11 +246,9 @@ class RadarViewModel extends ChangeNotifier {
   }
 
   Future<void> _comprobarGeocerca(Curso curso) async {
-    final metros = await metrosFueraDelAula(_ubicacion, curso.geocerca);
-    if (metros != null) {
-      throw _RadarException(
-        'Estás a $metros m del aula. Acércate para abrir el radar.',
-      );
+    final aula = await comprobarAula(_ubicacion, curso.geocerca);
+    if (aula != null && !aula.dentro) {
+      throw _RadarException('${aula.estasA}. Acércate para abrir el radar.');
     }
   }
 

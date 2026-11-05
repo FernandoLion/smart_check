@@ -755,6 +755,13 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           radioMetros: radio,
         );
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Aula marcada aquí, con GPS ±${posicion.accuracy.round()} m.',
+          ),
+        ),
+      );
     } on UbicacionException catch (e) {
       if (mounted) _mostrarError(e.mensaje);
     } finally {
