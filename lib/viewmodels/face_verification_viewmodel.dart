@@ -151,6 +151,11 @@ class FaceVerificationViewModel extends ChangeNotifier {
   /// La última similitud calculada (para calibrar los umbrales).
   double? get similitudCalculada => _similitud;
 
+  /// Contra qué se calculó: `referencia` (la del celular) o `chaira` (la
+  /// foto del carné, al enrolarse).
+  String? get comparadaContra => _contra;
+  String? _contra;
+
   /// Qué parte del gesto lleva hecha, para la barra de la pantalla.
   double get progreso {
     if (verificado || _paso == PasoVerificacion.comparando) return 1;
@@ -356,6 +361,7 @@ class FaceVerificationViewModel extends ChangeNotifier {
   /// Deja cada comparación en el log de depuración: con varias caras
   /// reales, esas líneas son la tabla para calibrar los umbrales.
   void _anotar(String contra, double umbral) {
+    _contra = contra;
     if (!kDebugMode) return;
     debugPrint(
       '[rostro] contra=$contra similitud=${_similitud!.toStringAsFixed(3)} '

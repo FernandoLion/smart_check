@@ -130,7 +130,31 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     if (!mounted) return;
     setState(() {});
     if (_vm.quiereFoto) _tomarFoto();
+    if (_vm.terminado) _anotarParaCalibrar();
     if (_vm.verificado) _salirVerificado();
+  }
+
+  /// La similitud ya anotada de este intento, para no repetirla.
+  double? _anotada;
+
+  /// En depuración, cada comparación queda también en un archivo del
+  /// celular: el log de MIUI se vacía enseguida, y estos números son los que
+  /// sirven para calibrar los umbrales con caras reales. Solo números: ni
+  /// fotos ni vectores. Se lee con
+  /// `adb shell run-as com.example.smart_check cat cache/calibracion_rostro.txt`.
+  void _anotarParaCalibrar() {
+    final similitud = _vm.similitudCalculada;
+    if (!kDebugMode || similitud == null || similitud == _anotada) return;
+    _anotada = similitud;
+    final resultado = _vm.verificado ? _vm.resultado!.name : 'fallido';
+    File('${Directory.systemTemp.path}/calibracion_rostro.txt')
+        .writeAsString(
+          '${DateTime.now().toIso8601String()} motivo=${_vm.motivo.name} '
+          'contra=${_vm.comparadaContra} resultado=$resultado '
+          'similitud=${similitud.toStringAsFixed(3)}\n',
+          mode: FileMode.append,
+        )
+        .ignore();
   }
 
   /// Al terminar el gesto se toma una foto en ese mismo instante y se
