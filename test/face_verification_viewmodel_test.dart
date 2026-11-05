@@ -378,49 +378,6 @@ void main() {
       }
     });
 
-    test('el docente dueño de la cuenta abre el llamado', () async {
-      final identidad =
-          _IdentidadFalsa(fotos: {'foto': casiDueno}, guardada: dueno);
-      final vm = conIdentidad(identidad, motivo: MotivoVerificacion.llamado);
-
-      await vm.compararFoto('foto');
-
-      expect(vm.verificado, isTrue);
-      expect(vm.resultado, ResultadoIdentidad.coincide);
-    });
-
-    test('otra persona con el celular del docente no abre el llamado',
-        () async {
-      final identidad =
-          _IdentidadFalsa(fotos: {'foto': otro}, guardada: dueno);
-      final vm = conIdentidad(identidad, motivo: MotivoVerificacion.llamado);
-
-      await vm.compararFoto('foto');
-
-      expect(vm.paso, PasoVerificacion.fallido);
-      expect(vm.instruccion, contains('Solo el docente dueño de la cuenta'));
-      // Al docente no se le dice que lo marquen a mano.
-      expect(vm.instruccion, isNot(contains('a mano')));
-      expect(identidad.guardada, dueno);
-    });
-
-    test('el docente sin referencia se enrola contra su foto de Chairá',
-        () async {
-      final bien = _IdentidadFalsa(fotos: {'foto': casiDueno}, chaira: dueno);
-      final mal = _IdentidadFalsa(fotos: {'foto': otro}, chaira: dueno);
-
-      final enrolado = conIdentidad(bien, motivo: MotivoVerificacion.llamado);
-      await enrolado.compararFoto('foto');
-      final rechazado = conIdentidad(mal, motivo: MotivoVerificacion.llamado);
-      await rechazado.compararFoto('foto');
-
-      expect(enrolado.resultado, ResultadoIdentidad.enrolado);
-      expect(bien.guardada, isNotNull);
-      expect(rechazado.paso, PasoVerificacion.fallido);
-      expect(rechazado.instruccion, isNot(contains('a mano')));
-      expect(mal.guardada, isNull);
-    });
-
     test('un compañero no se puede enrolar en lugar del dueño', () async {
       final identidad = _IdentidadFalsa(fotos: {'foto': otro}, chaira: dueno);
       final vm = conIdentidad(identidad);

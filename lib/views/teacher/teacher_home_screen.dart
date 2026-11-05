@@ -1036,8 +1036,15 @@ class _TeacherCourseCard extends StatelessWidget {
                 ),
                 if (course.isSpecialToday)
                   ElevatedButton(
-                    // Antes del radar, el docente confirma su rostro.
-                    onPressed: () => abrirRadar(context, course.curso),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AttendanceRadarScreen(curso: course.curso),
+                        ),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF5E5CE6),
                       foregroundColor: Colors.white,

@@ -963,8 +963,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             children: [
               Expanded(
                 child: ElevatedButton(
-                  // Antes del radar, el docente confirma su rostro.
-                  onPressed: () => abrirRadar(context, _curso),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AttendanceRadarScreen(curso: _curso),
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryIndigo,
                     foregroundColor: Colors.white,

@@ -3,63 +3,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 
 import '../../models/curso_model.dart';
 import '../../models/sesion_model.dart';
 import '../../utils/app_theme.dart';
-import '../../services/identidad_facial_service.dart';
-import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/radar_viewmodel.dart';
-import 'face_verification_screen.dart';
 import 'manual_rollcall_screen.dart';
-
-/// Abre el radar de [curso], pero antes el docente confirma su rostro: el
-/// llamado marca asistencias a su nombre, así que no basta con tener su
-/// celular desbloqueado. La primera vez en este celular su cara se compara
-/// con su foto de Chairá y queda como referencia.
-///
-/// Si no hay referencia ni foto en Chairá con la que comparar, el radar se
-/// abre igual y se le avisa: dejar al docente sin poder llamar lista sería
-/// peor que no verificarlo.
-Future<void> abrirRadar(BuildContext context, Curso curso) async {
-  final auth = context.read<AuthViewModel>();
-  final uid = auth.perfil?.uid;
-  if (uid == null) return;
-  final messenger = ScaffoldMessenger.of(context);
-
-  var sinConQueComparar = false;
-  try {
-    sinConQueComparar = !await IdentidadEnCelular.tieneReferencia(uid) &&
-        (auth.perfil?.fotoUrl ?? '').isEmpty;
-  } catch (_) {
-    // Si el almacén cifrado no responde, se intenta verificar igual.
-  }
-  if (!context.mounted) return;
-
-  if (sinConQueComparar) {
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Chairá no tiene una foto tuya con la que comparar tu rostro: el '
-          'radar se abre sin verificarlo.',
-        ),
-      ),
-    );
-  } else {
-    final rostro = await verificarRostro(
-      context,
-      curso: curso,
-      paraLlamado: true,
-    );
-    if (rostro == null || !context.mounted) return;
-  }
-
-  await Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => AttendanceRadarScreen(curso: curso)),
-  );
-}
 
 class AttendanceRadarScreen extends StatefulWidget {
   final Curso curso;

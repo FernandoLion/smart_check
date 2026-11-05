@@ -31,15 +31,7 @@ class FaceVerificationScreen extends StatefulWidget {
   /// del documento (ver [verificarRostroAlRegistrarse]).
   final IdentidadFacial? identidad;
 
-  /// El docente confirma que es él antes de abrir el radar de [curso].
-  final bool paraLlamado;
-
-  const FaceVerificationScreen({
-    super.key,
-    this.curso,
-    this.identidad,
-    this.paraLlamado = false,
-  });
+  const FaceVerificationScreen({super.key, this.curso, this.identidad});
 
   bool get _esRegistro => identidad is IdentidadParaRegistro;
 
@@ -49,7 +41,6 @@ class FaceVerificationScreen extends StatefulWidget {
   }
 
   String get professorName {
-    if (paraLlamado) return 'Confirma que eres tú para abrir el llamado';
     if (curso != null) return 'Docente: ${curso!.docenteNombre}';
     return _esRegistro
         ? 'Confirma que eres el dueño del documento'
@@ -110,13 +101,11 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
 
     _vm = FaceVerificationViewModel(
       identidad: widget.identidad ?? _identidadDeLaSesion(),
-      motivo: widget.paraLlamado
-          ? MotivoVerificacion.llamado
-          : widget.curso != null
-              ? MotivoVerificacion.asistencia
-              : widget._esRegistro
-                  ? MotivoVerificacion.registro
-                  : MotivoVerificacion.cuenta,
+      motivo: widget.curso != null
+          ? MotivoVerificacion.asistencia
+          : widget._esRegistro
+              ? MotivoVerificacion.registro
+              : MotivoVerificacion.cuenta,
     );
     _vm.addListener(_alCambiar);
     _encenderLaCamara();
@@ -448,15 +437,13 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
-                          widget.paraLlamado
-                              ? 'Abrir el llamado • Aula: ${widget.classroom}'
-                              : widget.curso == null
-                                  ? (widget._esRegistro
-                                        ? 'Registro de cuenta'
-                                        : 'Vinculación de celular')
-                                  // La ubicación la comprueba después la
-                                  // baliza, no esta pantalla.
-                                  : 'Aula: ${widget.classroom}',
+                          widget.curso == null
+                              ? (widget._esRegistro
+                                    ? 'Registro de cuenta'
+                                    : 'Vinculación de celular')
+                              // La ubicación la comprueba después la
+                              // baliza, no esta pantalla.
+                              : 'Aula: ${widget.classroom}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -1086,7 +1073,6 @@ class _FaceIdMeshPainter extends CustomPainter {
 Future<VerificacionFacial?> verificarRostro(
   BuildContext context, {
   Curso? curso,
-  bool paraLlamado = false,
 }) async {
   final uid = context.read<AuthViewModel>().perfil?.uid;
   if (uid == null) return null;
@@ -1098,10 +1084,7 @@ Future<VerificacionFacial?> verificarRostro(
   if (!context.mounted) return null;
   return Navigator.push<VerificacionFacial>(
     context,
-    MaterialPageRoute(
-      builder: (_) =>
-          FaceVerificationScreen(curso: curso, paraLlamado: paraLlamado),
-    ),
+    MaterialPageRoute(builder: (_) => FaceVerificationScreen(curso: curso)),
   );
 }
 
