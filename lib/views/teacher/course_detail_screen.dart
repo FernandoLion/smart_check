@@ -56,7 +56,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   static const Color _surfaceOled = Color(0xFF0E0E10);
   static const Color _surfaceElevated = Color(0xFF1C1C1E);
   static const Color _surfaceControl = Color(0xFF2C2C2E);
-  static const Color _surfaceHigh = Color(0xFF2A2A2C);
   static const Color _primaryIndigo = Color(0xFF5E5CE6);
   static const Color _primaryLight = Color(0xFFC2C1FF);
   static const Color _tertiaryGreen = Color(0xFF47E266);

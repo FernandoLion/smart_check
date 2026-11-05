@@ -24,7 +24,6 @@ class GeocercaSetupScreen extends StatefulWidget {
 class _GeocercaSetupScreenState extends State<GeocercaSetupScreen>
     with TickerProviderStateMixin {
   // Colores exactos del HTML de Stitch (todos declarados para evitar errores)
-  static const Color _mapDarkBg = Color(0xFF0B0B0D);
   static const Color _surfaceElevated = Color(0xFF1C1C1E);
   static const Color _surfaceControl = Color(0xFF2C2C2E);
   static const Color _primaryIndigo = Color(0xFF5E5CE6); // primary-container

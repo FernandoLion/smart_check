@@ -35,7 +35,6 @@ class _CedulaLoginScreenState extends State<CedulaLoginScreen> {
   static const Color _tertiaryContainer = Color(0xFF00802D);
   static const Color _onTertiaryContainer = Color(0xFFCDFFCA);
   static const Color _systemAmber = Color(0xFFFF9F0A);
-  static const Color _systemRed = Color(0xFFFF453A);
 
   late final TextEditingController _searchController;
 

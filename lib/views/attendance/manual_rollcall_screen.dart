@@ -571,7 +571,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
             duration: Duration(milliseconds: _isAnimatingOut ? 240 : 80),
             curve: Curves.easeOut,
             transform: Matrix4.identity()
-              ..translate(_dragOffsetX, 0.0)
+              ..translateByDouble(_dragOffsetX, 0.0, 0.0, 1.0)
               ..rotateZ(rotationAngle),
             transformAlignment: Alignment.center,
             child: _buildActiveForegroundCard(currentStudent),
