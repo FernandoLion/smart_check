@@ -102,7 +102,16 @@ class FakeCursoService extends Fake implements CursoService {
           ]),
         ),
     ];
-    return clases..sort((a, b) => b.franja.compareTo(a.franja));
+    // Como el servicio real: las clases de antes de inscribirlo no cuentan,
+    // salvo que haya venido.
+    final inscrito = (inscritosPorCurso[cursoId] ?? const {})
+        .values
+        .where((i) => i.claves.any(claves.contains))
+        .firstOrNull;
+    return clases
+        .where((c) => inscrito == null || inscrito.debiaVenir(c.franja) || c.asistio)
+        .toList()
+      ..sort((a, b) => b.franja.compareTo(a.franja));
   }
 
   @override
@@ -181,6 +190,9 @@ class FakeCursoService extends Fake implements CursoService {
     }
   }
 
+  /// La hora que el "servidor" pone al inscribir a alguien nuevo.
+  DateTime Function() relojInscripcion = DateTime.now;
+
   /// Intentos de escribir una asistencia, aceptados o no.
   int escriturasDeAsistencia = 0;
 
@@ -243,7 +255,15 @@ class FakeCursoService extends Fake implements CursoService {
     if (fallo != null) throw fallo!;
     final inscritos = inscritosPorCurso.putIfAbsent(cursoId, () => {});
     for (final n in nuevos) {
-      inscritos[n.clave] = n;
+      // Como el servidor: la fecha se pone solo al inscribirlo la primera vez.
+      final antes = inscritos[n.clave];
+      inscritos[n.clave] = Inscrito(
+        cedula: n.cedula,
+        email: n.email,
+        nombre: n.nombre,
+        uid: n.uid,
+        inscritoEn: antes != null ? antes.inscritoEn : relojInscripcion(),
+      );
     }
     final curso = cursos[cursoId]!;
     cursos[cursoId] = Curso.fromMap(cursoId, {

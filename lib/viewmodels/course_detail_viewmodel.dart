@@ -98,8 +98,8 @@ class CourseDetailViewModel extends ChangeNotifier {
 
   /// La asistencia del curso en CSV (separado por punto y coma, como lo abre
   /// Excel en español): un estudiante por fila, una columna por clase
-  /// cerrada con A (asistió) o F (faltó), y al final el total y el
-  /// porcentaje.
+  /// cerrada con A (asistió), F (faltó) o — (aún no estaba inscrito), y al
+  /// final el total y el porcentaje.
   String asistenciaEnCsv() {
     String dos(int n) => n.toString().padLeft(2, '0');
     String celda(String v) =>
@@ -130,7 +130,11 @@ class CourseDetailViewModel extends ChangeNotifier {
           i.nombre,
           i.identificacion,
           for (final f in franjas)
-            presentes[f]!.contains(i.inscrito.clave) ? 'A' : 'F',
+            presentes[f]!.contains(i.inscrito.clave)
+                ? 'A'
+                : i.inscrito.debiaVenir(f)
+                    ? 'F'
+                    : '—',
           '${i.asistencia.asistidas}/${i.asistencia.sesiones}',
           i.asistencia.porcentaje == null ? '' : '${i.asistencia.porcentaje}%',
         ].map(celda).join(';'),
@@ -142,15 +146,19 @@ class CourseDetailViewModel extends ChangeNotifier {
   /// igual que en el porcentaje que ve el estudiante.
   List<SesionResumen> get sesionesPasadas {
     final filas = CursoService.franjasTerminadas(_sesiones, _ahora())
-        .values
-        .map(
-          (sesiones) => SesionResumen(
-            sesiones.first,
-            _asistieronEnLaFranja(sesiones).length,
-            _inscritos.length,
-          ),
-        )
-        .toList();
+        .entries
+        .map((franja) {
+      final vinieron = _asistieronEnLaFranja(franja.value);
+      return SesionResumen(
+        franja.value.first,
+        vinieron.length,
+        _inscritos
+            .where(
+              (i) => vinieron.contains(i.clave) || i.debiaVenir(franja.key),
+            )
+            .length,
+      );
+    }).toList();
     filas.sort((a, b) => b.sesion.franja.compareTo(a.sesion.franja));
     return filas;
   }
@@ -178,7 +186,10 @@ class CourseDetailViewModel extends ChangeNotifier {
             marcas.where((a) => a.claveInscrito == i.clave),
           ),
         ),
-    ];
+    ]..removeWhere(
+        // Quien aún no estaba inscrito no aparece, salvo que tenga marca.
+        (f) => f.marca == null && !f.inscrito.debiaVenir(franja),
+      );
     filas.sort((a, b) {
       if (a.presente != b.presente) return a.presente ? -1 : 1;
       if (a.presente) return a.marca!.hora.compareTo(b.marca!.hora);
@@ -254,23 +265,23 @@ class CourseDetailViewModel extends ChangeNotifier {
   /// Los inscritos con su asistencia, los de mayor riesgo primero.
   List<InscritoAsistencia> get inscritos {
     final franjas = CursoService.franjasTerminadas(_sesiones, _ahora());
-    final asistidasPor = <String, int>{};
-    for (final sesiones in franjas.values) {
-      for (final clave in _asistieronEnLaFranja(sesiones)) {
-        asistidasPor[clave] = (asistidasPor[clave] ?? 0) + 1;
+    final vinieronPor = {
+      for (final f in franjas.entries) f.key: _asistieronEnLaFranja(f.value),
+    };
+    final lista = _inscritos.map((i) {
+      var sesiones = 0;
+      var asistidas = 0;
+      for (final MapEntry(key: franja, value: vinieron)
+          in vinieronPor.entries) {
+        final vino = vinieron.contains(i.clave);
+        if (vino) asistidas++;
+        if (vino || i.debiaVenir(franja)) sesiones++;
       }
-    }
-    final lista = _inscritos
-        .map(
-          (i) => InscritoAsistencia(
-            i,
-            AsistenciaResumen(
-              sesiones: franjas.length,
-              asistidas: asistidasPor[i.clave] ?? 0,
-            ),
-          ),
-        )
-        .toList();
+      return InscritoAsistencia(
+        i,
+        AsistenciaResumen(sesiones: sesiones, asistidas: asistidas),
+      );
+    }).toList();
     lista.sort((a, b) {
       final porA = a.asistencia.porcentaje ?? 100;
       final porB = b.asistencia.porcentaje ?? 100;

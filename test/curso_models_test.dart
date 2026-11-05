@@ -254,4 +254,27 @@ void main() {
       expect(firma.creadoEn, isNull);
     });
   });
+
+  group('fecha de inscripción', () {
+    test('se lee de Firestore y decide qué clases le tocan', () {
+      final pedro = Inscrito.fromMap({
+        'cedula': '1117000000',
+        'nombre': 'PEDRO',
+        'inscrito_en': Timestamp.fromDate(DateTime(2026, 10, 7, 12)),
+      });
+
+      expect(pedro.inscritoEn, DateTime(2026, 10, 7, 12));
+      expect(pedro.debiaVenir(DateTime(2026, 10, 6, 8)), isFalse);
+      expect(pedro.debiaVenir(DateTime(2026, 10, 7, 8)), isFalse);
+      expect(pedro.debiaVenir(DateTime(2026, 10, 7, 14)), isTrue);
+      expect(pedro.debiaVenir(DateTime(2026, 10, 8, 8)), isTrue);
+    });
+
+    test('sin fecha (inscritos de antes) le cuentan todas', () {
+      final ana = Inscrito.fromMap({'cedula': '1', 'nombre': 'ANA'});
+
+      expect(ana.inscritoEn, isNull);
+      expect(ana.debiaVenir(DateTime(2020)), isTrue);
+    });
+  });
 }

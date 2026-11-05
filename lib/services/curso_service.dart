@@ -186,11 +186,25 @@ class CursoService {
   Future<void> inscribir(String cursoId, List<Inscrito> nuevos) async {
     if (nuevos.isEmpty) return;
     try {
+      // A los que ya estaban no se les cambia la fecha de inscripción: si
+      // no, volver a pegar la lista les borraría las faltas de antes.
+      final yaEstaban = (await _inscritos(cursoId).get().timeout(_timeout))
+          .docs
+          .map((d) => d.id)
+          .toSet();
       for (var i = 0; i < nuevos.length; i += 450) {
         final parte = nuevos.skip(i).take(450).toList();
         final batch = FirebaseFirestore.instance.batch();
         for (final inscrito in parte) {
-          batch.set(_inscritos(cursoId).doc(inscrito.clave), inscrito.toMap());
+          final doc = _inscritos(cursoId).doc(inscrito.clave);
+          if (yaEstaban.contains(inscrito.clave)) {
+            batch.set(doc, inscrito.toMap(), SetOptions(merge: true));
+          } else {
+            batch.set(doc, {
+              ...inscrito.toMap(),
+              'inscrito_en': FieldValue.serverTimestamp(),
+            });
+          }
         }
         batch.update(_cursos.doc(cursoId), {
           'claves_inscritos':
@@ -346,6 +360,7 @@ class CursoService {
     if (claves.isEmpty) return const [];
     final momento = ahora ?? DateTime.now();
     try {
+      final inscripcion = await _inscripcionDe(cursoId, claves);
       final docs = await _sesiones(cursoId).get().timeout(_timeout);
       final porFranja = franjasTerminadas(
         docs.docs.map((d) => Sesion.fromMap(d.id, d.data())).toList(),
@@ -362,10 +377,29 @@ class CursoService {
           );
         }),
       );
-      return clases..sort((a, b) => b.franja.compareTo(a.franja));
+      return clases
+          .where(
+            (c) =>
+                inscripcion == null ||
+                !c.franja.isBefore(inscripcion) ||
+                c.asistio,
+          )
+          .toList()
+        ..sort((a, b) => b.franja.compareTo(a.franja));
     } catch (e) {
       throw CursoException(_mensaje(e, 'leer tu asistencia'));
     }
+  }
+
+  /// Cuándo inscribieron en [cursoId] al estudiante de [claves], o null si
+  /// no se sabe (inscritos de antes de guardar la fecha).
+  Future<DateTime?> _inscripcionDe(String cursoId, List<String> claves) async {
+    for (final clave in claves) {
+      final doc = await _inscritos(cursoId).doc(clave).get().timeout(_timeout);
+      final data = doc.data();
+      if (data != null) return Inscrito.fromMap(data).inscritoEn;
+    }
+    return null;
   }
 
   /// De las marcas de un inscrito en los llamados de una misma clase, la que
@@ -444,20 +478,21 @@ class CursoService {
     Map<DateTime, List<Sesion>> franjas,
     Map<String, List<Asistencia>> marcas,
   ) {
-    final claves = {for (final i in inscritos) i.clave};
+    var sesiones = 0;
     var asistidas = 0;
-    for (final llamados in franjas.values) {
-      asistidas += {
+    for (final MapEntry(key: franja, value: llamados) in franjas.entries) {
+      final vinieron = {
         for (final s in llamados)
           for (final a in marcas[s.id] ?? const <Asistencia>[])
-            if (a.cuentaComoAsistio && claves.contains(a.claveInscrito))
-              a.claveInscrito,
-      }.length;
+            if (a.cuentaComoAsistio) a.claveInscrito,
+      };
+      for (final i in inscritos) {
+        final vino = vinieron.contains(i.clave);
+        if (vino) asistidas++;
+        if (vino || i.debiaVenir(franja)) sesiones++;
+      }
     }
-    return AsistenciaResumen(
-      sesiones: franjas.length * inscritos.length,
-      asistidas: asistidas,
-    );
+    return AsistenciaResumen(sesiones: sesiones, asistidas: asistidas);
   }
 
   Future<Asistencia?> _marcaDe(

@@ -21,11 +21,8 @@ import 'package:smart_check/viewmodels/student_viewmodel.dart';
 import 'package:smart_check/viewmodels/teacher_viewmodel.dart';
 import 'package:smart_check/views/attendance/attendance_radar_screen.dart';
 import 'package:smart_check/views/attendance/ble_beacon_screen.dart';
-import 'package:smart_check/views/attendance/cedula_login_screen.dart';
 import 'package:smart_check/views/attendance/face_verification_screen.dart';
-import 'package:smart_check/views/attendance/geocerca_setup_screen.dart';
 import 'package:smart_check/views/attendance/manual_rollcall_screen.dart';
-import 'package:smart_check/views/face_setup_screen.dart';
 import 'package:smart_check/views/login_screen.dart';
 import 'package:smart_check/views/recover_password_screen.dart';
 import 'package:smart_check/views/smart_register_screen.dart';
@@ -200,7 +197,6 @@ final Map<String, Future<Widget> Function(_Mundo)> _vistas = {
   'Inicio de sesión': (_) async => const LoginScreen(),
   'Registro': (_) async => const SmartRegisterScreen(),
   'Recuperar contraseña': (_) async => const RecoverPasswordScreen(),
-  'Configuración facial (registro)': (_) async => const FaceSetupScreen(),
   'Portal del estudiante': (_) async => const StudentHomeScreen(),
   'Ajustes del estudiante': (_) async => const StudentSettingsScreen(),
   'Detalle de materia': (m) async => AttendanceDetailScreen(
@@ -261,8 +257,6 @@ final Map<String, Future<Widget> Function(_Mundo)> _vistas = {
     await radar.iniciar(_curso(), _uid);
     return ManualRollcallScreen(radar: radar);
   },
-  'Ingreso por cédula': (_) async => const CedulaLoginScreen(),
-  'Geocerca': (_) async => const GeocercaSetupScreen(),
 };
 
 Future<void> _cargarFuentes() async {

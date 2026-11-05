@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/asistencia_resumen.dart';
+import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/inscrito_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/services/curso_service.dart';
@@ -119,6 +120,92 @@ void main() {
       'ANA PÉREZ;ana;A;A;2/2;100%',
       'CARLOS MUÑOZ;carlos;A;F;1/2;50%',
     ]);
+  });
+
+  test('a quien inscriben tarde no le cuentan las clases de antes', () async {
+    // Pedro entra el 7: la clase del 6 ya pasó, la del 8 sí le toca.
+    servicio.inscritosPorCurso['c1']!['pedro'] = Inscrito(
+      cedula: 'pedro',
+      nombre: 'PEDRO TARDE',
+      inscritoEn: DateTime(2026, 10, 7, 12),
+    );
+    servicio.sesionesPorCurso['c1'] = [sesion('s1', 6), sesion('s2', 8)];
+    servicio.asistenciasPorSesion['s1'] = [presente('ana')];
+    servicio.asistenciasPorSesion['s2'] = [presente('ana'), presente('pedro')];
+
+    vm.vigilar('c1');
+    await pumpEventQueue();
+
+    final pedro = vm.inscritos.firstWhere((i) => i.inscrito.clave == 'pedro');
+    expect(pedro.asistencia.sesiones, 1);
+    expect(pedro.asistencia.porcentaje, 100);
+    // Al que sí estaba desde el principio le cuentan las dos.
+    final carlos =
+        vm.inscritos.firstWhere((i) => i.inscrito.clave == 'carlos');
+    expect(carlos.asistencia.sesiones, 2);
+
+    // La clase del 6 era de dos inscritos, no de tres.
+    final del6 = vm.sesionesPasadas.firstWhere((s) => s.sesion.id == 's1');
+    expect(del6.inscritos, 2);
+    expect(
+      vm.detalleDeFranja(DateTime(2026, 10, 6, 8)).map((f) => f.inscrito.clave),
+      isNot(contains('pedro')),
+    );
+    expect(
+      vm.asistenciaEnCsv().split('\n'),
+      contains('PEDRO TARDE;pedro;—;A;1/1;100%'),
+    );
+
+    // El panel docente saca la misma cuenta.
+    final resumen = CursoService.promedioDe(
+      servicio.inscritosPorCurso['c1']!.values.toList(),
+      CursoService.franjasTerminadas(
+        servicio.sesionesPorCurso['c1']!,
+        elLunes26,
+      ),
+      servicio.asistenciasPorSesion,
+    );
+    expect(resumen.porcentaje, vm.promedio.porcentaje);
+  });
+
+  test('si vino a una clase de antes de inscribirlo, le cuenta a favor',
+      () async {
+    servicio.inscritosPorCurso['c1']!['pedro'] = Inscrito(
+      cedula: 'pedro',
+      nombre: 'PEDRO TARDE',
+      inscritoEn: DateTime(2026, 10, 7, 12),
+    );
+    servicio.sesionesPorCurso['c1'] = [sesion('s1', 6), sesion('s2', 8)];
+    servicio.asistenciasPorSesion['s1'] = [presente('pedro')];
+
+    vm.vigilar('c1');
+    await pumpEventQueue();
+
+    final pedro = vm.inscritos.firstWhere((i) => i.inscrito.clave == 'pedro');
+    expect(pedro.asistencia.asistidas, 1);
+    expect(pedro.asistencia.sesiones, 2);
+  });
+
+  test('volver a inscribir a alguien no le cambia la fecha', () async {
+    servicio.cursos['c1'] = Curso.fromMap('c1', {
+      'codigo': 'X',
+      'nombre': 'Curso',
+      'docente_uid': 'uid-docente',
+      'claves_inscritos': <String>[],
+    });
+    servicio.relojInscripcion = () => DateTime(2026, 10, 7);
+    await servicio.inscribir('c1', [
+      const Inscrito(cedula: 'pedro', nombre: 'PEDRO'),
+    ]);
+    servicio.relojInscripcion = () => DateTime(2026, 10, 20);
+    await servicio.inscribir('c1', [
+      const Inscrito(cedula: 'pedro', nombre: 'PEDRO'),
+    ]);
+
+    expect(
+      servicio.inscritosPorCurso['c1']!['pedro']!.inscritoEn,
+      DateTime(2026, 10, 7),
+    );
   });
 
   test('el promedio del panel docente es el mismo del detalle', () async {
