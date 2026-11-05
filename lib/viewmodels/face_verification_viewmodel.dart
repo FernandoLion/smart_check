@@ -42,6 +42,20 @@ enum ResultadoIdentidad {
   enrolado,
 }
 
+/// Para qué se está verificando la cara. Cambia lo que se le dice cuando no
+/// pasa: "pide al docente que te marque a mano" solo tiene sentido en un
+/// llamado de asistencia.
+enum MotivoVerificacion {
+  /// Antes de emitir la baliza en un llamado.
+  asistencia,
+
+  /// Desde Ajustes o al vincular un celular, con la cuenta ya creada.
+  cuenta,
+
+  /// Antes de crear la cuenta: la cara contra el carné del documento.
+  registro,
+}
+
 /// Lo que la verificación facial le devuelve a quien la abrió.
 typedef VerificacionFacial = ({ResultadoIdentidad resultado, double? similitud});
 
@@ -89,8 +103,11 @@ class FaceVerificationViewModel extends ChangeNotifier {
   /// Con quién se compara la cara. null solo en [soloPruebaDeVida].
   final IdentidadFacial? identidad;
 
+  final MotivoVerificacion motivo;
+
   FaceVerificationViewModel({
     required IdentidadFacial this.identidad,
+    this.motivo = MotivoVerificacion.asistencia,
     Random? azar,
     this.limite = const Duration(seconds: 20),
   }) : _azar = azar ?? Random();
@@ -100,6 +117,7 @@ class FaceVerificationViewModel extends ChangeNotifier {
     Random? azar,
     this.limite = const Duration(seconds: 20),
   })  : identidad = null,
+        motivo = MotivoVerificacion.asistencia,
         _azar = azar ?? Random();
 
   Timer? _cuentaAtras;
@@ -290,20 +308,40 @@ class FaceVerificationViewModel extends ChangeNotifier {
           await _aprender(identidad, vivo);
           return _confirmar(ResultadoIdentidad.coincide);
         }
-        return _fallar('No pudimos confirmar que eres tú. Solo el dueño de '
-            'la cuenta puede registrar su asistencia.');
+        return _fallar(switch (motivo) {
+          MotivoVerificacion.asistencia =>
+            'No pudimos confirmar que eres tú. Solo el dueño de la cuenta '
+                'puede registrar su asistencia.',
+          _ => 'No pudimos confirmar que eres tú: tu rostro no coincide con '
+              'el que guarda este celular. Inténtalo de frente y con buena '
+              'luz.',
+        });
       }
 
       final chaira = await identidad.embeddingDeChaira();
       if (chaira == null) {
-        return _fallar('No hay una foto tuya en Chairá con la que comparar '
-            'tu rostro. Pide al docente que te marque a mano.');
+        return _fallar(switch (motivo) {
+          MotivoVerificacion.asistencia =>
+            'No hay una foto tuya en Chairá con la que comparar tu rostro. '
+                'Pide al docente que te marque a mano.',
+          _ => 'No hay una foto tuya en Chairá con la que comparar tu '
+              'rostro, así que no se puede registrar.',
+        });
       }
       _similitud = similitud(vivo, chaira);
       _anotar('chaira', umbralEnrolamiento);
       if (_similitud! < umbralEnrolamiento) {
-        return _fallar('Tu rostro no coincide con tu foto de Chairá. Si eres '
-            'tú, pide al docente que te marque a mano.');
+        return _fallar(switch (motivo) {
+          MotivoVerificacion.asistencia =>
+            'Tu rostro no coincide con tu foto de Chairá. Si eres tú, pide '
+                'al docente que te marque a mano.',
+          MotivoVerificacion.cuenta =>
+            'Tu rostro no coincide con tu foto de Chairá. Inténtalo de '
+                'frente, con buena luz y sin gafas.',
+          MotivoVerificacion.registro =>
+            'Este rostro no coincide con la foto del carné de este '
+                'documento. Solo su dueño puede crear la cuenta.',
+        });
       }
       await identidad.guardarReferencia(vivo);
       _confirmar(ResultadoIdentidad.enrolado);

@@ -101,6 +101,11 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
 
     _vm = FaceVerificationViewModel(
       identidad: widget.identidad ?? _identidadDeLaSesion(),
+      motivo: widget.curso != null
+          ? MotivoVerificacion.asistencia
+          : widget._esRegistro
+              ? MotivoVerificacion.registro
+              : MotivoVerificacion.cuenta,
     );
     _vm.addListener(_alCambiar);
     _encenderLaCamara();

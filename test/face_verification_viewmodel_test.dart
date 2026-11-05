@@ -255,9 +255,13 @@ void main() {
   });
 
   group('identidad', () {
-    FaceVerificationViewModel conIdentidad(_IdentidadFalsa identidad) {
+    FaceVerificationViewModel conIdentidad(
+      _IdentidadFalsa identidad, {
+      MotivoVerificacion motivo = MotivoVerificacion.asistencia,
+    }) {
       final vm = FaceVerificationViewModel(
         identidad: identidad,
+        motivo: motivo,
         azar: _AzarFijo(true),
       );
       addTearDown(vm.dispose);
@@ -339,6 +343,39 @@ void main() {
       expect(vm.resultado, ResultadoIdentidad.enrolado);
       expect(identidad.guardada, casiDueno);
       expect(vm.instruccion, contains('registramos tu rostro'));
+    });
+
+    test('al crear la cuenta, un rostro ajeno no habla del docente',
+        () async {
+      // Lo que pasó probando: crear una cuenta con la cara de un amigo
+      // terminaba en "pide al docente que te marque a mano".
+      final identidad = _IdentidadFalsa(fotos: {'foto': otro}, chaira: dueno);
+      final vm = conIdentidad(identidad, motivo: MotivoVerificacion.registro);
+
+      await vm.compararFoto('foto');
+
+      expect(vm.paso, PasoVerificacion.fallido);
+      expect(vm.instruccion, contains('Solo su dueño puede crear la cuenta'));
+      expect(vm.instruccion, isNot(contains('docente')));
+      expect(identidad.guardada, isNull);
+    });
+
+    test('desde Ajustes tampoco: no hay llamado que marcar a mano', () async {
+      final ajena = _IdentidadFalsa(fotos: {'foto': otro}, chaira: dueno);
+      final conReferencia =
+          _IdentidadFalsa(fotos: {'foto': otro}, guardada: dueno);
+
+      final enrolando = conIdentidad(ajena, motivo: MotivoVerificacion.cuenta);
+      await enrolando.compararFoto('foto');
+      final probando =
+          conIdentidad(conReferencia, motivo: MotivoVerificacion.cuenta);
+      await probando.compararFoto('foto');
+
+      for (final vm in [enrolando, probando]) {
+        expect(vm.paso, PasoVerificacion.fallido);
+        expect(vm.instruccion, isNot(contains('docente')));
+        expect(vm.instruccion, isNot(contains('asistencia')));
+      }
     });
 
     test('un compañero no se puede enrolar en lugar del dueño', () async {
