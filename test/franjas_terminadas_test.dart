@@ -69,4 +69,39 @@ void main() {
       expect(franjas, hasLength(1));
     });
   });
+
+  group('la marca que cuenta en una clase', () {
+    Asistencia marca(String estado, int minuto, {String metodo = 'ble'}) =>
+        Asistencia(
+          claveInscrito: 'ana',
+          estado: estado,
+          metodo: metodo,
+          hora: DateTime(2026, 10, 20, 8, minuto),
+          registradoPor: 'uid-docente',
+        );
+
+    test('sin marcas, faltó', () {
+      expect(CursoService.marcaQueCuenta(const []), isNull);
+    });
+
+    test('con una que asistió, cuenta la primera de esas', () {
+      final elegida = CursoService.marcaQueCuenta([
+        marca(EstadoAsistencia.ausente, 1, metodo: 'manual'),
+        marca(EstadoAsistencia.presente, 30),
+        marca(EstadoAsistencia.presente, 5),
+      ]);
+
+      expect(elegida!.hora.minute, 5);
+    });
+
+    test('si ninguna asistió, cuenta la última corrección', () {
+      final elegida = CursoService.marcaQueCuenta([
+        marca(EstadoAsistencia.ausente, 40, metodo: 'manual'),
+        marca(EstadoAsistencia.ausente, 10, metodo: 'manual'),
+      ]);
+
+      expect(elegida!.hora.minute, 40);
+      expect(elegida.cuentaComoAsistio, isFalse);
+    });
+  });
 }

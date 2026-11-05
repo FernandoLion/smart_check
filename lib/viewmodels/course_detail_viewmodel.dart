@@ -130,7 +130,13 @@ class CourseDetailViewModel extends ChangeNotifier {
       for (final s in sesiones) ...?_asistencias[s.id],
     ];
     final filas = [
-      for (final i in _inscritos) FilaDeSesion(i, _marcaDe(i.clave, marcas)),
+      for (final i in _inscritos)
+        FilaDeSesion(
+          i,
+          CursoService.marcaQueCuenta(
+            marcas.where((a) => a.claveInscrito == i.clave),
+          ),
+        ),
     ];
     filas.sort((a, b) {
       if (a.presente != b.presente) return a.presente ? -1 : 1;
@@ -143,16 +149,6 @@ class CourseDetailViewModel extends ChangeNotifier {
   /// Cuántas veces abrió el docente el radar en la clase de [franja].
   int llamadosDeFranja(DateTime franja) =>
       CursoService.franjasTerminadas(_sesiones, _ahora())[franja]?.length ?? 0;
-
-  static Asistencia? _marcaDe(String clave, List<Asistencia> marcas) {
-    final suyas = marcas.where((a) => a.claveInscrito == clave).toList()
-      ..sort((a, b) => a.hora.compareTo(b.hora));
-    if (suyas.isEmpty) return null;
-    for (final a in suyas) {
-      if (a.cuentaComoAsistio) return a;
-    }
-    return suyas.last;
-  }
 
   /// Corrige a mano la asistencia de [inscrito] en la clase de [franja].
   ///

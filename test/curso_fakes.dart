@@ -78,6 +78,33 @@ class FakeCursoService extends Fake implements CursoService {
     return resumenes[cursoId] ?? const AsistenciaResumen();
   }
 
+  /// Con la misma cuenta que el servicio real, sobre las sesiones y
+  /// asistencias en memoria.
+  @override
+  Future<List<ClaseDelEstudiante>> historialAsistencia(
+    String cursoId,
+    List<String> claves, {
+    DateTime? ahora,
+  }) async {
+    if (fallo != null) throw fallo!;
+    final porFranja = CursoService.franjasTerminadas(
+      sesionesPorCurso[cursoId] ?? const [],
+      ahora ?? DateTime.now(),
+    );
+    final clases = [
+      for (final franja in porFranja.entries)
+        ClaseDelEstudiante(
+          franja.key,
+          CursoService.marcaQueCuenta([
+            for (final s in franja.value)
+              ...?asistenciasPorSesion[s.id]
+                  ?.where((a) => claves.contains(a.claveInscrito)),
+          ]),
+        ),
+    ];
+    return clases..sort((a, b) => b.franja.compareTo(a.franja));
+  }
+
   @override
   Stream<List<Inscrito>> inscritos(String cursoId) async* {
     List<Inscrito> actuales() =>

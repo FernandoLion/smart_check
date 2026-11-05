@@ -132,6 +132,11 @@ class StudentViewModel extends ChangeNotifier {
   /// Relee la asistencia de los cursos que ya están en pantalla. La lista de
   /// cursos cambia poco; la asistencia cambia cada vez que el docente pasa
   /// lista, así que hay que poder volver a pedirla sin reiniciar la app.
+  /// Las clases ya dictadas de [cursoId], con lo que quedó de cada una para
+  /// este estudiante.
+  Future<List<ClaseDelEstudiante>> historialDe(String cursoId) =>
+      _servicio.historialAsistencia(cursoId, _claves);
+
   Future<void> refrescar() =>
       _cursos.isEmpty ? Future.value() : _cargarAsistencia(_cursos);
 

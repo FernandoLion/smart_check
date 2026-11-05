@@ -289,8 +289,19 @@ class CursoService {
     String cursoId,
     List<String> claves, {
     DateTime? ahora,
+  }) async =>
+      AsistenciaResumen.de(
+        await historialAsistencia(cursoId, claves, ahora: ahora),
+      );
+
+  /// Cada clase terminada de [cursoId], de la más reciente a la más antigua,
+  /// con la marca que decide si el estudiante de [claves] asistió.
+  Future<List<ClaseDelEstudiante>> historialAsistencia(
+    String cursoId,
+    List<String> claves, {
+    DateTime? ahora,
   }) async {
-    if (claves.isEmpty) return const AsistenciaResumen();
+    if (claves.isEmpty) return const [];
     final momento = ahora ?? DateTime.now();
     try {
       final docs = await _sesiones(cursoId).get().timeout(_timeout);
@@ -298,21 +309,33 @@ class CursoService {
         docs.docs.map((d) => Sesion.fromMap(d.id, d.data())).toList(),
         momento,
       );
-      final asistio = await Future.wait(
-        porFranja.values.map((sesiones) async {
-          final hubo = await Future.wait(
-            sesiones.map((s) => _asistio(cursoId, s.id, claves)),
+      final clases = await Future.wait(
+        porFranja.entries.map((franja) async {
+          final marcas = await Future.wait(
+            franja.value.map((s) => _marcaDe(cursoId, s.id, claves)),
           );
-          return hubo.contains(true);
+          return ClaseDelEstudiante(
+            franja.key,
+            marcaQueCuenta(marcas.whereType<Asistencia>()),
+          );
         }),
       );
-      return AsistenciaResumen(
-        sesiones: porFranja.length,
-        asistidas: asistio.where((a) => a).length,
-      );
+      return clases..sort((a, b) => b.franja.compareTo(a.franja));
     } catch (e) {
       throw CursoException(_mensaje(e, 'leer tu asistencia'));
     }
+  }
+
+  /// De las marcas de un inscrito en los llamados de una misma clase, la que
+  /// decide: si alguna cuenta como asistida, la primera de esas; si no, la
+  /// última (una corrección a mano que lo dejó ausente). null si no hay.
+  static Asistencia? marcaQueCuenta(Iterable<Asistencia> marcas) {
+    final orden = marcas.toList()..sort((a, b) => a.hora.compareTo(b.hora));
+    if (orden.isEmpty) return null;
+    for (final a in orden) {
+      if (a.cuentaComoAsistio) return a;
+    }
+    return orden.last;
   }
 
   /// Agrupa por franja de clase los llamados que ya terminaron. Está fuera de
@@ -358,7 +381,7 @@ class CursoService {
     }
   }
 
-  Future<bool> _asistio(
+  Future<Asistencia?> _marcaDe(
     String cursoId,
     String sesionId,
     List<String> claves,
@@ -366,9 +389,9 @@ class CursoService {
     for (final clave in claves) {
       final doc = await _asistencias(cursoId, sesionId).doc(clave).get();
       final data = doc.data();
-      if (data != null) return Asistencia.fromMap(clave, data).cuentaComoAsistio;
+      if (data != null) return Asistencia.fromMap(clave, data);
     }
-    return false;
+    return null;
   }
 
   static String _mensaje(Object e, String accion) {

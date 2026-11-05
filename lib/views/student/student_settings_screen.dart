@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/student_subject_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../services/identidad_facial_service.dart';
 import '../../utils/app_theme.dart';
@@ -183,14 +184,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                       ),
                       trailingTextColor: _tertiaryGreen,
                       trailingTextBold: true,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AttendanceDetailScreen(),
-                          ),
-                        );
-                      },
+                      onTap: _verHistorial,
                     ),
                   ]),
                   const SizedBox(height: 24),
@@ -977,6 +971,68 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
+      ),
+    );
+  }
+
+  /// El historial es por materia: con una sola se abre directo, con varias
+  /// se pregunta cuál.
+  Future<void> _verHistorial() async {
+    final materias = context.read<StudentViewModel>().subjects;
+    if (materias.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Todavía no estás inscrito en ninguna materia.'),
+        ),
+      );
+      return;
+    }
+    final elegida = materias.length == 1
+        ? materias.single
+        : await showModalBottomSheet<StudentSubjectModel>(
+            context: context,
+            backgroundColor: _surfaceElevated,
+            builder: (hoja) => SafeArea(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    child: Text(
+                      '¿De qué materia?',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  for (final m in materias)
+                    ListTile(
+                      title: Text(
+                        m.name,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        '${m.code} • Grupo ${m.group}',
+                        style: const TextStyle(color: AppTheme.textSecondary),
+                      ),
+                      trailing: Text(
+                        _porcentajeGlobal(m.attendancePercent)
+                            .replaceAll(' global', ''),
+                        style: const TextStyle(color: AppTheme.textSecondary),
+                      ),
+                      onTap: () => Navigator.pop(hoja, m),
+                    ),
+                ],
+              ),
+            ),
+          );
+    if (elegida == null || !mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AttendanceDetailScreen(subject: elegida),
       ),
     );
   }
