@@ -31,10 +31,18 @@ class UbicacionService {
 
   /// Lo más que se espera a que el GPS afine. Las primeras lecturas suelen
   /// venir de la red o de la caché, con decenas de metros de error.
-  static const _ventana = Duration(seconds: 12);
+  static const _ventana = Duration(seconds: 10);
 
   /// Con esta precisión ya no vale la pena esperar más.
-  static const _suficiente = 10.0;
+  static const _suficiente = 12.0;
+
+  /// La última lectura buena y cuándo se tomó. Marcar pregunta dos veces
+  /// (al tocar "Registrar asistencia" y antes de emitir, con la cara en
+  /// medio): sin esto esperaría el GPS dos veces seguidas. En medio minuto
+  /// nadie sale del aula a otra parte.
+  static Position? _ultima;
+  static DateTime? _ultimaEn;
+  static const _reuso = Duration(seconds: 30);
 
   /// Si la posición que da el sistema es de hace más que esto, es la de
   /// donde estaba antes, no la de ahora.
@@ -65,12 +73,24 @@ class UbicacionService {
     }
     await _exigirUbicacionPrecisa();
 
+    final previa = _ultima;
+    final previaEn = _ultimaEn;
+    if (previa != null &&
+        previaEn != null &&
+        DateTime.now().difference(previaEn) <= _reuso &&
+        previa.accuracy <= precisionMaxima) {
+      return previa;
+    }
+
     final lecturas = await _leerDuranteUnRato();
-    return elegirLectura(
+    final mejor = elegirLectura(
       lecturas,
       ahora: DateTime.now(),
       precisionMaxima: precisionMaxima,
     );
+    _ultima = mejor;
+    _ultimaEn = DateTime.now();
+    return mejor;
   }
 
   /// Con solo la ubicación aproximada, el celular reporta un punto fijo de
