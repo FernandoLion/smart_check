@@ -1,0 +1,34 @@
+name: smart_check
+description: "SmartCheck: solo el inicio de sesión, para la sustentación."
+# No se publica en pub.dev: es una app, no un paquete.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase: el núcleo (conexión al proyecto), Auth (correo y contraseña)
+  # y Firestore (base de datos donde está el perfil con los roles).
+  firebase_core: ^4.15.0
+  firebase_auth: ^6.7.0
+  cloud_firestore: ^6.10.0
+
+  # Provider: entrega el ViewModel a las pantallas y las redibuja cuando
+  # cambia (patrón MVVM).
+  provider: ^6.1.5+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Reglas de estilo que revisa `flutter analyze`.
+  flutter_lints: ^6.0.0
+
+flutter:
+  # Para poder usar los íconos de Material (Icons.lock_outline, etc.).
+  uses-material-design: true
