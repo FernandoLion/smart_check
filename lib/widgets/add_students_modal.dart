@@ -412,7 +412,7 @@ class AddStudentsModal extends StatelessWidget {
                               text: 'Sincronización directa con base de datos institucional ',
                             ),
                             TextSpan(
-                              text: 'Chairá 2025-1',
+                              text: 'Chairá',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,

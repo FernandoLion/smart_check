@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/curso_model.dart';
 import '../../models/inscrito_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
@@ -518,8 +519,8 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Matrícula 2025-1',
+              Text(
+                'Periodo ${Curso.periodoActual()}',
                 style: TextStyle(
                   color: AppTheme.textSecondary,
                   fontSize: 11,

@@ -72,14 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 24),
                   // Form conectado al ViewModel
                   _buildLoginForm(authViewModel.isLoading),
-                  const SizedBox(height: 12),
-                  // Divider
-                  _buildDivider(),
-                  const SizedBox(height: 12),
-                  // Magic Link Button
-                  _buildMagicLinkButton(),
                   const SizedBox(height: 24),
-                  // Quick Biometric Hint
                   _buildBiometricHint(),
                   const SizedBox(height: 24),
                 ],
@@ -393,52 +386,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildDivider() {
-    return const Row(
-      children: [
-        Expanded(child: Divider(color: Color(0xFF353437), thickness: 1)),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12.0),
-          child: Text(
-            'O INGRESA SIN CONTRASEÑA',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        Expanded(child: Divider(color: Color(0xFF353437), thickness: 1)),
-      ],
-    );
-  }
-
-  Widget _buildMagicLinkButton() {
-    return TextButton(
-      onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enviando Magic Link al correo...')),
-        );
-      },
-      style: TextButton.styleFrom(
-        backgroundColor: AppTheme.surfaceControl,
-        foregroundColor: AppTheme.primary,
-        minimumSize: const Size.fromHeight(48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-      child: const Wrap(
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 8,
-        children: [
-          Icon(Icons.auto_awesome, size: 20),
-          Text('Enviar Magic Link al correo', style: TextStyle(fontSize: 16)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildBiometricHint() {
     return const Wrap(
       alignment: WrapAlignment.center,
@@ -446,12 +393,14 @@ class _LoginScreenState extends State<LoginScreen> {
       spacing: 8,
       children: [
         Icon(
-          Icons.contactless_outlined,
+          Icons.verified_user_outlined,
           color: AppTheme.textTertiary,
           size: 16,
         ),
+        // Lo que de verdad respalda una cuenta: Chairá al crearla y la cara
+        // del estudiante, comparada con su foto del carné.
         Text(
-          'Compatible con Apple Face ID y NFC Campus Key',
+          'Tu cuenta se verifica con Chairá y con tu rostro',
           style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
         ),
       ],

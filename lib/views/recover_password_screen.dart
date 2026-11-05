@@ -204,17 +204,19 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
                         fontSize: 13,
                         height: 1.4,
                       ),
+                      // El correo lo envía Firebase, con su propia
+                      // vigencia: aquí no se promete un plazo.
                       children: [
-                        TextSpan(text: 'El enlace de un solo uso expirará en '),
+                        TextSpan(text: 'El enlace sirve '),
                         TextSpan(
-                          text: '15 minutos',
+                          text: 'una sola vez',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         TextSpan(
-                          text: ' por estricta política de seguridad universitaria UDLA.',
+                          text: '. Si no te llega, revisa la carpeta de spam.',
                         ),
                       ],
                     ),
