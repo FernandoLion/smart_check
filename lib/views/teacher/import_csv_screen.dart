@@ -1,11 +1,14 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/inscrito_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/csv_inscritos.dart';
+import '../../utils/hoja_de_calculo.dart';
 
-/// Importa estudiantes pegando una lista copiada de Excel o de un CSV.
-/// Al confirmar devuelve la lista de [Inscrito] con `Navigator.pop`.
+/// Importa estudiantes desde el archivo de la lista de clase (.xls, .xlsx o
+/// .csv) o pegando las filas copiadas de Excel. Al confirmar devuelve la
+/// lista de [Inscrito] con `Navigator.pop`.
 class ImportCsvScreen extends StatefulWidget {
   final String courseName;
 
@@ -27,6 +30,12 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
   final _textoController = TextEditingController();
   ResultadoCsv _resultado = const ResultadoCsv([], []);
 
+  /// El nombre del archivo leído, para que el docente vea cuál cargó.
+  String? _archivo;
+  bool _leyendo = false;
+
+  static const _extensiones = ['xls', 'xlsx', 'csv', 'txt'];
+
   @override
   void dispose() {
     _textoController.dispose();
@@ -35,6 +44,52 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
 
   void _alCambiarTexto(String texto) {
     setState(() => _resultado = parsearInscritos(texto));
+  }
+
+  /// Abre el selector del celular y vuelca el archivo en el área de texto,
+  /// donde se ve qué se leyó y se puede corregir antes de confirmar. El
+  /// formato se reconoce por el contenido; la extensión solo filtra lo que
+  /// claramente no es una lista.
+  Future<void> _elegirArchivo() async {
+    final messenger = ScaffoldMessenger.of(context);
+    void avisar(String mensaje) => messenger.showSnackBar(
+          SnackBar(content: Text(mensaje), backgroundColor: AppTheme.error),
+        );
+
+    final PlatformFile? archivo;
+    try {
+      archivo = await FilePicker.pickFile(
+        dialogTitle: 'Lista de estudiantes',
+      );
+    } catch (e) {
+      avisar('No se pudo abrir el selector de archivos: $e');
+      return;
+    }
+    if (archivo == null || !mounted) return;
+    final extension = (archivo.extension ?? '').toLowerCase();
+    if (extension.isNotEmpty && !_extensiones.contains(extension)) {
+      avisar('Elige la lista en Excel (.xls o .xlsx) o en CSV.');
+      return;
+    }
+
+    setState(() => _leyendo = true);
+    try {
+      final texto = textoDesdeFilas(
+        leerHojaDeCalculo(await archivo.readAsBytes()),
+      );
+      if (!mounted) return;
+      _textoController.text = texto;
+      setState(() {
+        _archivo = archivo!.name;
+        _resultado = parsearInscritos(texto);
+      });
+    } on FormatException catch (e) {
+      avisar(e.message);
+    } catch (e) {
+      avisar('No se pudo leer el archivo: $e');
+    } finally {
+      if (mounted) setState(() => _leyendo = false);
+    }
   }
 
   void _confirmar() {
@@ -63,6 +118,8 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                 children: [
                   _buildInstrucciones(),
+                  const SizedBox(height: 16),
+                  _buildElegirArchivo(),
                   const SizedBox(height: 16),
                   _buildAreaTexto(),
                   const SizedBox(height: 16),
@@ -179,9 +236,10 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Copia desde Excel las filas de los estudiantes junto con la '
+              'Elige el archivo de la lista de clase (el Excel de Chairá, '
+              '.xls o .xlsx, o un CSV), o copia desde Excel las filas con la '
               'fila de títulos (DOCUMENTO, NOMBRECOMPLETO, MAIL_INST...) y '
-              'pégalas aquí. Solo se guardan la cédula, el nombre y el '
+              'pégalas abajo. Solo se guardan la cédula, el nombre y el '
               'correo; las demás columnas se ignoran.',
               style: TextStyle(
                 color: AppTheme.textSecondary,
@@ -192,6 +250,42 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildElegirArchivo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _leyendo ? null : _elegirArchivo,
+          icon: _leyendo
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.upload_file),
+          label: Text(
+            _leyendo ? 'Leyendo el archivo...' : 'Elegir archivo (.xls, .xlsx o .csv)',
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _primaryLight,
+            side: BorderSide(color: _primaryLight.withValues(alpha: 0.5)),
+            minimumSize: const Size.fromHeight(50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _archivo == null
+              ? 'o pega la lista aquí:'
+              : 'Leído de $_archivo. Puedes revisarlo abajo antes de agregar.',
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+        ),
+      ],
     );
   }
 

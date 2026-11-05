@@ -859,7 +859,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Importar CSV',
+                      'Importar lista',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 17,
@@ -875,7 +875,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 ),
                 const SizedBox(height: 3),
                 const Text(
-                  'Pega la lista desde Excel o un CSV',
+                  'El Excel de Chairá (.xls o .xlsx), un CSV o pegada',
                   style: TextStyle(color: _tertiaryGreen, fontSize: 13),
                 ),
               ],

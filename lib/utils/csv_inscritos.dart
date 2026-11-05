@@ -94,6 +94,29 @@ ResultadoCsv parsearInscritos(String texto) {
   );
 }
 
+/// Una hoja de cálculo leída de un archivo, como el texto que entiende
+/// [parsearInscritos]: separada por tabulaciones y empezando en la fila de
+/// títulos, aunque arriba vengan filas con el nombre de la universidad, del
+/// curso o del docente. Si no encuentra títulos, la devuelve completa.
+String textoDesdeFilas(List<List<String>> filas) {
+  final limpias = [
+    for (final fila in filas)
+      [for (final c in fila) c.replaceAll(RegExp(r'[\t\r\n]+'), ' ').trim()],
+  ];
+  var inicio = 0;
+  for (var i = 0; i < limpias.length && i < 40; i++) {
+    if (_columnasDeEncabezado(limpias[i]) != null) {
+      inicio = i;
+      break;
+    }
+  }
+  return limpias
+      .skip(inicio)
+      .where((f) => f.any((c) => c.isNotEmpty))
+      .map((f) => f.join('\t'))
+      .join('\n');
+}
+
 String _detectarSeparador(String linea) {
   if (linea.contains('\t')) return '\t';
   if (linea.contains(';')) return ';';

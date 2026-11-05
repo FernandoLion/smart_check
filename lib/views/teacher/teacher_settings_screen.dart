@@ -161,8 +161,9 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
                     _buildDivider(),
                     _buildNavRow(
                       icon: Icons.upload_file_outlined,
-                      title: 'Importar estudiantes (CSV)',
-                      subtitle: 'Eliges el curso y pegas la lista',
+                      title: 'Importar estudiantes',
+                      subtitle: 'Eliges el curso y el Excel o CSV de la '
+                          'lista',
                       onTap: _importarEstudiantes,
                     ),
                     _buildDivider(),

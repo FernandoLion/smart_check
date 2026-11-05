@@ -229,7 +229,7 @@ class AddStudentsModal extends StatelessWidget {
                             const Column(
                               children: [
                                 Text(
-                                  'Importar CSV Chairá',
+                                  'Importar lista de Chairá',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: Colors.white,
@@ -239,7 +239,8 @@ class AddStudentsModal extends StatelessWidget {
                                 ),
                                 SizedBox(height: 4),
                                 Text(
-                                  'Carga masiva oficial desde el sistema académico',
+                                  'El archivo .xls, .xlsx o CSV de la lista de '
+                                  'clase',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: AppTheme.textSecondary,
