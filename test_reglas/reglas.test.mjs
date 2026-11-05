@@ -6,6 +6,14 @@
 //   npm install
 //   npm run test:reglas
 //
+// En Windows, si el `java` del PATH es viejo, sirve el de Android Studio; y
+// el JDK reciente necesita un directorio corto para sus sockets, o el
+// emulador muere con "Unable to establish loopback connection":
+//
+//   export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
+//   export PATH="$JAVA_HOME/bin:$PATH"
+//   export JAVA_TOOL_OPTIONS='-Djdk.net.unixdomain.tmpdir=C:\Users\<tú>\jtmp'
+//
 // `firebase emulators:exec` levanta el emulador, deja su dirección en
 // FIRESTORE_EMULATOR_HOST y lo apaga al terminar. El proyecto `demo-*` no
 // existe en la nube: nada de esto puede tocar producción.

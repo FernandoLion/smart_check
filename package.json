@@ -4,7 +4,7 @@
   "description": "Pruebas de firestore.rules contra el emulador de Firestore.",
   "type": "module",
   "scripts": {
-    "test:reglas": "firebase emulators:exec --only firestore --project demo-smart-check \"node --test test_reglas/\""
+    "test:reglas": "firebase emulators:exec --only firestore --project demo-smart-check \"node --test test_reglas/*.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
