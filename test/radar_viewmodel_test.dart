@@ -294,6 +294,8 @@ void main() {
     });
 
     test('a quien aun no ha firmado se le espera, sin dar error', () async {
+      var ahora = DateTime.now();
+      final vm = otroRadar(reloj: () => ahora);
       await vm.iniciar(cursoEnClase(), 'uid-docente');
       // Asi responde el servidor cuando el estudiante todavia no firmo su
       // presencia: la regla exige que exista antes de aceptar la asistencia.
@@ -313,6 +315,14 @@ void main() {
       expect(vm.error, isNull);
 
       cursos.fallo = null;
+      // Los anuncios que llegan enseguida no vuelven a escribir.
+      final escriturasAntes = cursos.escriturasDeAsistencia;
+      ble.oir('1117000000');
+      await pumpEventQueue();
+      expect(cursos.escriturasDeAsistencia, escriturasAntes);
+      expect(vm.detectados, 0);
+
+      ahora = ahora.add(RadarViewModel.reintentoSinFirma);
       ble.oir('1117000000');
       await pumpEventQueue();
 

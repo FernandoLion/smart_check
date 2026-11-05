@@ -66,12 +66,19 @@ class RadarViewModel extends ChangeNotifier {
   final _asistencias = <String, Asistencia>{};
   final _rssi = <String, int>{};
 
+  /// Cada cuánto se reintenta registrar a quien se oye sin firma. El radar
+  /// recibe varios anuncios por segundo de cada celular: reintentar con cada
+  /// uno serían cientos de escrituras rechazadas por minuto con un salón
+  /// lleno, y la firma, cuando llega, no tiene prisa de un segundo.
+  static const reintentoSinFirma = Duration(seconds: 3);
+
   /// A quién se oyó por BLE pero el servidor todavía no deja registrar
-  /// porque no ha firmado su presencia. Se reintenta con cada anuncio suyo.
-  final _sinFirma = <String>{};
+  /// porque no ha firmado su presencia, y cuándo se le rechazó por última
+  /// vez. Se reintenta con sus anuncios, cada [reintentoSinFirma].
+  final _sinFirma = <String, DateTime>{};
 
   /// Si a este inscrito se le oye pero aún falta su firma.
-  bool esperandoFirma(String clave) => _sinFirma.contains(clave);
+  bool esperandoFirma(String clave) => _sinFirma.containsKey(clave);
 
   /// Las firmas del llamado, por clave. Dicen, entre otras cosas, si el
   /// estudiante registró su rostro en este mismo momento.
@@ -260,7 +267,10 @@ class RadarViewModel extends ChangeNotifier {
     final clave = _porHuella[baliza.huella];
     if (clave == null) return;
     _rssi[clave] = baliza.rssi;
-    if (_asistencias.containsKey(clave)) {
+    final rechazo = _sinFirma[clave];
+    if (_asistencias.containsKey(clave) ||
+        (rechazo != null &&
+            _ahora().difference(rechazo) < reintentoSinFirma)) {
       notifyListeners();
       return;
     }
@@ -309,7 +319,7 @@ class RadarViewModel extends ChangeNotifier {
       // sigue anunciándose, así que el siguiente anuncio lo reintenta solo.
       // Sacarle un error al docente por eso sería ruido.
       if (metodo == MetodoAsistencia.ble && e.denegado) {
-        _sinFirma.add(clave);
+        _sinFirma[clave] = _ahora();
       } else {
         _error = e.mensaje;
       }

@@ -181,12 +181,16 @@ class FakeCursoService extends Fake implements CursoService {
     }
   }
 
+  /// Intentos de escribir una asistencia, aceptados o no.
+  int escriturasDeAsistencia = 0;
+
   @override
   Future<void> registrarAsistencia(
     String cursoId,
     String sesionId,
     Asistencia asistencia,
   ) async {
+    escriturasDeAsistencia++;
     if (fallo != null) throw fallo!;
     final lista = asistenciasPorSesion.putIfAbsent(sesionId, () => [])
       ..removeWhere((a) => a.claveInscrito == asistencia.claveInscrito);
