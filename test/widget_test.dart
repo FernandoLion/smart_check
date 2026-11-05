@@ -21,10 +21,12 @@ import 'package:smart_check/viewmodels/student_viewmodel.dart';
 import 'package:smart_check/viewmodels/teacher_viewmodel.dart';
 import 'package:smart_check/views/login_screen.dart';
 import 'package:smart_check/views/smart_register_screen.dart';
+import 'package:smart_check/views/student/puerta_celular_screen.dart';
 import 'package:smart_check/views/student/student_home_screen.dart';
 import 'package:smart_check/views/teacher/teacher_home_screen.dart';
 
 import 'auth_fakes.dart';
+import 'ble_fakes.dart';
 import 'chaira_fixtures.dart';
 import 'curso_fakes.dart';
 
@@ -122,10 +124,14 @@ void main() {
       return () => FlutterError.onError = original;
     }
 
+    /// Entra con usuario y contraseña. Por defecto la cuenta está vinculada a
+    /// este mismo celular; con [vinculadoA] queda atada a otro.
     Future<void> iniciarSesion(
       WidgetTester tester,
-      List<String> roles,
-    ) async {
+      List<String> roles, {
+      String vinculadoA = celularDePrueba,
+      String? fotoUrl,
+    }) async {
       tester.view.physicalSize = const Size(430, 932);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -133,11 +139,23 @@ void main() {
 
       final auth = FakeAuthService()
         ..cuentas['an.perez@udla.edu.co'] = 'Clave123!';
+      final base = perfilDe(
+        'an.perez@udla.edu.co',
+        'ANA MARÍA PÉREZ GÓMEZ',
+        roles,
+      );
       final perfiles = FakePerfilService()
-        ..perfiles['uid-an.perez@udla.edu.co'] = perfilDe(
-          'an.perez@udla.edu.co',
-          'ANA MARÍA PÉREZ GÓMEZ',
-          roles,
+        ..perfiles['uid-an.perez@udla.edu.co'] = UsuarioPerfil(
+          uid: base.uid,
+          email: base.email,
+          nombre: base.nombre,
+          cedula: base.cedula,
+          programa: base.programa,
+          tipoUsuario: base.tipoUsuario,
+          roles: base.roles,
+          fotoUrl: fotoUrl,
+          dispositivoId: vinculadoA,
+          dispositivoDesde: DateTime(2026, 10, 1),
         );
 
       await tester.pumpWidget(
@@ -148,6 +166,7 @@ void main() {
                 authService: auth,
                 perfilService: perfiles,
                 chairaService: chairaFalso(),
+                dispositivos: FakeDispositivoService(),
               ),
             ),
             ChangeNotifierProvider(
@@ -183,6 +202,43 @@ void main() {
       expect(find.text('Docente'), findsNothing);
     });
 
+    testWidgets('desde otro celular le pide el rostro antes de entrar', (
+      tester,
+    ) async {
+      final restaurar = ignorarDesbordes();
+      // Se registró en un teléfono y entra en otro: antes pasaba como si nada.
+      await iniciarSesion(
+        tester,
+        [Rol.estudiante],
+        vinculadoA: 'android-el-otro-celular',
+        // Con foto en Chairá hay con qué comparar su rostro.
+        fotoUrl: 'https://chaira.udla.edu.co/foto.jpg',
+      );
+      restaurar();
+
+      expect(find.byType(StudentHomeScreen), findsNothing);
+      expect(find.byType(PuertaDelCelularScreen), findsOneWidget);
+      expect(find.text('Tu cuenta está en otro celular'), findsOneWidget);
+      expect(find.textContaining('terminado en elular'), findsOneWidget);
+
+      // Si no confirma su rostro y se sale, queda fuera de la cuenta.
+      await tester.tap(find.text('Cerrar sesión'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(PuertaDelCelularScreen), findsNothing);
+      expect(find.byType(StudentHomeScreen), findsNothing);
+      expect(
+        tester
+            .element(find.byType(LoginScreen))
+            .read<AuthViewModel>()
+            .perfil,
+        isNull,
+      );
+      // Los reintentos de la foto de perfil (3 s y 10 s) no deben quedar
+      // pendientes al terminar.
+      await tester.pump(const Duration(seconds: 15));
+    });
+
     testWidgets('un docente entra directo al panel docente', (tester) async {
       final restaurar = ignorarDesbordes();
       await iniciarSesion(tester, [Rol.docente]);
@@ -205,12 +261,14 @@ void main() {
         ..cuentas['an.perez@udla.edu.co'] = 'Clave123!';
       // Como si la app se hubiera cerrado después de entrar.
       await auth.signInWithEmailPassword('an.perez@udla.edu.co', 'Clave123!');
+      final base = perfilDe(
+        'an.perez@udla.edu.co',
+        'ANA MARÍA PÉREZ GÓMEZ',
+        [Rol.estudiante],
+      );
       final perfiles = FakePerfilService()
-        ..perfiles['uid-an.perez@udla.edu.co'] = perfilDe(
-          'an.perez@udla.edu.co',
-          'ANA MARÍA PÉREZ GÓMEZ',
-          [Rol.estudiante],
-        );
+        ..perfiles['uid-an.perez@udla.edu.co'] =
+            base.conDispositivo(celularDePrueba, DateTime(2026, 10, 1));
 
       final restaurar = ignorarDesbordes();
       await tester.pumpWidget(
@@ -221,6 +279,7 @@ void main() {
                 authService: auth,
                 perfilService: perfiles,
                 chairaService: chairaFalso(),
+                dispositivos: FakeDispositivoService(),
               ),
             ),
             ChangeNotifierProvider(

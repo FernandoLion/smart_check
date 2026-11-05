@@ -151,18 +151,27 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
     if (rostro != null && uid != null) {
       await IdentidadEnCelular.guardarPara(uid, rostro);
     }
+    // Y quien va a marcar asistencia queda atado a este celular, en el que
+    // acaba de demostrar quién es. Así, entrar desde otro le pide el rostro.
+    // Si falla, se lo pedirá al entrar.
+    final seraEstudiante = !result.esDocente || _alsoStudent;
+    final vinculado =
+        seraEstudiante && await authViewModel.vincularEsteDispositivo();
     if (!mounted) return;
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
       SnackBar(
         content: Text(
           rostro != null
-              ? 'Cuenta creada. Tu rostro quedó registrado en este celular.'
+              ? vinculado
+                  ? 'Cuenta creada. Tu rostro quedó registrado y este '
+                      'celular quedó vinculado.'
+                  : 'Cuenta creada. Tu rostro quedó registrado en este '
+                      'celular.'
               : sinFotoEnChaira
                   ? result.esDocente && !_alsoStudent
                       ? 'Cuenta creada. Chairá no tiene una foto tuya con la '
-                          'que comparar tu rostro: se verificará cuando la '
-                          'tenga.'
+                          'que comparar tu rostro.'
                       : 'Cuenta creada. Chairá no tiene una foto tuya con la '
                           'que comparar tu rostro: hasta que la tenga, el '
                           'docente te marcará la asistencia a mano.'
