@@ -67,11 +67,14 @@ void main() {
     expect(find.text('Radar BLE • 08:05'), findsOneWidget);
     expect(find.text('Martes 20 de octubre'), findsOneWidget);
     expect(find.text('Sin marca'), findsOneWidget);
-    expect(find.text('Asistió'), findsOneWidget);
-    expect(find.text('Faltó'), findsOneWidget);
+    // Uno en la lista y otro en la leyenda del calendario.
+    expect(find.text('Asistió'), findsNWidgets(2));
+    expect(find.text('Faltó'), findsNWidgets(2));
+    expect(find.text('CALENDARIO DE ASISTENCIA'), findsOneWidget);
     // Nada de la maqueta de antes.
     expect(find.textContaining('Aula 301'), findsNothing);
     expect(find.textContaining('Acuerdo 014'), findsNothing);
+    expect(find.textContaining('Marzo 2025'), findsNothing);
   });
 
   testWidgets('el termómetro sale del resumen real', (tester) async {

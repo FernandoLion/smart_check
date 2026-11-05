@@ -16,6 +16,9 @@ class StudentSubjectModel {
   final String professor;
   final AsistenciaResumen asistencia;
 
+  /// Los días de la semana con clase (1 = lunes), para el calendario.
+  final List<int> diasDeClase;
+
   const StudentSubjectModel({
     required this.cursoId,
     required this.code,
@@ -25,6 +28,7 @@ class StudentSubjectModel {
     required this.schedule,
     required this.professor,
     this.asistencia = const AsistenciaResumen(),
+    this.diasDeClase = const [],
   });
 
   factory StudentSubjectModel.desdeCurso(
@@ -40,6 +44,7 @@ class StudentSubjectModel {
       schedule: horarioLegible(curso.horarios),
       professor: curso.docenteNombre,
       asistencia: asistencia,
+      diasDeClase: curso.horarios.map((h) => h.dia).toSet().toList(),
     );
   }
 

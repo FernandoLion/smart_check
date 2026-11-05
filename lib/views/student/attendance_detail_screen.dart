@@ -6,6 +6,7 @@ import '../../models/sesion_model.dart';
 import '../../models/student_subject_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/student_viewmodel.dart';
+import '../../widgets/calendario_asistencia.dart';
 import '../../widgets/texto_sin_cortes.dart';
 
 /// La asistencia del estudiante en una materia: cuánto lleva, cuántas fallas
@@ -81,6 +82,8 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                   _buildCourseTitleSection(materia),
                   const SizedBox(height: 20),
                   _buildTermometro(materia.asistencia),
+                  const SizedBox(height: 22),
+                  _buildCalendario(),
                   const SizedBox(height: 22),
                   _buildClasesDictadas(),
                 ],
@@ -488,6 +491,46 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// El mes a mes de la materia con los mismos datos de "Clases dictadas".
+  Widget _buildCalendario() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'CALENDARIO DE ASISTENCIA',
+            style: TextStyle(
+              color: AppTheme.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        FutureBuilder<List<ClaseDelEstudiante>>(
+          future: _historial,
+          builder: (context, estado) {
+            if (estado.connectionState != ConnectionState.done) {
+              return const SizedBox(
+                height: 120,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            // Si falla, el aviso ya sale en "Clases dictadas"; el calendario
+            // se muestra igual con el horario.
+            return CalendarioAsistencia(
+              clases: estado.data ?? const [],
+              diasDeClase: widget.subject.diasDeClase,
+              hoy: DateTime.now(),
+            );
+          },
+        ),
+      ],
     );
   }
 
