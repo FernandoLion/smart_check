@@ -83,6 +83,13 @@ class RadarViewModel extends ChangeNotifier {
   bool rostroRecienRegistrado(String clave) =>
       _firmas[clave]?.rostroRecienEnrolado ?? false;
 
+  /// Si este inscrito firmó desde un celular que ató a su cuenta hace menos
+  /// de un día. Desde que cambiar de celular no tiene espera, es la señal que
+  /// le queda al docente para notar una cuenta que va de teléfono en
+  /// teléfono. Tampoco es fraude por sí sola: cambiar de celular es normal.
+  bool celularRecienVinculado(String clave) =>
+      _firmas[clave]?.celularReciente(_ahora()) ?? false;
+
   bool _ocupado = false;
   bool _escaneando = false;
   String? _error;

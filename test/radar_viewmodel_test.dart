@@ -268,6 +268,31 @@ void main() {
       expect(vm.rostroRecienRegistrado('ca.munoz@udla.edu.co'), isFalse);
     });
 
+    test('avisa de quien firmó desde un celular vinculado hoy', () async {
+      final fijo = DateTime(2026, 10, 28, 10, 0);
+      final vm = otroRadar(reloj: () => fijo);
+      expect(await vm.iniciar(cursoEnClase(ahora: fijo), 'uid-docente'), isTrue);
+
+      Presencia firma(String clave, DateTime vinculado) => Presencia(
+            claveInscrito: clave,
+            dispositivo: 'android-$clave',
+            vinculadoEn: vinculado,
+            biometria: 'biometrica',
+            rostro: 'coincide',
+          );
+      // Uno ató el celular hace una hora; el otro, hace semanas.
+      await cursos.firmarPresencia('c1', vm.sesion!.id,
+          firma('1117000000', fijo.subtract(const Duration(hours: 1))));
+      await cursos.firmarPresencia('c1', vm.sesion!.id,
+          firma('ca.munoz@udla.edu.co', DateTime(2026, 10, 1)));
+      await pumpEventQueue();
+
+      expect(vm.celularRecienVinculado('1117000000'), isTrue);
+      expect(vm.celularRecienVinculado('ca.munoz@udla.edu.co'), isFalse);
+      // Sin firma no hay nada que decir.
+      expect(vm.celularRecienVinculado('nadie'), isFalse);
+    });
+
     test('a quien aun no ha firmado se le espera, sin dar error', () async {
       await vm.iniciar(cursoEnClase(), 'uid-docente');
       // Asi responde el servidor cuando el estudiante todavia no firmo su

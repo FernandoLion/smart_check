@@ -815,7 +815,11 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
     final rostro = _vm.rostroRecienRegistrado(fila.inscrito.clave)
         ? ' • rostro registrado hoy, verifícalo'
         : '';
-    return '${tarde ? 'Llegó tarde' : 'Detectado por BLE'}$senal$rostro';
+    final celular = _vm.celularRecienVinculado(fila.inscrito.clave)
+        ? ' • celular vinculado hoy'
+        : '';
+    return '${tarde ? 'Llegó tarde' : 'Detectado por BLE'}'
+        '$senal$rostro$celular';
   }
 
   /// De -40 dBm (pegado al docente) a -100 dBm (al límite del aula).
