@@ -39,6 +39,14 @@ class BeaconViewModel extends ChangeNotifier {
   /// Deja de anunciar en cuanto se acaba la ventana del llamado.
   Timer? _ventana;
 
+  /// Escucha el llamado mientras se anuncia: si el docente lo cierra antes
+  /// de tiempo, este celular deja de emitir en el acto.
+  StreamSubscription<List<Sesion>>? _vigilancia;
+  bool _cerradoPorDocente = false;
+
+  /// El docente cerró el llamado antes de que se acabara la ventana.
+  bool get cerradoPorDocente => _cerradoPorDocente;
+
   /// Dónde quedó el celular respecto al aula en este marcaje, o null si el
   /// curso no tiene geocerca. Va a la presencia firmada.
   ComprobacionAula? _aula;
@@ -76,6 +84,7 @@ class BeaconViewModel extends ChangeNotifier {
     _buscando = true;
     _error = null;
     _vencida = false;
+    _cerradoPorDocente = false;
     notifyListeners();
     try {
       final abierto = await _buscarLlamadoAbierto(cursos);
@@ -130,6 +139,7 @@ class BeaconViewModel extends ChangeNotifier {
       await _ble.anunciar(clave);
       _anunciando = true;
       _ventana = Timer(abierto.$2.restante(DateTime.now()), _alVencerLaVentana);
+      _vigilarElLlamado(abierto.$1.id, abierto.$2.id);
       return true;
     } on CursoException catch (e) {
       _error = e.mensaje;
@@ -164,7 +174,30 @@ class BeaconViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// En cuanto el llamado deja de estar abierto (el docente detuvo el radar
+  /// o salió de él), se deja de emitir: seguir anunciándose no le serviría
+  /// a nadie y gastaría batería. Sin conexión no llega el aviso, y queda el
+  /// reloj de la ventana.
+  void _vigilarElLlamado(String cursoId, String sesionId) {
+    _vigilancia?.cancel();
+    _vigilancia = _cursos.llamadosAbiertos(cursoId).listen(
+      (abiertos) {
+        if (!_anunciando || abiertos.any((s) => s.id == sesionId)) return;
+        _alCerrarElDocente();
+      },
+      onError: (Object _) {},
+    );
+  }
+
+  Future<void> _alCerrarElDocente() async {
+    await parar();
+    _cerradoPorDocente = true;
+    notifyListeners();
+  }
+
   Future<void> parar() async {
+    _vigilancia?.cancel();
+    _vigilancia = null;
     _ventana?.cancel();
     _ventana = null;
     await _ble.dejarDeAnunciar();
@@ -174,6 +207,7 @@ class BeaconViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _vigilancia?.cancel();
     _ventana?.cancel();
     _ble.dejarDeAnunciar();
     super.dispose();

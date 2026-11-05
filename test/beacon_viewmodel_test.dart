@@ -205,6 +205,35 @@ void main() {
     expect(mapa.containsKey('precision_gps'), isFalse);
   });
 
+  test('si el docente cierra el llamado, deja de anunciar', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+    expect(await marcar([enAula]), isTrue);
+    expect(ble.anunciando, '1117000000');
+
+    // El docente detiene el radar antes de que se acabe la ventana.
+    await cursos.cerrarSesion('c1', 'llamado-1');
+    await pumpEventQueue();
+
+    expect(ble.anunciando, isNull);
+    expect(vm.anunciando, isFalse);
+    expect(vm.cerradoPorDocente, isTrue);
+    expect(vm.ventanaVencida, isFalse);
+  });
+
+  test('si se cierra otro llamado, sigue anunciando', () async {
+    cursos.sesionesPorCurso['c1'] = [
+      llamadoAbierto(),
+      llamadoAbierto(id: 'otro'),
+    ];
+    expect(await marcar([enAula]), isTrue);
+
+    await cursos.cerrarSesion('c1', 'otro');
+    await pumpEventQueue();
+
+    expect(ble.anunciando, '1117000000');
+    expect(vm.cerradoPorDocente, isFalse);
+  });
+
   test('sin celular vinculado no anuncia', () async {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
 

@@ -47,7 +47,15 @@ class FaceVerificationScreen extends StatefulWidget {
         : 'Confirma que eres tú antes de atar tu cuenta';
   }
 
-  String get classroom => curso?.aula ?? 'Este celular';
+  /// El aula del curso, o lo que corresponda si no hay curso o no tiene
+  /// aula escrita (nunca un texto vacío).
+  String get classroom {
+    if (curso == null) return 'Este celular';
+    final aula = curso!.aula.trim();
+    return aula.isEmpty ? 'Aula sin asignar' : aula;
+  }
+
+  bool get _sinAula => curso != null && curso!.aula.trim().isEmpty;
 
   @override
   State<FaceVerificationScreen> createState() => _FaceVerificationScreenState();
@@ -365,15 +373,15 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                 ),
                 const SizedBox(width: 8),
                 const Icon(
-                  Icons.bluetooth_searching,
-                  color: _primaryIndigo,
+                  Icons.bluetooth_disabled,
+                  color: AppTheme.textTertiary,
                   size: 15,
                 ),
                 const SizedBox(width: 4),
                 const Text(
-                  'BLE Activo',
+                  'BLE en espera',
                   style: TextStyle(
-                    color: _tertiaryGreen,
+                    color: AppTheme.textSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -443,7 +451,9 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                                     : 'Vinculación de celular')
                               // La ubicación la comprueba después la
                               // baliza, no esta pantalla.
-                              : 'Aula: ${widget.classroom}',
+                              : widget._sinAula
+                                  ? widget.classroom
+                                  : 'Aula: ${widget.classroom}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -956,7 +966,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              'Sensor ${widget.classroom}',
+                              widget.classroom,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(

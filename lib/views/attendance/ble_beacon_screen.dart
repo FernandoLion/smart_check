@@ -61,14 +61,23 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
 
   String get _courseName =>
       _vm.curso?.nombre ?? 'Buscando el llamado abierto...';
-  String get _classroom => _vm.curso?.aula ?? '—';
+  String get _classroom {
+    final aula = (_vm.curso?.aula ?? '').trim();
+    return aula.isEmpty ? 'Aula sin asignar' : aula;
+  }
 
   /// El aula y, si el curso tiene geocerca, a cuánto de ella midió el GPS.
   String get _aulaYDistancia {
     final aula = _vm.aula;
     if (aula == null) return _classroom;
-    return '$_classroom · a ${aula.distancia} m (GPS ±${aula.precision} m)';
+    final gps = '(GPS ±${aula.precision} m)';
+    return (_vm.curso?.aula ?? '').trim().isEmpty
+        ? 'A ${aula.distancia} m del aula $gps'
+        : '$_classroom · a ${aula.distancia} m $gps';
   }
+
+  /// Si este celular está emitiendo ahora mismo.
+  bool get _emitiendo => _vm.anunciando && !_isStopped;
 
   /// Lo que queda de ventana para marcar.
   int get _totalSeconds => _vm.restante.inSeconds;
@@ -125,17 +134,18 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
 
   void _alCambiar() {
     if (!mounted) return;
-    // Si la ventana se cerró sola, la pantalla queda en reposo y se le dice
-    // al estudiante cuál es la única salida que le queda.
-    if (_vm.ventanaVencida && !_isStopped) {
+    // Si la ventana se cerró sola o la cerró el docente, la pantalla queda
+    // en reposo y se le dice al estudiante cuál es la única salida que le
+    // queda.
+    if ((_vm.ventanaVencida || _vm.cerradoPorDocente) && !_isStopped) {
       setState(() => _isStopped = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Se cerró el llamado de asistencia. Si no apareciste en el radar '
-            'del docente, pídele que te marque a mano.',
+            '${_vm.cerradoPorDocente ? 'El docente cerró el llamado' : 'Se cerró el llamado de asistencia'}'
+            '. Si no apareciste en su radar, pídele que te marque a mano.',
           ),
-          duration: Duration(seconds: 5),
+          duration: const Duration(seconds: 5),
         ),
       );
       return;
@@ -270,7 +280,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Dynamic Island Pill: "BLE 2.4GHz Activo"
+          // Si el Bluetooth está emitiendo de verdad o ya no.
           Center(
             child: Container(
               height: 28,
@@ -297,25 +307,35 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                     child: Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
-                        color: _primaryIndigo,
+                      decoration: BoxDecoration(
+                        color: _emitiendo
+                            ? _primaryIndigo
+                            : AppTheme.textTertiary,
                         shape: BoxShape.circle,
                         boxShadow: [
-                          BoxShadow(color: _primaryIndigo, blurRadius: 8),
+                          if (_emitiendo)
+                            const BoxShadow(
+                              color: _primaryIndigo,
+                              blurRadius: 8,
+                            ),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(
-                    Icons.settings_remote,
-                    color: _primaryLight,
+                  Icon(
+                    _emitiendo ? Icons.settings_remote : Icons.bluetooth_disabled,
+                    color: _emitiendo ? _primaryLight : AppTheme.textTertiary,
                     size: 13,
                   ),
                   const SizedBox(width: 5),
-                  const Text(
-                    'BLE 2.4GHz Activo',
-                    style: TextStyle(
+                  Text(
+                    _emitiendo
+                        ? 'BLE 2.4GHz Activo'
+                        : _vm.buscando
+                            ? 'Preparando BLE...'
+                            : 'BLE apagado',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
@@ -658,10 +678,14 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
           ],
         ),
         const SizedBox(height: 6),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Mantén la app abierta y cerca del celular del docente hasta que aparezcas en su radar.',
+            _isStopped
+                ? 'Ya no se emite. Si no apareciste en el radar del docente, '
+                    'pídele que te marque a mano.'
+                : 'Mantén la app abierta y cerca del celular del docente '
+                    'hasta que aparezcas en su radar.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppTheme.textSecondary,

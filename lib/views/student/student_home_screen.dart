@@ -728,7 +728,9 @@ class StudentHomeScreen extends StatelessWidget {
             child: Text(
               vigente == null
                   ? 'Esperando el llamado del docente'
-                  : 'Registrar asistencia · ${vigente.$1.codigo}',
+                  // El nombre y no el código: es lo que el estudiante
+                  // reconoce de un vistazo.
+                  : 'Registrar asistencia · ${vigente.$1.nombre}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
