@@ -9,6 +9,8 @@ import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
+import '../../viewmodels/face_verification_viewmodel.dart';
+import '../attendance/face_verification_screen.dart';
 import '../login_screen.dart';
 import '../../widgets/ajustes_compartidos.dart';
 import 'import_csv_screen.dart';
@@ -33,6 +35,23 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
   static const Color _errorContainer = Color(0xFF93000A);
 
   static String _cursos(int n) => n == 1 ? '1 curso' : '$n cursos';
+
+  /// Registra el rostro del docente en este celular (contra su foto de
+  /// Chairá) o comprueba el que ya tiene, sin esperar a abrir un llamado.
+  Future<void> _probarRostro() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final rostro = await verificarRostro(context);
+    if (rostro == null || !mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          rostro.resultado == ResultadoIdentidad.enrolado
+              ? 'Listo: tu rostro quedó registrado en este celular.'
+              : 'Listo: eres tú.',
+        ),
+      ),
+    );
+  }
 
   /// La lista pegada va a un curso: primero se elige cuál, y al confirmar
   /// quedan inscritos en él.
@@ -194,6 +213,14 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
                       title: 'Cambiar contraseña',
                       subtitle: 'Te llega un enlace a tu correo institucional',
                       onTap: () => pedirCambioDeContrasena(context),
+                    ),
+                    _buildDivider(),
+                    _buildNavRow(
+                      icon: Icons.face_outlined,
+                      title: 'Mi rostro',
+                      subtitle: 'Se pide al abrir el radar. Regístralo o '
+                          'pruébalo aquí antes de clase',
+                      onTap: _probarRostro,
                     ),
                   ]),
                   const SizedBox(height: 24),

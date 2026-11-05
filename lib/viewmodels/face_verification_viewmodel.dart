@@ -54,6 +54,10 @@ enum MotivoVerificacion {
 
   /// Antes de crear la cuenta: la cara contra el carné del documento.
   registro,
+
+  /// Antes de que el docente abra el radar: que quien llama lista sea el
+  /// dueño de la cuenta docente, no alguien con su celular.
+  llamado,
 }
 
 /// Lo que la verificación facial le devuelve a quien la abrió.
@@ -317,6 +321,9 @@ class FaceVerificationViewModel extends ChangeNotifier {
           MotivoVerificacion.asistencia =>
             'No pudimos confirmar que eres tú. Solo el dueño de la cuenta '
                 'puede registrar su asistencia.',
+          MotivoVerificacion.llamado =>
+            'No pudimos confirmar que eres tú. Solo el docente dueño de la '
+                'cuenta puede abrir el llamado.',
           _ => 'No pudimos confirmar que eres tú: tu rostro no coincide con '
               'el que guarda este celular. Inténtalo de frente y con buena '
               'luz.',
@@ -346,6 +353,9 @@ class FaceVerificationViewModel extends ChangeNotifier {
           MotivoVerificacion.registro =>
             'Este rostro no coincide con la foto del carné de este '
                 'documento. Solo su dueño puede crear la cuenta.',
+          MotivoVerificacion.llamado =>
+            'Tu rostro no coincide con tu foto de Chairá. Inténtalo de '
+                'frente, con buena luz y sin gafas.',
         });
       }
       await identidad.guardarReferencia(vivo);

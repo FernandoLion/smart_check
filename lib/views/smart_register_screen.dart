@@ -96,13 +96,13 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
       return;
     }
 
-    // Quien va a marcar asistencia tiene que demostrar, antes de que la
-    // cuenta exista, que es el dueño del documento. Un docente que no cursa
-    // materias no marca nada, así que no pasa por aquí.
-    final seraEstudiante = !result.esDocente || _alsoStudent;
+    // Todo el que crea una cuenta demuestra, antes de que exista, que es el
+    // dueño del documento: el estudiante porque marca asistencia, el docente
+    // porque abre llamados y corrige asistencias a nombre de su cuenta. Sin
+    // esto, cualquiera con la cédula de un profesor podría crearle la cuenta.
     List<double>? rostro;
     var sinFotoEnChaira = false;
-    if (seraEstudiante) {
+    {
       final previo = _rostro;
       if (previo != null && previo.documento == result.documentoConsultado) {
         rostro = previo.vector;
@@ -115,9 +115,9 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
         switch (comprobado.estado) {
           case RostroAlRegistrarse.noConfirmado:
             _showError(
-              'Para crear una cuenta de estudiante tienes que confirmar que '
-              'eres el dueño del documento: tu rostro debe coincidir con tu '
-              'foto de Chairá.',
+              'Para crear tu cuenta tienes que confirmar que eres el dueño '
+              'del documento: tu rostro debe coincidir con tu foto de '
+              'Chairá.',
             );
             return;
           case RostroAlRegistrarse.sinFotoEnChaira:
@@ -159,9 +159,13 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
           rostro != null
               ? 'Cuenta creada. Tu rostro quedó registrado en este celular.'
               : sinFotoEnChaira
-                  ? 'Cuenta creada. Chairá no tiene una foto tuya con la que '
-                      'comparar tu rostro: hasta que la tenga, el docente te '
-                      'marcará la asistencia a mano.'
+                  ? result.esDocente && !_alsoStudent
+                      ? 'Cuenta creada. Chairá no tiene una foto tuya con la '
+                          'que comparar tu rostro: se verificará cuando la '
+                          'tenga.'
+                      : 'Cuenta creada. Chairá no tiene una foto tuya con la '
+                          'que comparar tu rostro: hasta que la tenga, el '
+                          'docente te marcará la asistencia a mano.'
                   : 'Cuenta creada.',
         ),
         backgroundColor: AppTheme.success,
