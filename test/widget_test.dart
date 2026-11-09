@@ -21,7 +21,6 @@ import 'package:smart_check/viewmodels/student_viewmodel.dart';
 import 'package:smart_check/viewmodels/teacher_viewmodel.dart';
 import 'package:smart_check/views/login_screen.dart';
 import 'package:smart_check/views/smart_register_screen.dart';
-import 'package:smart_check/views/student/puerta_celular_screen.dart';
 import 'package:smart_check/views/student/student_home_screen.dart';
 import 'package:smart_check/views/teacher/teacher_home_screen.dart';
 
@@ -202,38 +201,21 @@ void main() {
       expect(find.text('Docente'), findsNothing);
     });
 
-    testWidgets('desde otro celular le pide el rostro antes de entrar', (
+    testWidgets('desde otro celular entra igual, sin pedir el rostro', (
       tester,
     ) async {
       final restaurar = ignorarDesbordes();
-      // Se registró en un teléfono y entra en otro: antes pasaba como si nada.
+      // Se registró en un teléfono y entra en otro: ver su cuenta no está
+      // atado al celular; marcar asistencia sí.
       await iniciarSesion(
         tester,
         [Rol.estudiante],
         vinculadoA: 'android-el-otro-celular',
-        // Con foto en Chairá hay con qué comparar su rostro.
         fotoUrl: 'https://chaira.udla.edu.co/foto.jpg',
       );
       restaurar();
 
-      expect(find.byType(StudentHomeScreen), findsNothing);
-      expect(find.byType(PuertaDelCelularScreen), findsOneWidget);
-      expect(find.text('Tu cuenta está en otro celular'), findsOneWidget);
-      expect(find.textContaining('terminado en elular'), findsOneWidget);
-
-      // Si no confirma su rostro y se sale, queda fuera de la cuenta.
-      await tester.tap(find.text('Cerrar sesión'));
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
-      expect(find.byType(PuertaDelCelularScreen), findsNothing);
-      expect(find.byType(StudentHomeScreen), findsNothing);
-      expect(
-        tester
-            .element(find.byType(LoginScreen))
-            .read<AuthViewModel>()
-            .perfil,
-        isNull,
-      );
+      expect(find.byType(StudentHomeScreen), findsOneWidget);
       // Los reintentos de la foto de perfil (3 s y 10 s) no deben quedar
       // pendientes al terminar.
       await tester.pump(const Duration(seconds: 15));

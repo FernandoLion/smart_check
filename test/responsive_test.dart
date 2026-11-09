@@ -28,7 +28,6 @@ import 'package:smart_check/views/recover_password_screen.dart';
 import 'package:smart_check/views/smart_register_screen.dart';
 import 'package:smart_check/views/student/attendance_detail_screen.dart';
 import 'package:smart_check/views/student/biometric_validation_screen.dart';
-import 'package:smart_check/views/student/puerta_celular_screen.dart';
 import 'package:smart_check/views/student/student_home_screen.dart';
 import 'package:smart_check/views/student/student_settings_screen.dart';
 import 'package:smart_check/views/teacher/add_student_screen.dart';
@@ -207,10 +206,6 @@ final Map<String, Future<Widget> Function(_Mundo)> _vistas = {
         ),
       ),
   'Celular vinculado': (_) async => const BiometricValidationScreen(),
-  'Cuenta en otro celular': (_) async =>
-      const PuertaDelCelularScreen(cambiar: true),
-  'Vincular al entrar': (_) async =>
-      const PuertaDelCelularScreen(cambiar: false),
   'Verificación facial': (m) async => FaceVerificationScreen(curso: _curso()),
   'Baliza del estudiante': (m) async => BleBeaconScreen(
         cursos: [_curso()],

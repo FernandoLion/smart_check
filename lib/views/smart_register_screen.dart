@@ -152,8 +152,8 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
       await IdentidadEnCelular.guardarPara(uid, rostro);
     }
     // Y quien va a marcar asistencia queda atado a este celular, en el que
-    // acaba de demostrar quién es. Así, entrar desde otro le pide el rostro.
-    // Si falla, se lo pedirá al entrar.
+    // acaba de demostrar quién es, para que pueda marcar sin vincularlo
+    // aparte. Si falla, lo vincula desde Ajustes o al marcar.
     final seraEstudiante = !result.esDocente || _alsoStudent;
     final vinculado =
         seraEstudiante && await authViewModel.vincularEsteDispositivo();
