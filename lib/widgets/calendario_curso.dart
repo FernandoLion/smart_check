@@ -32,8 +32,8 @@ class DiaDelCurso {
   /// Las clases dictadas ese día; vacío si no se dictó ninguna.
   final List<SesionResumen> clases;
 
-  /// Los bloques del horario de ese día.
-  final List<Horario> bloques;
+  /// Las clases que tocaban ese día: del horario semanal y extra.
+  final List<Franja> bloques;
 
   const DiaDelCurso(this.estado, {this.clases = const [], this.bloques = const []});
 
@@ -47,9 +47,6 @@ int? _porcentajeDe(Iterable<SesionResumen> clases) {
   final asistieron = clases.fold(0, (n, c) => n + c.asistieron);
   return (asistieron * 100 / inscritos).round();
 }
-
-DateTime _conMinutos(DateTime dia, int minutos) =>
-    DateTime(dia.year, dia.month, dia.day, minutos ~/ 60, minutos % 60);
 
 bool _mismoDia(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
@@ -66,6 +63,7 @@ Map<int, DiaDelCurso> diasDelCurso({
   required List<SesionResumen> sesiones,
   required List<Horario> horarios,
   required DateTime ahora,
+  List<ClaseExtra> clasesExtra = const [],
   DateTime? creadoEn,
   Semestre? semestre,
   bool archivado = false,
@@ -78,7 +76,7 @@ Map<int, DiaDelCurso> diasDelCurso({
   final ultimo = DateTime(mes.year, mes.month + 1, 0).day;
   for (var d = 1; d <= ultimo; d++) {
     final fecha = DateTime(mes.year, mes.month, d);
-    final bloques = horarios.where((h) => h.dia == fecha.weekday).toList();
+    final bloques = franjasDelDia(horarios, clasesExtra, fecha);
     final clases =
         sesiones.where((s) => _mismoDia(s.sesion.franja, fecha)).toList();
 
@@ -98,7 +96,7 @@ Map<int, DiaDelCurso> diasDelCurso({
     if (bloques.isEmpty) continue;
     if (semestre != null && !semestre.contiene(fecha)) continue;
 
-    final fines = bloques.map((b) => _conMinutos(fecha, b.finMinutos));
+    final fines = bloques.map((b) => b.fin);
     final queda = fines.any((fin) => fin.isAfter(ahora));
     final faltaron = fines.where(
       (fin) =>
@@ -131,6 +129,7 @@ class CalendarioDelCurso extends StatelessWidget {
   /// Las clases dictadas (las de [CourseDetailViewModel.sesionesPasadas]).
   final List<SesionResumen> sesiones;
   final List<Horario> horarios;
+  final List<ClaseExtra> clasesExtra;
   final DateTime ahora;
   final DateTime? creadoEn;
   final Semestre? semestre;
@@ -149,6 +148,7 @@ class CalendarioDelCurso extends StatelessWidget {
     required this.horarios,
     required this.ahora,
     required this.alAbrirClase,
+    this.clasesExtra = const [],
     this.creadoEn,
     this.semestre,
     this.archivado = false,
@@ -179,6 +179,7 @@ class CalendarioDelCurso extends StatelessWidget {
         mes: mes,
         sesiones: sesiones,
         horarios: horarios,
+        clasesExtra: clasesExtra,
         ahora: ahora,
         creadoEn: creadoEn,
         semestre: semestre,
@@ -236,9 +237,9 @@ class CalendarioDelCurso extends StatelessWidget {
         '${p == null ? '' : ', $p% de asistencia'}$faltas.';
   }
 
-  String _bloque(DateTime fecha, Horario h) =>
-      '${horaCorta(_conMinutos(fecha, h.inicioMinutos))} a '
-      '${horaCorta(_conMinutos(fecha, h.finMinutos))}';
+  static String _bloque(Franja f) =>
+      '${f.esExtra ? 'clase extra ' : 'clase '}de ${horaCorta(f.inicio)} a '
+      '${horaCorta(f.fin)}';
 
   Widget _detalle(DateTime fecha) {
     final dia = _dias(fecha)[fecha.day];
@@ -258,13 +259,18 @@ class CalendarioDelCurso extends StatelessWidget {
       for (final b in dia!.bloques) {
         hijos.add(
           linea(
-            'Tocaba clase de ${_bloque(fecha, b)} y no se abrió el radar.',
+            'Tocaba ${_bloque(b)} y no se abrió el radar.',
           ),
         );
       }
     } else if (dia != null) {
       for (final b in dia.bloques) {
-        hijos.add(linea('Clase programada de ${_bloque(fecha, b)}.'));
+        final texto = _bloque(b);
+        hijos.add(
+          linea(
+            '${texto[0].toUpperCase()}${texto.substring(1)} programada.',
+          ),
+        );
       }
     }
     return PanelDelDia(titulo: tituloDelDia(fecha), hijos: hijos);

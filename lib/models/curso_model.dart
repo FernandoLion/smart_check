@@ -4,6 +4,81 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'calendario_academico.dart';
 
+/// Una clase fuera del horario semanal, en una fecha concreta: una
+/// reposición, una clase adicional. Cuenta como una clase más: suma al total
+/// del semestre y quien no venga tiene falla.
+class ClaseExtra {
+  final String id;
+  final DateTime inicio;
+  final DateTime fin;
+
+  /// Dónde será, si no es el aula de siempre. Solo informativo: la geocerca
+  /// es la del curso.
+  final String aula;
+
+  const ClaseExtra({
+    required this.id,
+    required this.inicio,
+    required this.fin,
+    this.aula = '',
+  });
+
+  factory ClaseExtra.fromMap(Map<String, dynamic> map) => ClaseExtra(
+        id: map['id'] as String? ?? '',
+        inicio: (map['inicio'] as Timestamp).toDate(),
+        fin: (map['fin'] as Timestamp).toDate(),
+        aula: map['aula'] as String? ?? '',
+      );
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'inicio': Timestamp.fromDate(inicio),
+        'fin': Timestamp.fromDate(fin),
+        'aula': aula,
+      };
+}
+
+/// Un bloque de clase con fecha: de un día del horario semanal o una clase
+/// extra. Es lo que abre el radar y lo que agrupa los llamados.
+class Franja {
+  final DateTime inicio;
+  final DateTime fin;
+
+  /// La clase extra de la que sale, o null si es del horario semanal.
+  final ClaseExtra? extra;
+
+  const Franja(this.inicio, this.fin, {this.extra});
+
+  bool get esExtra => extra != null;
+
+  bool contiene(DateTime momento) =>
+      !momento.isBefore(inicio) && momento.isBefore(fin);
+
+  bool seCruzaCon(DateTime desde, DateTime hasta) =>
+      desde.isBefore(fin) && hasta.isAfter(inicio);
+}
+
+/// Las clases de [dia]: los bloques del horario de ese día de la semana y
+/// las clases extra de esa fecha, en orden.
+List<Franja> franjasDelDia(
+  List<Horario> horarios,
+  List<ClaseExtra> extras,
+  DateTime dia,
+) {
+  DateTime conMinutos(int m) =>
+      DateTime(dia.year, dia.month, dia.day, m ~/ 60, m % 60);
+  return [
+    for (final h in horarios)
+      if (h.dia == dia.weekday)
+        Franja(conMinutos(h.inicioMinutos), conMinutos(h.finMinutos)),
+    for (final e in extras)
+      if (e.inicio.year == dia.year &&
+          e.inicio.month == dia.month &&
+          e.inicio.day == dia.day)
+        Franja(e.inicio, e.fin, extra: e),
+  ]..sort((a, b) => a.inicio.compareTo(b.inicio));
+}
+
 /// Un bloque semanal de clase: día (1 = lunes ... 7 = domingo, como
 /// [DateTime.weekday]) y horas de inicio y fin en formato "HH:mm".
 class Horario {
@@ -90,6 +165,9 @@ class Curso {
   final String docenteUid;
   final String docenteNombre;
   final List<Horario> horarios;
+
+  /// Las clases fuera del horario semanal (ver [ClaseExtra]).
+  final List<ClaseExtra> clasesExtra;
   final Geocerca? geocerca;
   final List<String> clavesInscritos;
   final int totalInscritos;
@@ -112,6 +190,7 @@ class Curso {
     required this.docenteUid,
     required this.docenteNombre,
     this.horarios = const [],
+    this.clasesExtra = const [],
     this.geocerca,
     this.clavesInscritos = const [],
     this.totalInscritos = 0,
@@ -133,6 +212,9 @@ class Curso {
       horarios: (map['horarios'] as List? ?? const [])
           .map((h) => Horario.fromMap(Map<String, dynamic>.from(h as Map)))
           .toList(),
+      clasesExtra: (map['clases_extra'] as List? ?? const [])
+          .map((e) => ClaseExtra.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList(),
       geocerca: geocerca == null ? null : Geocerca.fromMap(geocerca),
       clavesInscritos:
           List<String>.from(map['claves_inscritos'] as List? ?? const []),
@@ -151,6 +233,7 @@ class Curso {
         'docente_uid': docenteUid,
         'docente_nombre': docenteNombre,
         'horarios': horarios.map((h) => h.toMap()).toList(),
+        'clases_extra': clasesExtra.map((e) => e.toMap()).toList(),
         'geocerca': geocerca?.toMap(),
         'claves_inscritos': clavesInscritos,
         'total_inscritos': totalInscritos,
@@ -163,11 +246,27 @@ class Curso {
   /// Las fechas del semestre de este curso, si están en el calendario.
   Semestre? get semestre => CalendarioAcademico.de(periodo);
 
-  /// Las clases que tendrá en todo el semestre, o null si no se sabe.
+  /// Las clases que tendrá en todo el semestre (las del horario semanal y
+  /// las extra que caen en él), o null si no se sabe.
   int? get clasesDelSemestre {
     final fechas = semestre;
-    if (fechas == null || horarios.isEmpty) return null;
-    return fechas.clasesSegun(horarios.map((h) => h.dia));
+    if (fechas == null || (horarios.isEmpty && clasesExtra.isEmpty)) {
+      return null;
+    }
+    return fechas.clasesSegun(horarios.map((h) => h.dia)) +
+        clasesExtra.where((e) => fechas.contiene(e.inicio)).length;
+  }
+
+  /// Las clases de [dia], del horario semanal y extra.
+  List<Franja> franjasDe(DateTime dia) =>
+      franjasDelDia(horarios, clasesExtra, dia);
+
+  /// La clase que está ocurriendo en [momento], del horario o extra.
+  Franja? franjaEn(DateTime momento) {
+    for (final f in franjasDe(momento)) {
+      if (f.contiene(momento)) return f;
+    }
+    return null;
   }
 
   /// Periodo académico de [momento]: "2026-1" (ene-jun) o "2026-2" (jul-dic).

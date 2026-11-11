@@ -550,6 +550,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
               diasDeClase: widget.subject.diasDeClase,
               semestre: widget.subject.semestre,
               periodo: widget.subject.periodo,
+              fechasExtra: widget.subject.fechasExtra,
               hoy: DateTime.now(),
               historial: _buildHistorial(estado),
             );

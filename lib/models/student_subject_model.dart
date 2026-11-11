@@ -26,6 +26,9 @@ class StudentSubjectModel {
   /// El periodo del curso ("2026-2").
   final String periodo;
 
+  /// Cuándo empiezan las clases extra programadas, para el calendario.
+  final List<DateTime> fechasExtra;
+
   const StudentSubjectModel({
     required this.cursoId,
     required this.code,
@@ -38,6 +41,7 @@ class StudentSubjectModel {
     this.diasDeClase = const [],
     this.semestre,
     this.periodo = '',
+    this.fechasExtra = const [],
   });
 
   factory StudentSubjectModel.desdeCurso(
@@ -56,6 +60,7 @@ class StudentSubjectModel {
       diasDeClase: curso.horarios.map((h) => h.dia).toSet().toList(),
       semestre: curso.semestre,
       periodo: curso.periodo,
+      fechasExtra: curso.clasesExtra.map((e) => e.inicio).toList(),
     );
   }
 

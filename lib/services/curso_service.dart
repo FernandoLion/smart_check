@@ -163,6 +163,28 @@ class CursoService {
     }
   }
 
+  /// Programa una clase extra en el curso.
+  Future<void> agregarClaseExtra(String cursoId, ClaseExtra clase) async {
+    try {
+      await _cursos.doc(cursoId).update({
+        'clases_extra': FieldValue.arrayUnion([clase.toMap()]),
+      }).timeout(_timeout);
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'programar la clase extra'));
+    }
+  }
+
+  /// Borra una clase extra que todavía no se dictó.
+  Future<void> quitarClaseExtra(String cursoId, ClaseExtra clase) async {
+    try {
+      await _cursos.doc(cursoId).update({
+        'clases_extra': FieldValue.arrayRemove([clase.toMap()]),
+      }).timeout(_timeout);
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'borrar la clase extra'));
+    }
+  }
+
   /// Cambia la geocerca del aula, o la quita con null.
   Future<void> cambiarGeocerca(String cursoId, Geocerca? geocerca) async {
     try {

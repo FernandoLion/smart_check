@@ -231,16 +231,12 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
 
   /// Convierte un curso de Firestore al modelo que pintan las tarjetas.
   TeacherCourseModel _aModelo(Curso curso, DateTime ahora, int? promedio) {
-    final minutoActual = ahora.hour * 60 + ahora.minute;
-    // Un curso archivado no ofrece el radar aunque sea su hora.
-    final enCurso = curso.archivado ? null : curso.horarioEn(ahora);
+    // Un curso archivado no ofrece el radar aunque sea su hora. Las clases
+    // extra cuentan igual que las del horario.
+    final enCurso = curso.archivado ? null : curso.franjaEn(ahora);
     final pendienteHoy = curso.archivado
-        ? const <Horario>[]
-        : curso.horarios
-            .where(
-              (h) => h.dia == ahora.weekday && h.inicioMinutos > minutoActual,
-            )
-            .toList();
+        ? const <Franja>[]
+        : curso.franjasDe(ahora).where((f) => f.inicio.isAfter(ahora)).toList();
     // Hay clase hoy que todavía no termina: se ofrece iniciar el radar.
     final hoy = enCurso != null || pendienteHoy.isNotEmpty;
     final dias = curso.horarios.map((h) => _dias[h.dia]).toSet().join(' / ');
@@ -273,26 +269,31 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
       footer: curso.archivado
           ? 'Archivado: sin radar. Actívalo con el interruptor.'
           : enCurso != null
-          ? 'Clase en curso hasta ${enCurso.fin}'
+          ? '${enCurso.esExtra ? 'Clase extra' : 'Clase'} en curso hasta '
+              '${_hhmm(enCurso.fin)}'
           : pendienteHoy.isNotEmpty
-              ? 'Próxima clase hoy ${pendienteHoy.first.inicio}'
+              ? '${pendienteHoy.first.esExtra ? 'Clase extra' : 'Próxima clase'}'
+                  ' hoy ${_hhmm(pendienteHoy.first.inicio)}'
               : _proximaClase(curso, ahora),
     );
   }
 
-  /// "Próxima clase: Mié 08:00" a partir de mañana, o "Sin horario".
+  static String _hhmm(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:'
+      '${d.minute.toString().padLeft(2, '0')}';
+
+  /// "Próxima clase: Mié 08:00" (o "Clase extra: ...") a partir de mañana,
+  /// o "Sin horario".
   String _proximaClase(Curso curso, DateTime ahora) {
-    if (curso.horarios.isEmpty) return 'Sin horario';
     for (var dias = 1; dias <= 7; dias++) {
-      final dia = (ahora.weekday - 1 + dias) % 7 + 1;
-      final bloques = curso.horarios.where((h) => h.dia == dia).toList()
-        ..sort((a, b) => a.inicioMinutos.compareTo(b.inicioMinutos));
-      if (bloques.isNotEmpty) {
-        final cuando = dias == 1 ? 'mañana' : _dias[dia];
-        return 'Próxima clase: $cuando ${bloques.first.inicio}';
-      }
+      final fecha = DateTime(ahora.year, ahora.month, ahora.day + dias);
+      final franjas = curso.franjasDe(fecha);
+      if (franjas.isEmpty) continue;
+      final cuando = dias == 1 ? 'mañana' : _dias[fecha.weekday];
+      final que = franjas.first.esExtra ? 'Clase extra' : 'Próxima clase';
+      return '$que: $cuando ${_hhmm(franjas.first.inicio)}';
     }
-    return 'Sin horario';
+    return curso.horarios.isEmpty ? 'Sin horario' : 'Sin clases esta semana';
   }
 
   Widget _buildMensajeLista(String mensaje) {

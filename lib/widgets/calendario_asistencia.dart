@@ -647,6 +647,7 @@ Map<int, EstadoDia> estadosDelMes({
   required List<int> diasDeClase,
   required DateTime hoy,
   Semestre? semestre,
+  List<DateTime> fechasExtra = const [],
 }) {
   final porDia = <int, List<ClaseDelEstudiante>>{};
   for (final c in clases) {
@@ -666,7 +667,12 @@ Map<int, EstadoDia> estadosDelMes({
     if (fecha.isBefore(hoyDia) || estados.containsKey(d)) continue;
     // Fuera de las fechas del semestre no hay clases que esperar.
     if (semestre != null && !semestre.contiene(fecha)) continue;
-    if (diasDeClase.contains(fecha.weekday)) estados[d] = EstadoDia.proxima;
+    final hayExtra = fechasExtra.any(
+      (e) => e.year == fecha.year && e.month == fecha.month && e.day == d,
+    );
+    if (diasDeClase.contains(fecha.weekday) || hayExtra) {
+      estados[d] = EstadoDia.proxima;
+    }
   }
   return estados;
 }
@@ -708,6 +714,9 @@ class CalendarioAsistencia extends StatelessWidget {
   /// La lista de clases dictadas, para "Historial Completo".
   final Widget? historial;
 
+  /// Cuándo empiezan las clases extra programadas.
+  final List<DateTime> fechasExtra;
+
   const CalendarioAsistencia({
     super.key,
     required this.clases,
@@ -716,6 +725,7 @@ class CalendarioAsistencia extends StatelessWidget {
     this.semestre,
     this.periodo,
     this.historial,
+    this.fechasExtra = const [],
   });
 
   DateTime get _primerMes {
@@ -747,6 +757,7 @@ class CalendarioAsistencia extends StatelessWidget {
         diasDeClase: diasDeClase,
         hoy: hoy,
         semestre: semestre,
+        fechasExtra: fechasExtra,
       );
 
   Map<int, DiaPintado> _dias(DateTime mes) => _estados(mes).map(
@@ -788,8 +799,16 @@ class CalendarioAsistencia extends StatelessWidget {
         )
         .toList()
       ..sort((a, b) => a.franja.compareTo(b.franja));
+    final extra = fechasExtra.where(
+      (e) =>
+          e.year == fecha.year && e.month == fecha.month && e.day == fecha.day,
+    );
     final lineas = delDia.isEmpty
-        ? ['Clase programada según el horario.']
+        ? [
+            if (diasDeClase.contains(fecha.weekday))
+              'Clase programada según el horario.',
+            for (final e in extra) 'Clase extra a las ${horaCorta(e)}.',
+          ]
         : [for (final c in delDia) _lineaDeClase(c)];
     return PanelDelDia(
       titulo: tituloDelDia(fecha),

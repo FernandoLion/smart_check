@@ -10,7 +10,9 @@ import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/course_detail_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
+import '../../widgets/calendario_asistencia.dart' show horaCorta, tituloDelDia;
 import '../../widgets/calendario_curso.dart';
+import '../../widgets/hoja_clase_extra.dart';
 import '../../widgets/hoja_geocerca.dart';
 import '../attendance/attendance_radar_screen.dart';
 import 'add_student_screen.dart';
@@ -741,6 +743,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         CalendarioDelCurso(
           sesiones: pasadas,
           horarios: _curso.horarios,
+          clasesExtra: _curso.clasesExtra,
           ahora: _vm.ahora,
           creadoEn: _curso.creadoEn,
           semestre: _curso.semestre,
@@ -749,8 +752,187 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           alAbrirClase: _abrirSesion,
           historial: _buildSesionesAnteriores(pasadas),
         ),
+        const SizedBox(height: 24),
+        _buildClasesExtra(),
       ],
     );
+  }
+
+  /// Las clases extra que aún no pasan, con el botón para programar otra.
+  Widget _buildClasesExtra() {
+    final ahora = _vm.ahora;
+    final proximas = _curso.clasesExtra
+        .where((e) => e.fin.isAfter(ahora))
+        .toList()
+      ..sort((a, b) => a.inicio.compareTo(b.inicio));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'CLASES EXTRA',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _curso.archivado ? null : _programarClaseExtra,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Programar'),
+            ),
+          ],
+        ),
+        if (proximas.isEmpty)
+          _buildAviso(
+            'No hay clases extra programadas. Sirven para reponer una clase '
+            'o dar una fuera del horario, y cuentan como una más.',
+          )
+        else
+          for (final clase in proximas) ...[
+            _buildClaseExtra(clase),
+            const SizedBox(height: 8),
+          ],
+      ],
+    );
+  }
+
+  Widget _buildClaseExtra(ClaseExtra clase) {
+    // Si ya se abrió el radar en ella, ya se dictó y no se puede borrar.
+    final dictada = _vm.sesiones.any((s) => s.franja == clase.inicio);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+      decoration: BoxDecoration(
+        color: _surfaceElevated,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.event_available, color: _primaryIndigo, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  tituloDelDia(clase.inicio),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${horaCorta(clase.inicio)} a ${horaCorta(clase.fin)}'
+                  '${clase.aula.isEmpty ? '' : ' • ${clase.aula}'}',
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (!dictada)
+            IconButton(
+              onPressed: () => _quitarClaseExtra(clase),
+              icon: const Icon(Icons.delete_outline),
+              color: AppTheme.textSecondary,
+              tooltip: 'Borrar clase extra',
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _programarClaseExtra() async {
+    final clase = await showModalBottomSheet<ClaseExtra>(
+      context: context,
+      backgroundColor: _surfaceElevated,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => HojaClaseExtra(curso: _curso, ahora: _vm.ahora),
+    );
+    if (clase == null || !mounted) return;
+    try {
+      await CursoService().agregarClaseExtra(_curso.id, clase);
+    } on CursoException catch (e) {
+      _avisarError(e.mensaje);
+      return;
+    }
+    if (!mounted) return;
+    _conClasesExtra([..._curso.clasesExtra, clase]);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Clase extra programada: ${tituloDelDia(clase.inicio)}, '
+          '${horaCorta(clase.inicio)} a ${horaCorta(clase.fin)}.',
+        ),
+        backgroundColor: AppTheme.success,
+      ),
+    );
+  }
+
+  Future<void> _quitarClaseExtra(ClaseExtra clase) async {
+    final confirma = await showDialog<bool>(
+      context: context,
+      builder: (dialogo) => AlertDialog(
+        backgroundColor: AppTheme.surfaceElevated,
+        title: const Text(
+          '¿Borrar la clase extra?',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          '${tituloDelDia(clase.inicio)}, ${horaCorta(clase.inicio)} a '
+          '${horaCorta(clase.fin)}. Deja de contar en el semestre.',
+          style: const TextStyle(color: AppTheme.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogo, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogo, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.error),
+            child: const Text('Borrar'),
+          ),
+        ],
+      ),
+    );
+    if (confirma != true || !mounted) return;
+    try {
+      await CursoService().quitarClaseExtra(_curso.id, clase);
+    } on CursoException catch (e) {
+      _avisarError(e.mensaje);
+      return;
+    }
+    if (!mounted) return;
+    _conClasesExtra([
+      for (final e in _curso.clasesExtra)
+        if (e.id != clase.id) e,
+    ]);
+  }
+
+  /// El curso en memoria con otras clases extra, y lo que de eso depende.
+  void _conClasesExtra(List<ClaseExtra> extras) {
+    setState(() {
+      _curso = Curso.fromMap(_curso.id, {
+        ..._curso.toMap(),
+        'clases_extra': extras.map((e) => e.toMap()).toList(),
+      });
+      // Cambia el total de clases del semestre.
+      _vm.clasesDelSemestre = _curso.clasesDelSemestre;
+    });
   }
 
   /// Las clases ya dictadas, de la más reciente a la más antigua: es el

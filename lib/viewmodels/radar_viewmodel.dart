@@ -193,11 +193,12 @@ class RadarViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final ahora = _ahora();
-      final bloque = curso.horarioEn(ahora);
+      // Del horario semanal o una clase extra programada.
+      final bloque = curso.franjaEn(ahora);
       if (bloque == null) {
         throw const _RadarException(
           'Fuera del horario de la clase. El radar solo se abre durante el '
-          'bloque asignado al curso.',
+          'bloque asignado al curso o en una clase extra programada.',
         );
       }
       await _comprobarGeocerca(curso);
@@ -255,11 +256,11 @@ class RadarViewModel extends ChangeNotifier {
   /// Reusa el llamado que siga vigente para esta clase; si no hay, abre otro.
   Future<Sesion> _sesionDeLaClase(
     Curso curso,
-    Horario bloque,
+    Franja bloque,
     DateTime ahora,
   ) async {
-    final bloqueInicio = _conHora(ahora, bloque.inicioMinutos);
-    final bloqueFin = _conHora(ahora, bloque.finMinutos);
+    final bloqueInicio = bloque.inicio;
+    final bloqueFin = bloque.fin;
     if (bloqueFin.difference(ahora) < minimoLlamado) {
       throw _RadarException(
         'A la clase le quedan menos de ${minimoLlamado.inMinutes} minutos. '
@@ -287,9 +288,6 @@ class RadarViewModel extends ChangeNotifier {
 
   /// La hora [minutos] del mismo día que [dia]: así el horario del curso, que
   /// se guarda como "HH:mm", se convierte en una fecha concreta.
-  static DateTime _conHora(DateTime dia, int minutos) =>
-      DateTime(dia.year, dia.month, dia.day, minutos ~/ 60, minutos % 60);
-
   /// Lo ya marcado en esta clase: en este llamado y en los anteriores del
   /// mismo bloque, porque el docente pudo cerrar el radar y volver a abrirlo.
   /// Así quien ya marcó sale marcado, no se le vuelve a registrar y el

@@ -37,6 +37,7 @@ import 'package:smart_check/views/teacher/import_csv_screen.dart';
 import 'package:smart_check/views/teacher/session_detail_screen.dart';
 import 'package:smart_check/views/teacher/teacher_home_screen.dart';
 import 'package:smart_check/views/teacher/teacher_settings_screen.dart';
+import 'package:smart_check/widgets/hoja_clase_extra.dart';
 
 import 'auth_fakes.dart';
 import 'ble_fakes.dart';
@@ -220,6 +221,15 @@ final Map<String, Future<Widget> Function(_Mundo)> _vistas = {
   'Panel docente': (_) async => const TeacherHomeScreen(),
   'Ajustes del docente': (_) async => const TeacherSettingsScreen(),
   'Crear curso': (_) async => const CreateCourseScreen(),
+  'Programar clase extra': (_) async => Scaffold(
+        backgroundColor: AppTheme.surfaceElevated,
+        body: SafeArea(
+          child: HojaClaseExtra(
+            curso: _curso(),
+            ahora: DateTime(2026, 11, 19, 10),
+          ),
+        ),
+      ),
   'Añadir estudiante': (_) async => const AddStudentScreen(
         courseTitle: 'Arquitectura de Software Empresarial Avanzada',
       ),

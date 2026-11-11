@@ -349,6 +349,31 @@ class FakeCursoService extends Fake implements CursoService {
   }
 
   @override
+  Future<void> agregarClaseExtra(String cursoId, ClaseExtra clase) async {
+    if (fallo != null) throw fallo!;
+    final c = cursos[cursoId]!;
+    cursos[cursoId] = Curso.fromMap(cursoId, {
+      ...c.toMap(),
+      'clases_extra': [...c.clasesExtra.map((e) => e.toMap()), clase.toMap()],
+    });
+    _cambios.add(null);
+  }
+
+  @override
+  Future<void> quitarClaseExtra(String cursoId, ClaseExtra clase) async {
+    if (fallo != null) throw fallo!;
+    final c = cursos[cursoId]!;
+    cursos[cursoId] = Curso.fromMap(cursoId, {
+      ...c.toMap(),
+      'clases_extra': [
+        for (final e in c.clasesExtra)
+          if (e.id != clase.id) e.toMap(),
+      ],
+    });
+    _cambios.add(null);
+  }
+
+  @override
   Future<void> cambiarGeocerca(String cursoId, Geocerca? geocerca) async {
     if (fallo != null) throw fallo!;
     final curso = cursos[cursoId]!;
