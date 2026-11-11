@@ -290,7 +290,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 fondo: _surfaceControl,
                 tamanoIcono: 18,
                 onPressed: _openQuickModal,
-              ),
+                    ),
               Tocable(
                 onTap: _salir,
                 alineacion: AlignmentDirectional.centerEnd,

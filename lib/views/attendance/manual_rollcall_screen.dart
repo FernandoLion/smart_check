@@ -66,7 +66,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
               curso.periodo,
             ].join(' • '),
       globalAttendance: '—',
-      faultsSummary: 'Ver en el detalle del curso',
+      faultsSummary: 'Ver detalle',
       classroom: curso?.aula ?? '',
       riskLabel: 'NO LO DETECTÓ EL RADAR',
       probableReason:
@@ -240,8 +240,9 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
   }
 
   Widget _buildTopHeader(BuildContext context) {
-    final remainingCount = _currentIndex + 1;
     final total = _students.length;
+    // Sin nadie por marcar no hay "1 de 0".
+    final remainingCount = total == 0 ? 0 : _currentIndex + 1;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
@@ -524,12 +525,14 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
           ),
         ),
 
-        // Swipe Left Indicator Hint (AUSENTE)
+        // AUSENTE: aparece al deslizar a la izquierda. Quieto no se ve, para
+        // no tapar el nombre (los botones de abajo ya dicen qué hace cada
+        // lado).
         Positioned(
           left: 0,
           child: IgnorePointer(
             child: Opacity(
-              opacity: _dragOffsetX < -20 ? 1.0 : 0.8,
+              opacity: (-_dragOffsetX / 80).clamp(0.0, 1.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -565,12 +568,12 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
           ),
         ),
 
-        // Swipe Right Indicator Hint (PRESENTE)
+        // PRESENTE: aparece al deslizar a la derecha.
         Positioned(
           right: 0,
           child: IgnorePointer(
             child: Opacity(
-              opacity: _dragOffsetX > 20 ? 1.0 : 0.8,
+              opacity: (_dragOffsetX / 80).clamp(0.0, 1.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1045,7 +1048,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                                           color: AppTheme.textSecondary,
                                           fontSize: 13,
                                         ),
-                                        maxLines: 1,
+                                        maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),

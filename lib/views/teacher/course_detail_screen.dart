@@ -149,7 +149,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       ),
       child: Column(
         children: [
-
           // Navigation Bar (Back, Title & Actions)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -225,6 +224,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             ),
             child: TabBar(
               controller: _tabController,
+              // Como un control segmentado: la pastilla ocupa toda la
+              // pestaña y sin la línea de abajo de Material.
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
               indicator: BoxDecoration(
                 color: _surfaceElevated,
                 borderRadius: BorderRadius.circular(10),
@@ -1175,7 +1178,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   'Asistencia Promedio',
                   promedio.porcentaje == null
                       ? 'Sin clases aún'
-                      : '${promedio.porcentaje}% asistencia',
+                      // La etiqueta ya dice "Asistencia": con la cifra
+                      // basta, y así no se corta.
+                      : '${promedio.porcentaje}%',
                   Icons.insights_outlined,
                   AppTheme.textTertiary,
                   // El color dice si el curso va bien, no adorna.

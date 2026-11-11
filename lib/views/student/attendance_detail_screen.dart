@@ -436,15 +436,15 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
               final medida = TextPainter(
                 text: TextSpan(
                   text: 'Restantes',
-                  style: DefaultTextStyle.of(
-                    context,
-                  ).style.copyWith(fontSize: 13),
+                  style: DefaultTextStyle.of(context).style
+                      .copyWith(fontSize: 13),
                 ),
                 textDirection: TextDirection.ltr,
                 textScaler: MediaQuery.textScalerOf(context),
               )..layout();
-              final porFila =
-                  (caja.maxWidth - 18) / 4 >= medida.width + 10 ? 4 : 2;
+              final porFila = (caja.maxWidth - 18) / 4 >= medida.width + 10
+                  ? 4
+                  : 2;
               medida.dispose();
               return Column(
                 children: [

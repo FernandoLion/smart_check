@@ -467,7 +467,11 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
         'En el horario del curso',
       ),
       _buildDivider(),
-      _buildInfoRow(Icons.place_outlined, 'Dónde', 'Dentro de la zona del aula'),
+      _buildInfoRow(
+        Icons.place_outlined,
+        'Dónde',
+        'Dentro de la zona del aula',
+      ),
     ]);
   }
 

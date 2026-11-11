@@ -319,7 +319,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
             ),
           ),
 
-          // Trailing: Live BLE Pill Badge ("BLE 2.4G")
+          // Trailing: si el Bluetooth está escaneando (punto verde).
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
@@ -348,16 +348,18 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                         : [],
                   ),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  'Bluetooth',
-                  style: TextStyle(
+                const SizedBox(width: 4),
+                // Solo el ícono: el título "Radar de Asistencia" necesita el
+                // ancho, y "En pausa" o "Escaneando" ya se lee abajo.
+                Icon(
+                  Icons.bluetooth,
+                  size: 16,
+                  semanticLabel: _isRadarActive
+                      ? 'Bluetooth escaneando'
+                      : 'Bluetooth en pausa',
                     color: _isRadarActive
                         ? _tertiaryFixed
                         : AppTheme.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
                 ),
               ],
             ),
@@ -399,7 +401,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                           SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              'ESCANEO BLUETOOTH',
+                              'BLUETOOTH',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(

@@ -7,6 +7,7 @@ import 'teacher_settings_screen.dart';
 import 'course_detail_screen.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/botones_accesibles.dart';
+import '../../widgets/texto_sin_cortes.dart';
 import '../../models/curso_model.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
@@ -1012,80 +1013,36 @@ class _TeacherCourseCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Footer de la tarjeta
+            // Footer de la tarjeta: cuándo es la clase y, si es hoy, el botón
+            // de tomar asistencia en su propia fila, a todo el ancho, para
+            // que ni el botón ni la hora se corten.
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Flexible(
-                  child: Row(
-                    children: [
-                      Icon(
-                        course.isSpecialToday ? Icons.timer : Icons.event,
-                        color: course.isSpecialToday
-                            ? const Color(0xFFFF9F0A)
-                            : AppTheme.textSecondary,
-                        size: 15,
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          course.footer,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: course.isSpecialToday
-                                ? const Color(0xFFFF9F0A)
-                                : AppTheme.textSecondary,
-                            fontSize: 13,
-                            fontWeight: course.isSpecialToday
-                                ? FontWeight.w500
-                                : FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                    ],
+                Icon(
+                  course.isSpecialToday ? Icons.timer : Icons.event,
+                  color: course.isSpecialToday
+                      ? const Color(0xFFFF9F0A)
+                      : AppTheme.textSecondary,
+                  size: 15,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: TextoSinCortes(
+                    course.footer,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: course.isSpecialToday
+                          ? const Color(0xFFFF9F0A)
+                          : AppTheme.textSecondary,
+                      fontSize: 13,
+                      fontWeight: course.isSpecialToday
+                          ? FontWeight.w500
+                          : FontWeight.w400,
+                    ),
                   ),
                 ),
-                if (course.isSpecialToday)
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              AttendanceRadarScreen(curso: course.curso),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5E5CE6),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      minimumSize: const Size(48, 48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.radar, size: 18),
-                        SizedBox(width: 6),
-                        Text(
-                          'Tomar asistencia',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
+                if (!course.isSpecialToday)
                   const Icon(
                     Icons.chevron_right,
                     color: AppTheme.textSecondary,
@@ -1093,6 +1050,38 @@ class _TeacherCourseCard extends StatelessWidget {
                   ),
               ],
             ),
+            if (course.isSpecialToday) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            AttendanceRadarScreen(curso: course.curso),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5E5CE6),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(48, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  icon: const Icon(Icons.radar, size: 20),
+                  label: const Text('Tomar asistencia'),
+                ),
+              ),
+            ],
           ],
         ),
       ),

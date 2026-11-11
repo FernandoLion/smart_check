@@ -92,6 +92,11 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
   /// ajustes y, al volver, se intenta de nuevo.
   bool _sinPermisoDeCamara = false;
 
+  /// Si fue a los ajustes con el botón. Solo entonces se reintenta al
+  /// volver: el propio diálogo de permisos también pausa la app, y
+  /// reintentar tras él lo volvería a pedir una y otra vez.
+  bool _fueAAjustes = false;
+
   bool get _isValidated => _vm.verificado;
 
   @override
@@ -115,8 +120,8 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       motivo: widget.curso != null
           ? MotivoVerificacion.asistencia
           : widget._esRegistro
-              ? MotivoVerificacion.registro
-              : MotivoVerificacion.cuenta,
+          ? MotivoVerificacion.registro
+          : MotivoVerificacion.cuenta,
     );
     _vm.addListener(_alCambiar);
     WidgetsBinding.instance.addObserver(this);
@@ -126,8 +131,9 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState estado) {
     if (estado == AppLifecycleState.resumed &&
-        _sinPermisoDeCamara &&
+        _fueAAjustes &&
         _camara == null) {
+      _fueAAjustes = false;
       setState(() {
         _errorDeCamara = null;
         _sinPermisoDeCamara = false;
@@ -356,43 +362,43 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
         children: [
           // En un llamado, recuerda que la señal no sale hasta verificar.
           if (widget.curso != null) ...[
-          Container(
+            Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  _isValidated ? Icons.bluetooth : Icons.bluetooth_disabled,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _isValidated ? Icons.bluetooth : Icons.bluetooth_disabled,
                     color: _isValidated
-                      ? _tertiaryGreen
+                        ? _tertiaryGreen
                         : AppTheme.textTertiary,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
                       _isValidated
                           ? 'Listo para enviar tu asistencia'
                           : 'Señal de asistencia en espera',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
+              ),
+            ),
             const SizedBox(height: 10),
-              ],
+          ],
 
           Row(
             children: [
@@ -411,57 +417,57 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                   Icons.refresh,
                   color: _camara == null ? AppTheme.textTertiary : Colors.white,
                   size: 22,
-                    ),
-                  ),
+                ),
+              ),
               const SizedBox(width: 8),
               Expanded(
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _surfaceElevated.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _tertiaryGreen.withValues(alpha: 0.3),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.verified_user,
-                        color: _tertiaryGreen,
-                        size: 16,
+                    decoration: BoxDecoration(
+                      color: _surfaceElevated.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _tertiaryGreen.withValues(alpha: 0.3),
                       ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          widget.curso == null
-                              ? (widget._esRegistro
-                                    ? 'Registro de cuenta'
-                                    : 'Vinculación de celular')
-                              // La ubicación la comprueba después la
-                              // pantalla de la señal, no esta.
-                              : widget._sinAula
-                                  ? widget.classroom
-                                  : 'Aula: ${widget.classroom}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: _tertiaryGreen,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.verified_user,
+                          color: _tertiaryGreen,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            widget.curso == null
+                                ? (widget._esRegistro
+                                      ? 'Registro de cuenta'
+                                      : 'Vinculación de celular')
+                                // La ubicación la comprueba después la
+                                // pantalla de la señal, no esta.
+                                : widget._sinAula
+                                ? widget.classroom
+                                : 'Aula: ${widget.classroom}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: _tertiaryGreen,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-                  ),
               // Del ancho del botón de la izquierda, para que el aula quede
               // centrada.
               const SizedBox(width: 56),
@@ -524,8 +530,8 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
+            mainAxisSize: MainAxisSize.min,
+            children: [
               SizedBox.square(
                 dimension: diametro,
                 child: FittedBox(child: _buildCirculo()),
@@ -559,133 +565,131 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
   /// El visor circular de 280: anillos, esquinas, cámara y barrido.
   Widget _buildCirculo() {
     return SizedBox(
-          width: 280,
-          height: 280,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Anillo exterior pulsante
-              ScaleTransition(
-                scale: Tween<double>(begin: 0.98, end: 1.02).animate(
-                  CurvedAnimation(
-                    parent: _pulseController,
-                    curve: Curves.easeInOut,
-                  ),
-                ),
-                child: Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _primaryIndigo.withValues(alpha: 0.4),
-                      width: 2,
-                    ),
-                  ),
+      width: 280,
+      height: 280,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Anillo exterior pulsante
+          ScaleTransition(
+            scale: Tween<double>(begin: 0.98, end: 1.02).animate(
+              CurvedAnimation(
+                parent: _pulseController,
+                curve: Curves.easeInOut,
+              ),
+            ),
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: _primaryIndigo.withValues(alpha: 0.4),
+                  width: 2,
                 ),
               ),
+            ),
+          ),
 
-              // Anillo verde intermedio
-              Container(
-                width: 272,
-                height: 272,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _tertiaryGreen.withValues(alpha: 0.6),
-                    width: 1.2,
-                  ),
+          // Anillo verde intermedio
+          Container(
+            width: 272,
+            height: 272,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _tertiaryGreen.withValues(alpha: 0.6),
+                width: 1.2,
+              ),
+            ),
+          ),
+
+          // 4 Esquinas de precisión Face ID
+          const Positioned(
+            top: 4,
+            left: 0,
+            child: _ReticleCorner(isTop: true, isLeft: true),
+          ),
+          const Positioned(
+            top: 4,
+            right: 0,
+            child: _ReticleCorner(isTop: true, isLeft: false),
+          ),
+          const Positioned(
+            bottom: 4,
+            left: 0,
+            child: _ReticleCorner(isTop: false, isLeft: true),
+          ),
+          const Positioned(
+            bottom: 4,
+            right: 0,
+            child: _ReticleCorner(isTop: false, isLeft: false),
+          ),
+
+          // Máscara Circular Central (260x260) con malla 3D TrueDepth y Nodos Faciales
+          Container(
+            width: 260,
+            height: 260,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF0E0E10),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.85),
+                  blurRadius: 30,
                 ),
-              ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Lo que ve la cámara frontal, recortado al círculo.
+                Positioned.fill(child: _buildVistaDeLaCamara()),
 
-              // 4 Esquinas de precisión Face ID
-              const Positioned(
-                top: 4,
-                left: 0,
-                child: _ReticleCorner(isTop: true, isLeft: true),
-              ),
-              const Positioned(
-                top: 4,
-                right: 0,
-                child: _ReticleCorner(isTop: true, isLeft: false),
-              ),
-              const Positioned(
-                bottom: 4,
-                left: 0,
-                child: _ReticleCorner(isTop: false, isLeft: true),
-              ),
-              const Positioned(
-                bottom: 4,
-                right: 0,
-                child: _ReticleCorner(isTop: false, isLeft: false),
-              ),
-
-              // Máscara Circular Central (260x260) con malla 3D TrueDepth y Nodos Faciales
-              Container(
-                width: 260,
-                height: 260,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF0E0E10),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.85),
-                      blurRadius: 30,
-                    ),
-                  ],
+                // Malla de puntos 3D TrueDepth
+                Positioned.fill(
+                  child: CustomPaint(painter: _FaceIdMeshPainter()),
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Lo que ve la cámara frontal, recortado al círculo.
-                    Positioned.fill(child: _buildVistaDeLaCamara()),
 
-                    // Malla de puntos 3D TrueDepth
-                    Positioned.fill(
-                      child: CustomPaint(painter: _FaceIdMeshPainter()),
-                    ),
-
-                    // Barra horizontal de escaneo láser (animate-laser)
-                    AnimatedBuilder(
-                      animation: _laserController,
-                      builder: (context, _) {
-                        return Positioned(
-                          left: 24,
-                          right: 24,
-                          top: 30 + (_laserController.value * 195),
-                          child: Opacity(
-                            opacity: 0.25 + (_laserController.value * 0.65),
-                            child: Container(
-                              height: 2,
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.transparent,
-                                    _tertiaryGreen,
-                                    Colors.transparent,
-                                  ],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Color(0xFF30D158),
-                                    blurRadius: 12,
-                                  ),
-                                ],
-                              ),
+                // Barra horizontal de escaneo láser (animate-laser)
+                AnimatedBuilder(
+                  animation: _laserController,
+                  builder: (context, _) {
+                    return Positioned(
+                      left: 24,
+                      right: 24,
+                      top: 30 + (_laserController.value * 195),
+                      child: Opacity(
+                        opacity: 0.25 + (_laserController.value * 0.65),
+                        child: Container(
+                          height: 2,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                _tertiaryGreen,
+                                Colors.transparent,
+                              ],
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(0xFF30D158),
+                                blurRadius: 12,
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                    ),
-                  ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ),
-                    ],
-                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -699,10 +703,13 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
         child: ElevatedButton.icon(
           // Al volver de los ajustes se intenta abrir la cámara otra vez
           // (ver didChangeAppLifecycleState).
-          onPressed: Geolocator.openAppSettings,
+          onPressed: () {
+            _fueAAjustes = true;
+            Geolocator.openAppSettings();
+          },
           icon: const Icon(Icons.settings, size: 20),
           label: const Text('Abrir ajustes'),
-                      ),
+        ),
       );
     }
     if (_vm.paso == PasoVerificacion.fallido) {
@@ -712,44 +719,44 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           onPressed: _camara == null ? null : _reintentar,
           icon: const Icon(Icons.refresh, size: 20),
           label: const Text('Intentar de nuevo'),
-                          ),
+        ),
       );
     }
     return Wrap(
       alignment: WrapAlignment.center,
       spacing: 8,
       runSpacing: 8,
-            children: [
-              _buildTelemetryPill(
-                // Solo hay distancia que juzgar cuando hay una cara.
-                icon: switch (_vm.paso) {
-                  PasoVerificacion.buscando => Icons.face_outlined,
-                  PasoVerificacion.encuadrando => Icons.zoom_out_map,
-                  _ => Icons.check_circle,
-                },
-                label: switch (_vm.paso) {
-                  PasoVerificacion.buscando => 'Buscando tu cara',
-                  PasoVerificacion.encuadrando => 'Acércate',
-                  _ => 'Distancia correcta',
-                },
-              ),
-              _buildTelemetryPill(
-                icon: _vm.reto == Reto.parpadeo
-                    ? Icons.remove_red_eye_outlined
-                    : Icons.screen_rotation_alt_outlined,
-                label: _vm.reto == Reto.parpadeo
-                    ? 'Gesto: parpadear'
-                    : 'Gesto: girar la cabeza',
-              ),
-              _buildTelemetryPill(
-                icon: _isValidated ? Icons.verified : Icons.timelapse,
-                label: _isValidated
-                    ? 'Identidad confirmada'
-                    : _vm.paso == PasoVerificacion.comparando
-                    ? 'Comparando con tu rostro'
-                    : 'Prueba de vida: ${(_vm.progreso * 100).round()}%',
-              ),
-            ],
+      children: [
+        _buildTelemetryPill(
+          // Solo hay distancia que juzgar cuando hay una cara.
+          icon: switch (_vm.paso) {
+            PasoVerificacion.buscando => Icons.face_outlined,
+            PasoVerificacion.encuadrando => Icons.zoom_out_map,
+            _ => Icons.check_circle,
+          },
+          label: switch (_vm.paso) {
+            PasoVerificacion.buscando => 'Buscando tu cara',
+            PasoVerificacion.encuadrando => 'Acércate',
+            _ => 'Distancia correcta',
+          },
+        ),
+        _buildTelemetryPill(
+          icon: _vm.reto == Reto.parpadeo
+              ? Icons.remove_red_eye_outlined
+              : Icons.screen_rotation_alt_outlined,
+          label: _vm.reto == Reto.parpadeo
+              ? 'Gesto: parpadear'
+              : 'Gesto: girar la cabeza',
+        ),
+        _buildTelemetryPill(
+          icon: _isValidated ? Icons.verified : Icons.timelapse,
+          label: _isValidated
+              ? 'Identidad confirmada'
+              : _vm.paso == PasoVerificacion.comparando
+              ? 'Comparando con tu rostro'
+              : 'Prueba de vida: ${(_vm.progreso * 100).round()}%',
+        ),
+      ],
     );
   }
 
@@ -764,7 +771,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           size: _errorDeCamara == null ? 150 : 72,
           color: _primaryLight.withValues(
             alpha: _errorDeCamara == null ? 0.12 : 0.4,
-                ),
+          ),
         ),
       );
     }
@@ -831,53 +838,53 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _primaryIndigo.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _primaryIndigo.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.school,
+                        color: AppTheme.primaryTexto,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: _primaryIndigo.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: _primaryIndigo.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.school,
-                              color: AppTheme.primaryTexto,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.courseTitle,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
                           Text(
-                                        widget.professorName,
-                                        style: const TextStyle(
-                                          color: AppTheme.textSecondary,
-                                          fontSize: 14,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+                            widget.courseTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.professorName,
+                            style: const TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
                 Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
                 const SizedBox(height: 10),
@@ -888,7 +895,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                       widget.curso != null
                           ? Icons.info_outline
                           : Icons.lock_outline,
-                                color: _systemAmber,
+                      color: _systemAmber,
                       size: 18,
                     ),
                     const SizedBox(width: 8),
@@ -904,7 +911,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           height: 1.3,
-                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -915,23 +922,23 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           const SizedBox(height: 12),
 
           SizedBox(
-              height: 50,
-              width: double.infinity,
+            height: 50,
+            width: double.infinity,
             child: TextButton.icon(
               onPressed: () => Navigator.pop(context),
               style: TextButton.styleFrom(
                 backgroundColor: _surfaceControl.withValues(alpha: 0.9),
                 foregroundColor: AppTheme.errorTexto,
                 shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-              ),
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                ),
                 textStyle: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                icon: const Icon(Icons.close, size: 20),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              icon: const Icon(Icons.close, size: 20),
               label: const Text('Cancelar'),
             ),
           ),

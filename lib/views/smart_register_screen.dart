@@ -566,11 +566,11 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                     SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        'VERIFICADO EN SISTEMA',
-                        style: TextStyle(
-                          color: AppTheme.success,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                      'VERIFICADO EN SISTEMA',
+                      style: TextStyle(
+                        color: AppTheme.success,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -594,11 +594,11 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                     SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        'UDLA OFICIAL',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
+                      'UDLA OFICIAL',
+                      style: TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),

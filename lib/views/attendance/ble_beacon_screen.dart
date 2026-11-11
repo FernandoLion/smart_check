@@ -864,7 +864,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _ventanaDelLlamado,
+                  _ventanaDelLlamado,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 15,

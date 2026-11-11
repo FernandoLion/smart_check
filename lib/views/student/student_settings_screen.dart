@@ -233,7 +233,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                   .watch<AuthViewModel>()
                                   .dispositivoVinculado !=
                               null)
-                          Tocable(
+                            Tocable(
                             onTap: _handleCopyDeviceId,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
