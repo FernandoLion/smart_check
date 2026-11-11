@@ -284,13 +284,16 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                       ),
                     ),
                     _buildDivider(),
+                    // Solo informa: la señal se enciende y se apaga sola, no
+                    // hay nada que configurar. (Antes abría la misma ayuda
+                    // que "Cómo marcar asistencia".)
                     _buildNavRow(
                       icon: Icons.podcasts,
                       title: 'Señal de asistencia',
                       subtitle:
                           'Se enciende sola al marcar asistencia y se '
                           'apaga al cerrarse el llamado',
-                      onTap: () => mostrarAyuda(context, docente: false),
+                      trailingText: 'Automática',
                     ),
                   ]),
                   const SizedBox(height: 24),
@@ -987,7 +990,9 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
     Color trailingTextColor = AppTheme.textSecondary,
     bool trailingTextBold = false,
     Widget? trailingWidget,
-    required VoidCallback onTap,
+    // Sin [onTap] la fila solo informa: no responde al toque ni lleva la
+    // flecha, para no prometer una pantalla que no hay.
+    VoidCallback? onTap,
   }) {
     return InkWell(
       onTap: onTap,
@@ -1054,12 +1059,14 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                           ),
                         ),
                       ),
-                    const SizedBox(width: 6),
-                    const Icon(
-                      Icons.chevron_right,
-                      color: AppTheme.textTertiary,
-                      size: 20,
-                    ),
+                    if (onTap != null) ...[
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.chevron_right,
+                        color: AppTheme.textTertiary,
+                        size: 20,
+                      ),
+                    ],
                   ],
                 ),
               ),
