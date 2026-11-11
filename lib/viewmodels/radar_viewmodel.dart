@@ -213,7 +213,7 @@ class RadarViewModel extends ChangeNotifier {
       }
 
       _sesion = await _sesionDeLaClase(curso, bloque, ahora);
-      await _cargarAsistencias(curso.id, _sesion!.id);
+      await _cargarAsistencias(curso.id, _sesion!);
       _programarCierre(_sesion!);
       _vigilarFirmas(curso.id, _sesion!.id);
 
@@ -290,11 +290,30 @@ class RadarViewModel extends ChangeNotifier {
   static DateTime _conHora(DateTime dia, int minutos) =>
       DateTime(dia.year, dia.month, dia.day, minutos ~/ 60, minutos % 60);
 
-  Future<void> _cargarAsistencias(String cursoId, String sesionId) async {
-    final ya = await _cursos.asistencias(cursoId, sesionId).first;
+  /// Lo ya marcado en esta clase: en este llamado y en los anteriores del
+  /// mismo bloque, porque el docente pudo cerrar el radar y volver a abrirlo.
+  /// Así quien ya marcó sale marcado, no se le vuelve a registrar y el
+  /// llamado manual no pregunta por él.
+  Future<void> _cargarAsistencias(String cursoId, Sesion sesion) async {
+    final ids = {
+      sesion.id,
+      for (final s in await _cursos.sesiones(cursoId).first)
+        if (s.franja == sesion.franja) s.id,
+    };
+    final porSesion =
+        await _cursos.asistenciasDeSesiones(cursoId, ids.toList());
+    final porClave = <String, List<Asistencia>>{};
+    for (final marcas in porSesion.values) {
+      for (final a in marcas) {
+        (porClave[a.claveInscrito] ??= []).add(a);
+      }
+    }
     _asistencias
       ..clear()
-      ..addEntries(ya.map((a) => MapEntry(a.claveInscrito, a)));
+      ..addEntries([
+        for (final MapEntry(key: clave, value: marcas) in porClave.entries)
+          MapEntry(clave, CursoService.marcaQueCuenta(marcas)!),
+      ]);
   }
 
   void _vigilarFirmas(String cursoId, String sesionId) {

@@ -234,6 +234,57 @@ void main() {
     expect(vm.cerradoPorDocente, isFalse);
   });
 
+  test('si ya marcó en esta clase no vuelve a emitir', () async {
+    final abierto = llamadoAbierto();
+    cursos.sesionesPorCurso['c1'] = [
+      abierto,
+      Sesion(
+        id: 'primero',
+        inicio: abierto.franja.add(const Duration(minutes: 1)),
+        fin: abierto.franja.add(const Duration(minutes: 2)),
+        abierta: false,
+        bloqueInicio: abierto.franja,
+      ),
+    ];
+    cursos.asistenciasPorSesion['primero'] = [
+      Asistencia(
+        claveInscrito: '1117000000',
+        estado: EstadoAsistencia.presente,
+        metodo: MetodoAsistencia.ble,
+        hora: abierto.franja.add(const Duration(minutes: 1)),
+        registradoPor: 'uid-docente',
+      ),
+    ];
+
+    expect(await marcar([enAula]), isFalse);
+
+    expect(vm.error, contains('Ya marcaste'));
+    expect(ble.anunciando, isNull);
+    expect(cursos.presenciasPorSesion, isEmpty);
+  });
+
+  test('cuando el radar lo registra, deja de emitir', () async {
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+    expect(await marcar([enAula]), isTrue);
+
+    await cursos.registrarAsistencia(
+      'c1',
+      'llamado-1',
+      Asistencia(
+        claveInscrito: '1117000000',
+        estado: EstadoAsistencia.presente,
+        metodo: MetodoAsistencia.ble,
+        hora: DateTime.now(),
+        registradoPor: 'uid-docente',
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(ble.anunciando, isNull);
+    expect(vm.registradoPorElDocente, isTrue);
+    expect(vm.cerradoPorDocente, isFalse);
+  });
+
   test('sin celular vinculado no anuncia', () async {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
 

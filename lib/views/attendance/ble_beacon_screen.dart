@@ -123,6 +123,12 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
     final ok = await _vm.marcar(
       widget.cursos,
       widget.clave,
+      // Cédula y correo: el docente pudo inscribirlo por cualquiera.
+      claves: {
+        widget.clave,
+        if ((perfil?.cedula ?? '').isNotEmpty) perfil!.cedula!,
+        if ((perfil?.email ?? '').isNotEmpty) perfil!.email.toLowerCase(),
+      }.toList(),
       dispositivoVinculado: perfil?.dispositivoId,
       vinculadoEn: perfil?.dispositivoDesde,
       rostro: widget.rostro?.resultado.name,
@@ -137,13 +143,19 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
     // Si la ventana se cerró sola o la cerró el docente, la pantalla queda
     // en reposo y se le dice al estudiante cuál es la única salida que le
     // queda.
-    if ((_vm.ventanaVencida || _vm.cerradoPorDocente) && !_isStopped) {
+    if ((_vm.ventanaVencida ||
+            _vm.cerradoPorDocente ||
+            _vm.registradoPorElDocente) &&
+        !_isStopped) {
       setState(() => _isStopped = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${_vm.cerradoPorDocente ? 'El docente cerró el llamado' : 'Se cerró el llamado de asistencia'}'
-            '. Si no apareciste en su radar, pídele que te marque a mano.',
+            _vm.registradoPorElDocente
+                ? 'El docente ya te registró. Ya puedes cerrar esta pantalla.'
+                : '${_vm.cerradoPorDocente ? 'El docente cerró el llamado' : 'Se cerró el llamado de asistencia'}'
+                    '. Si no apareciste en su radar, pídele que te marque a '
+                    'mano.',
           ),
           duration: const Duration(seconds: 5),
         ),
@@ -663,9 +675,11 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                _isStopped
-                    ? 'Baliza desconectada'
-                    : 'Emitiendo baliza de asistencia...',
+                _vm.registradoPorElDocente
+                    ? 'Asistencia registrada'
+                    : _isStopped
+                        ? 'Baliza desconectada'
+                        : 'Emitiendo baliza de asistencia...',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
@@ -681,10 +695,12 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            _isStopped
-                ? 'Ya no se emite. Si no apareciste en el radar del docente, '
-                    'pídele que te marque a mano.'
-                : 'Mantén la app abierta y cerca del celular del docente '
+            _vm.registradoPorElDocente
+                ? 'El radar del docente ya te registró en esta clase.'
+                : _isStopped
+                    ? 'Ya no se emite. Si no apareciste en el radar del '
+                        'docente, pídele que te marque a mano.'
+                    : 'Mantén la app abierta y cerca del celular del docente '
                     'hasta que aparezcas en su radar.',
             textAlign: TextAlign.center,
             style: TextStyle(

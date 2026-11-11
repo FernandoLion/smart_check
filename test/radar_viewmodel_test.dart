@@ -440,4 +440,67 @@ void main() {
     expect(vm.sesion, isNull);
     expect(cursos.sesion('c1', sesionId).abierta, isFalse);
   });
+
+  group('al reabrir el radar en la misma clase', () {
+    // Miércoles 28 de octubre a las 10:00; el bloque empezó a las 09:55.
+    final fijo = DateTime(2026, 10, 28, 10, 0);
+    final bloque = DateTime(2026, 10, 28, 9, 55);
+
+    setUp(() {
+      // El docente abrió el radar, Ana marcó, y lo cerró antes de tiempo.
+      cursos.sesionesPorCurso['c1'] = [
+        Sesion(
+          id: 'primero',
+          inicio: bloque.add(const Duration(minutes: 1)),
+          fin: bloque.add(const Duration(minutes: 3)),
+          abierta: false,
+          bloqueInicio: bloque,
+        ),
+      ];
+      cursos.asistenciasPorSesion['primero'] = [
+        Asistencia(
+          claveInscrito: '1117000000',
+          estado: EstadoAsistencia.presente,
+          metodo: MetodoAsistencia.ble,
+          hora: bloque.add(const Duration(minutes: 2)),
+          registradoPor: 'uid-docente',
+        ),
+      ];
+    });
+
+    test('quien ya marcó sale marcado en el llamado nuevo', () async {
+      final otro = otroRadar(reloj: () => fijo);
+      expect(await otro.iniciar(cursoEnClase(ahora: fijo), 'uid-docente'),
+          isTrue);
+
+      expect(otro.sesion!.id, isNot('primero'));
+      final ana = otro.lista.firstWhere((f) => f.inscrito.clave == '1117000000');
+      expect(ana.registrado, isTrue);
+      expect(ana.detectado, isTrue);
+      expect(otro.detectados, 1);
+      final carlos =
+          otro.lista.firstWhere((f) => f.inscrito.clave == 'ca.munoz@udla.edu.co');
+      expect(carlos.registrado, isFalse);
+    });
+
+    test('y no se le vuelve a registrar si el radar lo oye', () async {
+      final otro = otroRadar(reloj: () => fijo);
+      await otro.iniciar(cursoEnClase(ahora: fijo), 'uid-docente');
+      final escriturasAntes = cursos.escriturasDeAsistencia;
+
+      ble.oir('1117000000');
+      await pumpEventQueue();
+
+      expect(cursos.escriturasDeAsistencia, escriturasAntes);
+    });
+
+    test('lo de otra clase no se mezcla', () async {
+      // El mismo curso al día siguiente: es otra franja.
+      final manana = fijo.add(const Duration(days: 1));
+      final otro = otroRadar(reloj: () => manana);
+      await otro.iniciar(cursoEnClase(ahora: manana), 'uid-docente');
+
+      expect(otro.detectados, 0);
+    });
+  });
 }

@@ -702,25 +702,38 @@ class StudentHomeScreen extends StatelessWidget {
     StudentViewModel estudiante,
   ) {
     final vigente = estudiante.llamadoVigente;
+    // Si ya tiene marca en esta clase, el botón lo dice y no deja volver a
+    // encender la baliza.
+    final marca = estudiante.marcaVigente;
+    final registrado = marca?.cuentaComoAsistio ?? false;
     return ElevatedButton(
-      onPressed: vigente == null
-          ? null
-          : () => _onRegisterAttendanceTap(context),
+      onPressed: estudiante.puedeRegistrar
+          ? () => _onRegisterAttendanceTap(context)
+          : null,
       style: ElevatedButton.styleFrom(
         backgroundColor: _primaryIndigo,
         foregroundColor: Colors.white,
-        disabledBackgroundColor: AppTheme.surfaceControl,
-        disabledForegroundColor: AppTheme.textSecondary,
+        disabledBackgroundColor: registrado
+            ? _tertiaryGreen.withValues(alpha: 0.18)
+            : AppTheme.surfaceControl,
+        disabledForegroundColor:
+            registrado ? _tertiaryGreen : AppTheme.textSecondary,
         minimumSize: const Size.fromHeight(52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
-        elevation: vigente == null ? 0 : 10,
+        elevation: estudiante.puedeRegistrar ? 10 : 0,
         shadowColor: _primaryIndigo.withValues(alpha: 0.5),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            vigente == null ? Icons.lock_clock : Icons.contactless,
+            vigente == null
+                ? Icons.lock_clock
+                : marca == null
+                    ? Icons.contactless
+                    : registrado
+                        ? Icons.check_circle
+                        : Icons.event_busy,
             size: 22,
           ),
           const SizedBox(width: 8),
@@ -730,7 +743,11 @@ class StudentHomeScreen extends StatelessWidget {
                   ? 'Esperando el llamado del docente'
                   // El nombre y no el código: es lo que el estudiante
                   // reconoce de un vistazo.
-                  : 'Registrar asistencia · ${vigente.$1.nombre}',
+                  : marca == null
+                      ? 'Registrar asistencia · ${vigente.$1.nombre}'
+                      : registrado
+                          ? 'Asistencia registrada · ${vigente.$1.nombre}'
+                          : 'El docente ya te marcó · ${vigente.$1.nombre}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -781,8 +798,10 @@ class StudentHomeScreen extends StatelessWidget {
         ),
       ),
     );
-    // Al volver de marcar, la asistencia ya cambió: hay que releerla.
+    // Al volver de marcar, la asistencia ya cambió: hay que releerla, y
+    // saber si ya quedó registrado en esta clase.
     await estudiante.refrescar();
+    await estudiante.revisarMarca();
   }
 
   /// Si este es el celular atado a la cuenta. Si no, lo dice y ofrece ir a

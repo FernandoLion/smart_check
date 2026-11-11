@@ -211,6 +211,36 @@ class FakeCursoService extends Fake implements CursoService {
   }
 
   @override
+  Future<Asistencia?> miMarcaEnLaFranja(
+    String cursoId,
+    DateTime franja,
+    List<String> claves,
+  ) async {
+    if (fallo != null) throw fallo!;
+    return CursoService.marcaQueCuenta([
+      for (final s in sesionesPorCurso[cursoId] ?? const <Sesion>[])
+        if (s.franja == franja)
+          for (final a in asistenciasPorSesion[s.id] ?? const <Asistencia>[])
+            if (claves.contains(a.claveInscrito)) a,
+    ]);
+  }
+
+  @override
+  Stream<Asistencia?> miAsistencia(
+    String cursoId,
+    String sesionId,
+    List<String> claves,
+  ) async* {
+    Asistencia? mia() => (asistenciasPorSesion[sesionId] ?? const [])
+        .where((a) => claves.contains(a.claveInscrito))
+        .firstOrNull;
+    yield mia();
+    await for (final _ in _cambios.stream) {
+      yield mia();
+    }
+  }
+
+  @override
   Future<void> firmarPresencia(
     String cursoId,
     String sesionId,

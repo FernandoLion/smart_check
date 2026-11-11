@@ -54,8 +54,47 @@ class StudentViewModel extends ChangeNotifier {
     return null;
   }
 
-  /// Si tiene sentido abrir la pantalla de marcar asistencia.
-  bool get puedeRegistrar => llamadoVigente != null;
+  /// La marca que ya tiene en la clase del llamado vigente, de este llamado
+  /// o de uno anterior del mismo bloque. null si aún no tiene.
+  Asistencia? _marcaVigente;
+
+  /// El llamado para el que se consultó [_marcaVigente].
+  String? _marcaDelLlamado;
+
+  Asistencia? get marcaVigente => llamadoVigente == null ? null : _marcaVigente;
+
+  /// Si tiene sentido abrir la pantalla de marcar asistencia: hay llamado y
+  /// todavía no tiene marca en esa clase. Quien ya marcó (o el docente ya lo
+  /// marcó a mano) no vuelve a encender la baliza.
+  bool get puedeRegistrar => llamadoVigente != null && marcaVigente == null;
+
+  /// Vuelve a preguntar si ya tiene marca en la clase del llamado vigente:
+  /// al aparecer un llamado y al volver de la pantalla de la baliza.
+  Future<void> revisarMarca() async {
+    final vigente = llamadoVigente;
+    if (vigente == null || _claves.isEmpty) {
+      _marcaVigente = null;
+      _marcaDelLlamado = null;
+      notifyListeners();
+      return;
+    }
+    final llamado = vigente.$2.id;
+    try {
+      final marca = await _servicio.miMarcaEnLaFranja(
+        vigente.$1.id,
+        vigente.$2.franja,
+        _claves,
+      );
+      // Si mientras tanto cambió el llamado, esta respuesta ya no sirve.
+      if (llamadoVigente?.$2.id != llamado) return;
+      _marcaVigente = marca;
+      _marcaDelLlamado = llamado;
+    } catch (_) {
+      // Sin conexión queda como estaba; la baliza lo vuelve a revisar antes
+      // de emitir.
+    }
+    notifyListeners();
+  }
 
   /// Asistencia media de todas las materias con clases registradas, o null si
   /// todavía no hay ninguna.
@@ -193,6 +232,13 @@ class StudentViewModel extends ChangeNotifier {
       _abiertos[cursoId] = vigente;
     }
     _programarExpiracion();
+    // Un llamado nuevo: hay que saber si ya marcó en esa clase.
+    final actual = llamadoVigente?.$2.id;
+    if (actual != _marcaDelLlamado) {
+      _marcaVigente = null;
+      _marcaDelLlamado = null;
+      if (actual != null) revisarMarca();
+    }
     notifyListeners();
   }
 

@@ -106,6 +106,38 @@ void main() {
       expect(vm.llamadoVigente, isNull);
     });
 
+    test('si ya marcó en esta clase no vuelve a encender la baliza', () async {
+      servicio.cursos['b'] = cursoCon('Redes', ['1117000000']);
+      final abierto = llamadoAbierto();
+      // El docente cerró un llamado de esta misma clase y abrió otro.
+      servicio.sesionesPorCurso['b'] = [
+        abierto,
+        Sesion(
+          id: 'primero',
+          inicio: abierto.franja.add(const Duration(minutes: 1)),
+          fin: abierto.franja.add(const Duration(minutes: 2)),
+          abierta: false,
+          bloqueInicio: abierto.franja,
+        ),
+      ];
+      servicio.asistenciasPorSesion['primero'] = [
+        Asistencia(
+          claveInscrito: '1117000000',
+          estado: EstadoAsistencia.presente,
+          metodo: MetodoAsistencia.ble,
+          hora: abierto.franja.add(const Duration(minutes: 1)),
+          registradoPor: 'uid-docente',
+        ),
+      ];
+
+      vm.vigilarCursos(cedula: '1117000000');
+      await pumpEventQueue();
+
+      expect(vm.llamadoVigente, isNotNull);
+      expect(vm.marcaVigente?.cuentaComoAsistio, isTrue);
+      expect(vm.puedeRegistrar, isFalse);
+    });
+
     test('con un llamado abierto se puede registrar en esa materia', () async {
       servicio.cursos['a'] = cursoCon('Arquitectura', ['1117000000']);
       servicio.cursos['b'] = cursoCon('Redes', ['1117000000']);

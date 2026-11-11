@@ -47,6 +47,14 @@ class BeaconViewModel extends ChangeNotifier {
   /// El docente cerró el llamado antes de que se acabara la ventana.
   bool get cerradoPorDocente => _cerradoPorDocente;
 
+  /// Escucha su propia asistencia mientras emite: cuando el radar lo
+  /// registra, ya no hace falta seguir anunciándose.
+  StreamSubscription<Asistencia?>? _miMarca;
+  bool _registrado = false;
+
+  /// El radar del docente ya lo registró en este llamado.
+  bool get registradoPorElDocente => _registrado;
+
   /// Dónde quedó el celular respecto al aula en este marcaje, o null si el
   /// curso no tiene geocerca. Va a la presencia firmada.
   ComprobacionAula? _aula;
@@ -76,6 +84,7 @@ class BeaconViewModel extends ChangeNotifier {
   Future<bool> marcar(
     List<Curso> cursos,
     String clave, {
+    List<String>? claves,
     String? dispositivoVinculado,
     DateTime? vinculadoEn,
     String? rostro,
@@ -85,12 +94,28 @@ class BeaconViewModel extends ChangeNotifier {
     _error = null;
     _vencida = false;
     _cerradoPorDocente = false;
+    _registrado = false;
     notifyListeners();
     try {
       final abierto = await _buscarLlamadoAbierto(cursos);
       if (abierto == null) {
         _error = 'Ninguno de tus docentes tiene el llamado abierto ahora '
             'mismo. Espera a que inicie el radar.';
+        return false;
+      }
+      // Si ya tiene marca en esta clase (de este llamado o de uno anterior
+      // del mismo bloque), no se vuelve a emitir.
+      final todas = claves ?? [clave];
+      final previa = await _cursos.miMarcaEnLaFranja(
+        abierto.$1.id,
+        abierto.$2.franja,
+        todas,
+      );
+      if (previa != null) {
+        _error = previa.cuentaComoAsistio
+            ? 'Ya marcaste asistencia en esta clase.'
+            : 'El docente ya te marcó en esta clase. Si es un error, pídele '
+                'que lo corrija.';
         return false;
       }
       // La ubicación se comprueba también en este celular, no solo en el del
@@ -140,6 +165,7 @@ class BeaconViewModel extends ChangeNotifier {
       _anunciando = true;
       _ventana = Timer(abierto.$2.restante(DateTime.now()), _alVencerLaVentana);
       _vigilarElLlamado(abierto.$1.id, abierto.$2.id);
+      _vigilarMiMarca(abierto.$1.id, abierto.$2.id, todas);
       return true;
     } on CursoException catch (e) {
       _error = e.mensaje;
@@ -189,6 +215,24 @@ class BeaconViewModel extends ChangeNotifier {
     );
   }
 
+  void _vigilarMiMarca(String cursoId, String sesionId, List<String> claves) {
+    _miMarca?.cancel();
+    _miMarca = _cursos.miAsistencia(cursoId, sesionId, claves).listen(
+      (marca) {
+        if (marca == null || !_anunciando) return;
+        _alRegistrarme();
+      },
+      // Sin conexión no llega el aviso: sigue emitiendo hasta la ventana.
+      onError: (Object _) {},
+    );
+  }
+
+  Future<void> _alRegistrarme() async {
+    await parar();
+    _registrado = true;
+    notifyListeners();
+  }
+
   Future<void> _alCerrarElDocente() async {
     await parar();
     _cerradoPorDocente = true;
@@ -198,6 +242,8 @@ class BeaconViewModel extends ChangeNotifier {
   Future<void> parar() async {
     _vigilancia?.cancel();
     _vigilancia = null;
+    _miMarca?.cancel();
+    _miMarca = null;
     _ventana?.cancel();
     _ventana = null;
     await _ble.dejarDeAnunciar();
@@ -208,6 +254,7 @@ class BeaconViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _vigilancia?.cancel();
+    _miMarca?.cancel();
     _ventana?.cancel();
     _ble.dejarDeAnunciar();
     super.dispose();

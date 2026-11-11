@@ -306,6 +306,64 @@ class CursoService {
     }
   }
 
+  /// La marca que cuenta de un estudiante en la clase de [franja], sumando
+  /// todos los llamados que el docente abrió en ese bloque (pudo cerrar el
+  /// radar y volver a abrirlo). null si no tiene ninguna. [claves] son su
+  /// cédula y su correo, porque lo pudieron inscribir por cualquiera.
+  Future<Asistencia?> miMarcaEnLaFranja(
+    String cursoId,
+    DateTime franja,
+    List<String> claves,
+  ) async {
+    final llamados =
+        (await sesiones(cursoId).first).where((s) => s.franja == franja);
+    try {
+      final marcas = <Asistencia>[];
+      for (final s in llamados) {
+        final marca = await _marcaDe(cursoId, s.id, claves);
+        if (marca != null) marcas.add(marca);
+      }
+      return marcaQueCuenta(marcas);
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'revisar tu asistencia'));
+    }
+  }
+
+  /// La asistencia del estudiante en un llamado, en vivo: aparece en cuanto
+  /// el radar del docente lo registra. null mientras no tenga.
+  Stream<Asistencia?> miAsistencia(
+    String cursoId,
+    String sesionId,
+    List<String> claves,
+  ) {
+    final ultimas = <String, Asistencia?>{};
+    final suscripciones = <StreamSubscription<Object?>>[];
+    late final StreamController<Asistencia?> salida;
+    salida = StreamController<Asistencia?>(
+      onListen: () {
+        for (final clave in claves) {
+          suscripciones.add(
+            _asistencias(cursoId, sesionId).doc(clave).snapshots().listen(
+              (doc) {
+                final data = doc.data();
+                ultimas[clave] =
+                    data == null ? null : Asistencia.fromMap(clave, data);
+                salida.add(ultimas.values.whereType<Asistencia>().firstOrNull);
+              },
+              onError: salida.addError,
+            ),
+          );
+        }
+      },
+      onCancel: () async {
+        for (final s in suscripciones) {
+          await s.cancel();
+        }
+      },
+    );
+    return salida.stream;
+  }
+
   // --- Presencias (la firma del estudiante) ---------------------------------
 
   /// Las firmas que los estudiantes dejaron en este llamado.
