@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/curso_model.dart';
-import '../../services/ble_service.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/beacon_viewmodel.dart';
 import '../../viewmodels/face_verification_viewmodel.dart';
@@ -176,11 +176,6 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
     super.dispose();
   }
 
-  /// Los 4 bytes que el celular está radiando, para poder cotejarlos con lo
-  /// que ve el docente si algo no cuadra.
-  String get _huella =>
-      '0x${BleService.huellaDe(widget.clave).toRadixString(16).toUpperCase().padLeft(8, '0')}';
-
   /// De cuándo a cuándo se puede marcar, que es la ventana que abrió el
   /// docente y no el bloque entero de la clase.
   String get _ventanaDelLlamado {
@@ -236,7 +231,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                   'su radar.'
             : 'Todavía no te estás anunciando.');
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(mensaje), duration: const Duration(seconds: 3)),
+      SnackBar(content: Text(mensaje), duration: const Duration(seconds: 4)),
     );
   }
 
@@ -336,20 +331,22 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                   ),
                   const SizedBox(width: 8),
                   Icon(
-                    _emitiendo ? Icons.settings_remote : Icons.bluetooth_disabled,
+                    _emitiendo
+                        ? Icons.settings_remote
+                        : Icons.bluetooth_disabled,
                     color: _emitiendo ? _primaryLight : AppTheme.textTertiary,
                     size: 13,
                   ),
                   const SizedBox(width: 5),
                   Text(
                     _emitiendo
-                        ? 'BLE 2.4GHz Activo'
+                        ? 'Bluetooth encendido'
                         : _vm.buscando
-                            ? 'Preparando BLE...'
-                            : 'BLE apagado',
+                        ? 'Preparando Bluetooth...'
+                        : 'Bluetooth apagado',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -363,52 +360,52 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: _surfaceControl.withValues(alpha: 0.65),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
                   ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.verified_user, color: _primaryIndigo, size: 14),
-                    SizedBox(width: 6),
-                    Text(
-                      'Universidad de la Amazonia',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  decoration: BoxDecoration(
+                    color: _surfaceControl.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.08),
                     ),
-                  ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.verified_user,
+                        color: _primaryIndigo,
+                        size: 14,
+                      ),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Universidad de la Amazonia',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              GestureDetector(
-                onTap: _handleStopTransmission,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: _surfaceControl.withValues(alpha: 0.8),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: AppTheme.textSecondary,
-                    size: 20,
-                  ),
-                ),
+              const SizedBox(width: 8),
+              // Cerrar también apaga la señal: lo dice su nombre.
+              BotonRedondo(
+                icono: Icons.close,
+                nombre: 'Detener la señal y salir',
+                color: AppTheme.textSecondary,
+                fondo: _surfaceControl,
+                onPressed: _handleStopTransmission,
               ),
             ],
           ),
@@ -470,7 +467,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                             '•',
                             style: TextStyle(
                               color: AppTheme.textTertiary,
-                              fontSize: 12,
+                              fontSize: 13,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -602,10 +599,10 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                       ),
                       const SizedBox(height: 2),
                       const Text(
-                        'VENTANA DEL LLAMADO',
+                        'HORARIO DEL LLAMADO',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.8,
                         ),
@@ -678,8 +675,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                 _vm.registradoPorElDocente
                     ? 'Asistencia registrada'
                     : _isStopped
-                        ? 'Baliza desconectada'
-                        : 'Emitiendo baliza de asistencia...',
+                    ? 'Señal apagada'
+                    : 'Enviando señal de asistencia...',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
@@ -698,10 +695,10 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
             _vm.registradoPorElDocente
                 ? 'El radar del docente ya te registró en esta clase.'
                 : _isStopped
-                    ? 'Ya no se emite. Si no apareciste en el radar del '
-                        'docente, pídele que te marque a mano.'
-                    : 'Mantén la app abierta y cerca del celular del docente '
-                    'hasta que aparezcas en su radar.',
+                ? 'Ya no se emite. Si no apareciste en el radar del '
+                      'docente, pídele que te marque a mano.'
+                : 'Mantén la app abierta y cerca del celular del docente '
+                      'hasta que aparezcas en su radar.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppTheme.textSecondary,
@@ -712,10 +709,10 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
         ),
         const SizedBox(height: 10),
         // Acceso rápido hacia la Pantalla 21 (Radar de Asistencia Docente) según el Roadmap
-        GestureDetector(
+        Tocable(
           onTap: _onOpenRadarScreen,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: _primaryIndigo.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(20),
@@ -726,12 +723,14 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
               children: [
                 Icon(Icons.radar, color: _primaryLight, size: 15),
                 SizedBox(width: 6),
-                Text(
-                  '¿Me está oyendo el docente?',
-                  style: TextStyle(
-                    color: _primaryLight,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                Flexible(
+                  child: Text(
+                    '¿Me está oyendo el docente?',
+                    style: TextStyle(
+                      color: _primaryLight,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 SizedBox(width: 4),
@@ -796,7 +795,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                             'Estudiante',
                             style: TextStyle(
                               color: AppTheme.textSecondary,
-                              fontSize: 12,
+                              fontSize: 13,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -820,10 +819,10 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   const Text(
-                    'ID',
+                    'Documento',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontFamily: 'monospace',
                     ),
                   ),
@@ -831,7 +830,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                     cedula,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 13,
                       fontFamily: 'monospace',
                       fontWeight: FontWeight.w600,
                     ),
@@ -844,12 +843,10 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
           Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
           const SizedBox(height: 12),
 
-          // Lo que el estudiante sí puede comprobar: qué está emitiendo su
-          // celular y hasta cuándo dura la franja de la clase.
-          Row(
-            children: [
-              Expanded(
-                child: Container(
+          // Lo que el estudiante sí puede comprobar: hasta cuándo dura la
+          // franja de la clase.
+          Container(
+            width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: _surfaceControl.withValues(alpha: 0.5),
@@ -862,62 +859,21 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Huella emitida',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _huella,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _surfaceControl.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.05),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Ventana del llamado',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 11,
-                        ),
+                  'Horario del llamado',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         _ventanaDelLlamado,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 15,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
           ),
           const SizedBox(height: 12),
 
@@ -960,7 +916,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                   _vm.curso?.codigo ?? '',
                   style: TextStyle(
                     color: _tertiaryGreen.withValues(alpha: 0.8),
-                    fontSize: 11,
+                    fontSize: 13,
                     fontFamily: 'monospace',
                     fontWeight: FontWeight.w600,
                   ),
@@ -1008,7 +964,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                 ),
                 const SizedBox(width: 10),
                 const Text(
-                  'Desconectando BLE...',
+                  'Apagando la señal...',
                   style: TextStyle(
                     color: AppTheme.textSecondary,
                     fontSize: 17,
@@ -1023,7 +979,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                 ),
                 const SizedBox(width: 8),
                 const Text(
-                  'Baliza Finalizada',
+                  'Señal apagada',
                   style: TextStyle(
                     color: AppTheme.textSecondary,
                     fontSize: 17,
@@ -1038,7 +994,7 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
                 ),
                 const SizedBox(width: 8),
                 const Text(
-                  'Detener Emisión',
+                  'Detener señal',
                   style: TextStyle(
                     color: _systemRed,
                     fontSize: 17,

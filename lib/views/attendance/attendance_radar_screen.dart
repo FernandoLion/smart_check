@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../models/curso_model.dart';
 import '../../models/sesion_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../viewmodels/radar_viewmodel.dart';
 import 'manual_rollcall_screen.dart';
 
@@ -178,7 +179,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${item.name} marcado a mano'),
-        duration: const Duration(seconds: 1),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -274,8 +275,9 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Leading: "< Mis Clases"
-          GestureDetector(
+          Tocable(
             onTap: () => Navigator.pop(context),
+            alineacion: AlignmentDirectional.centerStart,
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -308,7 +310,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                   widget.courseTitle,
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
-                    fontSize: 12,
+                    fontSize: 13,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -348,12 +350,12 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'BLE 2.4G',
+                  'Bluetooth',
                   style: TextStyle(
                     color: _isRadarActive
                         ? _tertiaryFixed
                         : AppTheme.textSecondary,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -402,7 +404,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 letterSpacing: 0.6,
                               ),
@@ -438,7 +440,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                             _isRadarActive ? 'Escaneando...' : 'En pausa',
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
-                              fontSize: 11,
+                              fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -623,7 +625,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                               'Tu celular',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 11,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -691,7 +693,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: AppTheme.textSecondary,
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -805,7 +807,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
       if (_vm.esperandoFirma(fila.inscrito.clave)) {
         return 'Se le oye, falta que firme en su celular';
       }
-      return _isRadarActive ? 'Buscando baliza BLE...' : 'Sin detectar';
+      return _isRadarActive ? 'Buscando su señal...' : 'Sin detectar';
     }
     if (asistencia.metodo == MetodoAsistencia.manual) {
       if (asistencia.justificada) return 'Falta justificada';
@@ -830,7 +832,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
         ? ''
         : ' • a ${ubicacion.distancia} m del aula '
             '(GPS ±${ubicacion.precision} m)';
-    return '${tarde ? 'Llegó tarde' : 'Detectado por BLE'}'
+    return '${tarde ? 'Llegó tarde' : 'Detectado por Bluetooth'}'
         '$senal$lugar$rostro$celular';
   }
 
@@ -998,7 +1000,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
     return Column(
       children: [
         Container(
-          height: 36,
+          height: 54,
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             color: _surfaceControl,
@@ -1040,7 +1042,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: AppTheme.textSecondary,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.7,
                   ),
@@ -1055,7 +1057,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                     'Recientes primero',
                     style: TextStyle(
                       color: AppTheme.textTertiary,
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1111,7 +1113,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                     color: isSelected
                         ? AppTheme.textSecondary
                         : AppTheme.textTertiary,
-                    fontSize: 11,
+                    fontSize: 13,
                   ),
                 ),
               ],
@@ -1217,7 +1219,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                               color: student.isPresent
                                   ? AppTheme.textSecondary
                                   : AppTheme.textTertiary,
-                              fontSize: 12,
+                              fontSize: 13,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1243,7 +1245,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                                     color: student.isPresent
                                         ? _tertiaryFixed
                                         : AppTheme.textTertiary,
-                                    fontSize: 12,
+                                    fontSize: 13,
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -1293,7 +1295,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                             : student.justificada
                             ? _azulJustificada
                             : AppTheme.textSecondary,
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: student.isPresent
                             ? FontWeight.bold
                             : FontWeight.w500,
@@ -1305,7 +1307,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                     student.timeText,
                     style: const TextStyle(
                       color: AppTheme.textTertiary,
-                      fontSize: 12,
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -1341,7 +1343,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
       child: Row(
         children: [
           // Botón Secundario Izquierdo: Pase Manual -> Pantalla 23
-          GestureDetector(
+          Tocable(
             onTap: _onManualRollcallTap,
             child: Container(
               height: 48,
@@ -1376,7 +1378,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
 
           // Botón Primario Central: "Detener Radar" / "Reanudar Radar"
           Expanded(
-            child: GestureDetector(
+            child: Tocable(
               onTap: _toggleRadarState,
               child: Container(
                 height: 48,
@@ -1436,7 +1438,8 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
           const SizedBox(width: 10),
 
           // Botón Secundario Derecho: copia el acta del llamado (CSV).
-          GestureDetector(
+          Tocable(
+            nombre: 'Copiar el acta del llamado',
             onTap: () async {
               final messenger = ScaffoldMessenger.of(context);
               await Clipboard.setData(ClipboardData(text: _vm.actaEnCsv()));

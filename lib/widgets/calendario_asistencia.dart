@@ -216,34 +216,40 @@ class _CalendarioMensualState extends State<CalendarioMensual> {
         child: Semantics(
           button: true,
           selected: activo,
+          // Todo el alto del control responde al dedo (48); la pastilla
+          // que se ve queda un poco más adentro.
           child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () => setState(() => _verHistorial = historial),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              decoration: activo
-                  ? BoxDecoration(
-                      color: AppTheme.surfaceElevated,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    )
-                  : null,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  texto,
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: activo ? Colors.white : AppTheme.textSecondary,
-                    fontSize: 13,
-                    fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
+            child: Padding(
+              padding: const EdgeInsets.all(3),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: activo
+                    ? BoxDecoration(
+                        color: AppTheme.surfaceElevated,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      )
+                    : null,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    texto,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: activo ? Colors.white : AppTheme.textSecondary,
+                      fontSize: 13,
+                      fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
+                    ),
                   ),
                 ),
               ),
@@ -254,8 +260,7 @@ class _CalendarioMensualState extends State<CalendarioMensual> {
     }
 
     return Container(
-      height: 36,
-      padding: const EdgeInsets.all(2),
+      height: 50,
       decoration: BoxDecoration(
         color: AppTheme.surfaceControl,
         borderRadius: BorderRadius.circular(12),
@@ -299,8 +304,8 @@ class _CalendarioMensualState extends State<CalendarioMensual> {
                   child: Text(
                     'Semestre $periodo',
                     style: const TextStyle(
-                      color: _indigo,
-                      fontSize: 12,
+                      color: AppTheme.primaryTexto,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -402,7 +407,7 @@ class _CalendarioMensualState extends State<CalendarioMensual> {
           '$d',
           style: TextStyle(
             color: AppTheme.textTertiary.withValues(alpha: 0.4),
-            fontSize: 12,
+            fontSize: 13,
           ),
         ),
       ),
@@ -567,7 +572,7 @@ class _CalendarioMensualState extends State<CalendarioMensual> {
           const SizedBox(width: 6),
           Text(
             texto,
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
         ],
       );
@@ -837,7 +842,9 @@ class CalendarioAsistencia extends StatelessWidget {
           ? '$clase: faltó (sin marca)'
           : '$clase: marcado ausente por el docente';
     }
-    final como = marca!.metodo == MetodoAsistencia.ble ? 'radar BLE' : 'a mano';
+    final como = marca!.metodo == MetodoAsistencia.ble
+        ? 'por Bluetooth'
+        : 'a mano';
     final tarde = marca.estado == EstadoAsistencia.tarde ? 'llegó tarde, ' : '';
     return '$clase: ${tarde}asistió ($como, ${horaCorta(marca.hora)})';
   }

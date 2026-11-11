@@ -6,6 +6,8 @@ import '../../models/curso_model.dart';
 import '../../models/student_subject_model.dart';
 import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
+import '../../widgets/texto_sin_cortes.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/student_viewmodel.dart';
 import '../attendance/face_verification_screen.dart';
@@ -111,7 +113,7 @@ class StudentHomeScreen extends StatelessWidget {
                                 'Mínimo ${AsistenciaResumen.minimo}%',
                                 style: TextStyle(
                                   color: AppTheme.textSecondary,
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -242,22 +244,19 @@ class StudentHomeScreen extends StatelessWidget {
                           ],
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1.5,
+                              horizontal: 8,
+                              vertical: 2,
                             ),
                             decoration: BoxDecoration(
                               color: AppTheme.surfaceControl,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.08),
-                              ),
                             ),
                             child: Text(
                               periodo,
                               style: const TextStyle(
                                 color: AppTheme.textSecondary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -274,24 +273,10 @@ class StudentHomeScreen extends StatelessWidget {
           Row(
             children: [
               // Botón Ajustes -> Navega a Pantalla 8 (Configuración Estudiante)
-              GestureDetector(
-                onTap: () => _onSettingsTap(context),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceElevated,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.settings_outlined,
-                    color: Colors.white,
-                    size: 19,
-                  ),
-                ),
+              BotonRedondo(
+                icono: Icons.settings_outlined,
+                nombre: 'Ajustes',
+                onPressed: () => _onSettingsTap(context),
               ),
             ],
           ),
@@ -319,8 +304,8 @@ class StudentHomeScreen extends StatelessWidget {
                   Text(
                     'SEMESTRE ACADÉMICO',
                     style: TextStyle(
-                      color: _primaryIndigo,
-                      fontSize: 12,
+                      color: AppTheme.primaryTexto,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.8,
                     ),
@@ -483,7 +468,7 @@ class StudentHomeScreen extends StatelessWidget {
                           'Asistencia',
                           style: TextStyle(
                             color: AppTheme.textSecondary,
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -506,7 +491,7 @@ class StudentHomeScreen extends StatelessWidget {
                     vm.globalAttendanceStatus,
                     style: const TextStyle(
                       color: AppTheme.textSecondary,
-                      fontSize: 10,
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -541,7 +526,7 @@ class StudentHomeScreen extends StatelessWidget {
                           'Materias',
                           style: TextStyle(
                             color: AppTheme.textSecondary,
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -558,11 +543,11 @@ class StudentHomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  const Text(
+                  const TextoSinCortes(
                     'Inscritas',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
-                      fontSize: 10,
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -597,7 +582,7 @@ class StudentHomeScreen extends StatelessWidget {
                           'En riesgo',
                           style: TextStyle(
                             color: AppTheme.textSecondary,
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -616,11 +601,11 @@ class StudentHomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  const Text(
+                  const TextoSinCortes(
                     'Materias',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
-                      fontSize: 10,
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -996,7 +981,7 @@ class _SubjectPassCard extends StatelessWidget {
                                     subject.code,
                                     style: TextStyle(
                                       color: accent,
-                                      fontSize: 11,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -1005,21 +990,21 @@ class _SubjectPassCard extends StatelessWidget {
                                   'Grupo ${subject.group}',
                                   style: const TextStyle(
                                     color: AppTheme.textSecondary,
-                                    fontSize: 12,
+                                    fontSize: 13,
                                   ),
                                 ),
                                 const Text(
                                   '•',
                                   style: TextStyle(
                                     color: AppTheme.textTertiary,
-                                    fontSize: 12,
+                                    fontSize: 13,
                                   ),
                                 ),
                                 Text(
                                   subject.room,
                                   style: const TextStyle(
                                     color: AppTheme.textSecondary,
-                                    fontSize: 12,
+                                    fontSize: 13,
                                   ),
                                 ),
                               ],
@@ -1120,7 +1105,7 @@ class _SubjectPassCard extends StatelessWidget {
                                         subject.statusLabel,
                                         style: TextStyle(
                                           color: accent,
-                                          fontSize: 11,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -1132,7 +1117,7 @@ class _SubjectPassCard extends StatelessWidget {
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
                                         color: AppTheme.textTertiary,
-                                        fontSize: 11,
+                                        fontSize: 13,
                                       ),
                                     ),
                                   ],
@@ -1165,7 +1150,7 @@ class _SubjectPassCard extends StatelessWidget {
                             'Asistencia: ',
                             style: TextStyle(
                               color: AppTheme.textSecondary,
-                              fontSize: 12,
+                              fontSize: 13,
                             ),
                           ),
                           Text(
@@ -1175,7 +1160,7 @@ class _SubjectPassCard extends StatelessWidget {
                                   subject.status == NivelAsistencia.atencion
                                   ? Colors.white
                                   : accent,
-                              fontSize: 12,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1187,7 +1172,7 @@ class _SubjectPassCard extends StatelessWidget {
                                     subject.status == NivelAsistencia.riesgo
                                     ? accent
                                     : AppTheme.textTertiary,
-                                fontSize: 11,
+                                fontSize: 13,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1211,7 +1196,7 @@ class _SubjectPassCard extends StatelessWidget {
                           subject.absencesBadge,
                           style: TextStyle(
                             color: accent,
-                            fontSize: 10,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

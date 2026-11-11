@@ -247,7 +247,7 @@ class _PermisosDelCelularState extends State<PermisosDelCelular>
         texto,
         style: TextStyle(
           color: color,
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -296,7 +296,7 @@ class _PermisosDelCelularState extends State<PermisosDelCelular>
                         puedeArreglar ? 'Toca para arreglarlo' : detalle,
                         style: const TextStyle(
                           color: AppTheme.textSecondary,
-                          fontSize: 12,
+                          fontSize: 13,
                         ),
                       ),
                       if (abajo) ...[const SizedBox(height: 6), etiqueta],
@@ -387,8 +387,8 @@ Future<void> mostrarAyuda(BuildContext context, {required bool docente}) {
       ? const [
           (
             'Crea el curso',
-            'Con su horario y la geocerca del aula: párate en el aula y toca '
-                'la insignia de geocerca para marcar el punto.',
+            'Con su horario y la zona del aula: párate en el aula y toca '
+                'la insignia de la zona para marcar el punto.',
           ),
           (
             'Inscribe a los estudiantes',
@@ -397,13 +397,13 @@ Future<void> mostrarAyuda(BuildContext context, {required bool docente}) {
           ),
           (
             'Abre el radar en clase',
-            'Solo durante el bloque del horario y dentro de la geocerca. Se '
+            'Solo durante el bloque del horario y dentro de la zona del aula. Se '
                 'abre un llamado de $minutos minutos.',
           ),
           (
             'Los estudiantes marcan',
             'Cada uno confirma su rostro, la app comprueba que esté dentro '
-                'de la geocerca y su celular se anuncia por Bluetooth. El '
+                'de la zona del aula y su celular se anuncia por Bluetooth. El '
                 'radar lo marca solo.',
           ),
           (
@@ -444,8 +444,9 @@ Future<void> mostrarAyuda(BuildContext context, {required bool docente}) {
   final problemas = docente
       ? const [
           '"Fuera del horario": el radar solo abre en el bloque del curso.',
-          '"Estás a X m del aula": acércate o vuelve a marcar la geocerca. '
-              'En la geocerca, "Comprobar dónde estoy" muestra la distancia.',
+          '"Estás a X m del aula": acércate o vuelve a marcar la zona. '
+              'En la zona del aula, "Comprobar dónde estoy" muestra la '
+              'distancia.',
           '"Solo tu ubicación aproximada": activa "Usar ubicación precisa" '
               'para SmartCheck en los ajustes del celular.',
           'Un estudiante no aparece: que tenga el Bluetooth encendido, la app '
@@ -504,7 +505,7 @@ Future<void> mostrarPrivacidad(BuildContext context) {
         'de error.',
       ),
       _Vineta(
-        'Por Bluetooth tu celular anuncia una huella de 4 bytes calculada a '
+        'Por Bluetooth tu celular anuncia un código de 4 bytes calculado a '
         'partir de tu documento, no el documento.',
       ),
       _Subtitulo('En la base de datos'),
@@ -633,7 +634,7 @@ class _Subtitulo extends StatelessWidget {
           texto.toUpperCase(),
           style: const TextStyle(
             color: AppTheme.textSecondary,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
           ),

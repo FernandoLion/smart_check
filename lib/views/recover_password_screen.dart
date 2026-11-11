@@ -62,6 +62,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
+          tooltip: 'Cerrar',
           icon: const Icon(Icons.close, color: AppTheme.textSecondary),
           onPressed: () => Navigator.pop(context),
         ),
@@ -158,14 +159,13 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
                 ),
                 if (_emailController.text.isNotEmpty)
                   IconButton(
+                    tooltip: 'Borrar',
                     icon: const Icon(
                       Icons.cancel,
                       color: AppTheme.textTertiary,
                       size: 18,
                     ),
                     onPressed: () => setState(() => _emailController.clear()),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
                   ),
                 const SizedBox(width: 8),
                 const Text(
@@ -231,7 +231,9 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
           ElevatedButton(
             onPressed: isLoading ? null : _handleRecovery,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.secondary,
+              // Un azul más oscuro que el del sistema: con letra blanca, el
+              // de siempre no llega al contraste mínimo.
+              backgroundColor: const Color(0xFF0066CC),
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(50),
               shape: RoundedRectangleBorder(

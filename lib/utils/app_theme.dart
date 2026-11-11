@@ -12,8 +12,18 @@ class AppTheme {
   static const Color error = Color(0xFFFF453A); // System Red
 
   static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFF8E8E93);
-  static const Color textTertiary = Color(0xFF636366);
+  // Los dos grises cumplen el contraste de WCAG (4,5:1) sobre todos los
+  // fondos de la app, también sobre [surfaceControl]. Los de Stitch
+  // (#8E8E93 y #636366) se leían mal en la calle.
+  static const Color textSecondary = Color(0xFFAEAEB2);
+  static const Color textTertiary = Color(0xFF98989D);
+
+  /// El índigo y el azul, más claros, para cuando son letra (enlaces,
+  /// botones de texto): los de arriba son para rellenos y no llegan al
+  /// contraste mínimo sobre el fondo oscuro.
+  static const Color primaryTexto = Color(0xFF8E8CFF);
+  static const Color secondaryTexto = Color(0xFF409CFF);
+  static const Color errorTexto = Color(0xFFFF6961);
 
   static const Color borderSubtle = Color(0x14FFFFFF); // rgba(255,255,255,0.08)
 
@@ -100,6 +110,14 @@ class AppTheme {
           ),
           textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
         ),
+      ),
+      // Los botones de texto y con borde usan el índigo claro: el de
+      // relleno, como letra, no se lee sobre el fondo oscuro.
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: primaryTexto),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(foregroundColor: primaryTexto),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: background,

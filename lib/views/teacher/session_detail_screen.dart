@@ -4,6 +4,7 @@ import '../../models/asistencia_resumen.dart';
 import '../../models/curso_model.dart';
 import '../../models/sesion_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../viewmodels/course_detail_viewmodel.dart';
 import '../../widgets/texto_sin_cortes.dart';
 
@@ -45,7 +46,6 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
   static const Color _surfaceElevated = Color(0xFF1C1C1E);
   static const Color _surfaceControl = Color(0xFF2C2C2E);
   static const Color _surfaceHigh = Color(0xFF2A2A2C);
-  static const Color _primaryIndigo = Color(0xFF5E5CE6); // primary-container
   static const Color _primaryLight = Color(0xFFC2C1FF); // primary
   static const Color _tertiaryGreen = Color(0xFF47E266); // tertiary
   static const Color _tertiaryContainer = Color(0xFF00802D);
@@ -123,15 +123,23 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
         constraints: const BoxConstraints(minHeight: 48),
         child: Row(
           children: [
-            GestureDetector(
+            Tocable(
               onTap: () => Navigator.pop(context),
+              alineacion: AlignmentDirectional.centerStart,
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.arrow_back_ios, color: _primaryIndigo, size: 18),
+                  Icon(
+                    Icons.arrow_back_ios,
+                    color: AppTheme.primaryTexto,
+                    size: 18,
+                  ),
                   Text(
                     'Curso',
-                    style: TextStyle(color: _primaryIndigo, fontSize: 15),
+                    style: TextStyle(
+                      color: AppTheme.primaryTexto,
+                      fontSize: 15,
+                    ),
                   ),
                 ],
               ),
@@ -155,7 +163,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                     '${widget.curso.codigo} • Grupo ${widget.curso.grupo}',
                     style: const TextStyle(
                       color: AppTheme.textSecondary,
-                      fontSize: 12,
+                      fontSize: 13,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -211,7 +219,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                           'Clase terminada',
                           style: TextStyle(
                             color: _tertiaryGreen,
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -404,11 +412,11 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                 ),
                 Text(
                   conGeocerca
-                      ? 'El curso tiene geocerca'
-                      : 'El curso no tiene geocerca',
+                      ? 'El curso tiene zona del aula'
+                      : 'El curso no tiene zona del aula',
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
-                    fontSize: 12,
+                    fontSize: 13,
                   ),
                 ),
               ],
@@ -437,7 +445,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppTheme.textSecondary,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -496,7 +504,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
           _buildFilaMetodo(
             icono: Icons.sensors,
             color: _primaryLight,
-            titulo: 'Radar BLE',
+            titulo: 'Por Bluetooth',
             detalle: 'Firmó desde su celular y el radar lo oyó en el aula',
             cantidad: ble,
             parte: parte(ble),
@@ -557,7 +565,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                   detalle,
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
-                    fontSize: 12,
+                    fontSize: 13,
                   ),
                 ),
               ],
@@ -579,7 +587,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                 parte,
                 style: const TextStyle(
                   color: AppTheme.textTertiary,
-                  fontSize: 11,
+                  fontSize: 13,
                 ),
               ),
             ],
@@ -589,13 +597,9 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
     );
   }
 
-  Widget _buildFilterSegmentedControl(
-    int total,
-    int presentes,
-    int ausentes,
-  ) {
+  Widget _buildFilterSegmentedControl(int total, int presentes, int ausentes) {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         color: _surfaceControl,
         borderRadius: BorderRadius.circular(12),
@@ -616,7 +620,9 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       child: GestureDetector(
         onTap: () => setState(() => _selectedFilter = index),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 7),
+          // 48 de alto: lo mínimo para el dedo.
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(vertical: 6),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? _surfaceHigh : Colors.transparent,
@@ -713,7 +719,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       fondoInsignia = _tertiaryContainer.withValues(alpha: 0.25);
       textoInsignia = _tertiaryGreen;
       iconoInsignia = Icons.sensors;
-      insignia = 'BLE';
+      insignia = 'Bluetooth';
     } else {
       punto = _systemAmber;
       fondoInsignia = _systemAmber.withValues(alpha: 0.2);
@@ -728,79 +734,78 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
         color: _surfaceElevated,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Stack(
-            clipBehavior: Clip.none,
+          Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: _surfaceControl,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _iniciales(fila.inscrito.nombre),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _surfaceControl,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _iniciales(fila.inscrito.nombre),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
+                  Positioned(
+                    bottom: -3,
+                    right: -3,
+                    child: Container(
+                      width: 15,
+                      height: 15,
+                      decoration: BoxDecoration(
+                        color: punto,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        fila.presente ? Icons.check : Icons.close,
+                        size: 10,
+                        color: fila.presente ? Colors.black : Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fila.inscrito.nombre,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      fila.inscrito.cedula ?? fila.inscrito.email ?? '',
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
-              Positioned(
-                bottom: -3,
-                right: -3,
-                child: Container(
-                  width: 15,
-                  height: 15,
-                  decoration: BoxDecoration(
-                    color: punto,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    fila.presente ? Icons.check : Icons.close,
-                    size: 10,
-                    color: fila.presente ? Colors.black : Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fila.inscrito.nombre,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  fila.inscrito.cedula ?? fila.inscrito.email ?? '',
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -818,64 +823,75 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                       insignia,
                       style: TextStyle(
                         color: textoInsignia,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 4),
-              if (guardando)
-                const SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else ...[
-                GestureDetector(
-                  onTap: () => _corregir(
-                    fila,
-                    fila.presente
-                        ? EstadoAsistencia.ausente
-                        : EstadoAsistencia.presente,
-                  ),
-                  // A quien quedó presente también se le puede corregir: la
-                  // acción se ve, no se esconde detrás de la hora.
-                  child: Text(
-                    fila.presente
-                        ? '${_hora(marca!.hora)} · Marcar ausente'
-                        : 'Marcar presente',
-                    style: const TextStyle(
-                      color: _primaryLight,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                // A quien no vino se le puede justificar la falta (la excusa
-                // suele llegar después), y quitarle la justificación.
-                if (!fila.presente) ...[
-                  const SizedBox(height: 4),
-                  GestureDetector(
-                    onTap: () => _corregir(
-                      fila,
-                      fila.justificada
-                          ? EstadoAsistencia.ausente
-                          : EstadoAsistencia.justificada,
-                    ),
-                    child: Text(
-                      fila.justificada ? 'Quitar justificación' : 'Justificar',
-                      style: const TextStyle(
-                        color: _azulJustificada,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+            ],
+          ),
+          // Las correcciones, como botones del alto de un dedo y a la vista:
+          // a quien quedó presente también se le puede corregir.
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: guardando
+                ? const SizedBox(
+                    height: 48,
+                    child: Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
+                  )
+                : Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    children: [
+                      Tocable(
+                        onTap: () => _corregir(
+                          fila,
+                          fila.presente
+                              ? EstadoAsistencia.ausente
+                              : EstadoAsistencia.presente,
+                        ),
+                        child: Text(
+                          fila.presente
+                              ? '${_hora(marca!.hora)} · Marcar ausente'
+                              : 'Marcar presente',
+                          style: const TextStyle(
+                            color: _primaryLight,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      // A quien no vino se le puede justificar la falta (la
+                      // excusa suele llegar después), y quitarle la justificación.
+                      if (!fila.presente)
+                        Tocable(
+                          onTap: () => _corregir(
+                            fila,
+                            fila.justificada
+                                ? EstadoAsistencia.ausente
+                                : EstadoAsistencia.justificada,
+                          ),
+                          child: Text(
+                            fila.justificada
+                                ? 'Quitar justificación'
+                                : 'Justificar',
+                            style: const TextStyle(
+                              color: AppTheme.secondaryTexto,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              ],
-            ],
           ),
         ],
       ),
@@ -938,7 +954,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                 _ => '${fila.inscrito.nombre} quedó ausente.',
               },
         ),
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -953,7 +969,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
           child: Text(
             'Las correcciones quedan guardadas como marca manual a tu nombre.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+            style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
           ),
         ),
       ],

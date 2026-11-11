@@ -357,12 +357,51 @@ List<String> _palabrasPartidas(WidgetTester tester) {
   return partidas;
 }
 
+final _letraOCifra = RegExp(r'[\p{L}\d]', unicode: true);
+
+/// Los días del calendario se libran de los 48 dp: siete columnas no caben
+/// a ese ancho en un celular de 360. Miden unos 42, por encima de los 24 que
+/// pide WCAG 2.2 (criterio 2.5.8), y están pegados unos a otros, así que no
+/// hay dónde fallar el toque.
+bool _esDiaDelCalendario(String falla) =>
+    falla.contains('expected tap target size') &&
+    RegExp(r'label: "\d{1,2}, ').hasMatch(falla);
+
+/// La letra más pequeña que se acepta en un texto que informa algo.
+const _letraMinima = 13.0;
+
+/// Textos con letras o cifras de menos de [_letraMinima] puntos.
+List<String> _letrasPequenas(WidgetTester tester) {
+  final pequenas = <String>[];
+  for (final p in tester.renderObjectList<RenderParagraph>(
+    find.byType(RichText),
+  )) {
+    if (!p.hasSize) continue;
+    void visitar(InlineSpan span, double? heredado) {
+      if (span is! TextSpan) return;
+      final tamano = span.style?.fontSize ?? heredado;
+      final texto = span.text;
+      if (texto != null &&
+          tamano != null &&
+          _letraOCifra.hasMatch(texto) &&
+          p.textScaler.scale(tamano) < _letraMinima) {
+        pequenas.add('${tamano.toStringAsFixed(0)} "${texto.trim()}"');
+      }
+      for (final hijo in span.children ?? const <InlineSpan>[]) {
+        visitar(hijo, tamano);
+      }
+    }
+
+    visitar(p.text, null);
+  }
+  return pequenas;
+}
+
 /// Las fuentes se cargan una vez, dentro del primer test: fuera de uno, el
 /// motor de pruebas no las registra.
 var _fuentesCargadas = false;
 
 void main() {
-
   for (final pantalla in _pantallas) {
     group(pantalla.nombre, () {
       for (final vista in _vistas.entries) {
@@ -430,4 +469,68 @@ void main() {
       }
     });
   }
+
+  // Que se pueda usar sin ver bien ni tener dedos finos: botones de al menos
+  // 48 dp y con nombre para TalkBack, textos con el contraste de WCAG y letra
+  // de al menos 13. Muy alta, para revisar también lo que queda debajo.
+  group('Accesibilidad, 360 de ancho', () {
+    for (final vista in _vistas.entries) {
+      testWidgets(vista.key, (tester) async {
+        tester.view.physicalSize = const Size(360, 2400);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final semantica = tester.ensureSemantics();
+        // Los desbordes ya los revisa el grupo de arriba.
+        final original = FlutterError.onError;
+        FlutterError.onError = (detalles) {
+          if (detalles.exceptionAsString().contains('overflowed')) return;
+          original?.call(detalles);
+        };
+
+        final fallas = <String>[];
+        try {
+          if (!_fuentesCargadas) {
+            await tester.runAsync(_cargarFuentes);
+            _fuentesCargadas = true;
+          }
+          final mundo = _Mundo();
+          await tester.runAsync(mundo.preparar);
+          final widget = await tester.runAsync(() => vista.value(mundo));
+          await tester.pumpWidget(mundo.envolver(widget!));
+          await tester.pump(const Duration(milliseconds: 300));
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)),
+          );
+          await tester.pump(const Duration(milliseconds: 300));
+          await tester.pump(const Duration(seconds: 1));
+
+          for (final pauta in <AccessibilityGuideline>[
+            androidTapTargetGuideline,
+            labeledTapTargetGuideline,
+            textContrastGuideline,
+          ]) {
+            final evaluacion = await pauta.evaluate(tester);
+            if (evaluacion.passed) continue;
+            final motivos = evaluacion.reason!
+                .split(RegExp(r'(?=SemanticsNode#)'))
+                .map((m) => m.trim())
+                .where((m) => m.isNotEmpty && !_esDiaDelCalendario(m));
+            fallas.addAll(motivos);
+          }
+          final pequenas = _letrasPequenas(tester);
+          if (pequenas.isNotEmpty) {
+            fallas.add('Letra de menos de $_letraMinima:\n'
+                '${pequenas.toSet().join('\n')}');
+          }
+          await tester.pumpWidget(const SizedBox());
+          await tester.pump(const Duration(seconds: 3));
+        } finally {
+          FlutterError.onError = original;
+          semantica.dispose();
+        }
+
+        expect(fallas, isEmpty, reason: fallas.join('\n\n'));
+      });
+    }
+  });
 }

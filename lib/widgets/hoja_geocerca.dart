@@ -89,7 +89,7 @@ class _HojaGeocercaState extends State<HojaGeocerca> {
           ),
           const SizedBox(height: 18),
           const Text(
-            'Geocerca del aula',
+            'Zona del aula',
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -211,7 +211,7 @@ class _HojaGeocercaState extends State<HojaGeocerca> {
                 Navigator.pop(context);
               },
               child: const Text(
-                'Quitar la geocerca',
+                'Quitar la zona del aula',
                 style: TextStyle(color: Color(0xFFFF453A)),
               ),
             ),

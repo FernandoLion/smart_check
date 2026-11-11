@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../attendance/attendance_radar_screen.dart';
 import 'teacher_settings_screen.dart';
 import 'course_detail_screen.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../models/curso_model.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
@@ -22,6 +24,7 @@ class TeacherCourseModel {
   final String group;
   final String location;
   final String schedule;
+
   /// Null mientras no haya sesiones con asistencia registrada.
   final int? attendancePercent;
   final int enrolledCount;
@@ -102,7 +105,6 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -344,6 +346,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                 ),
               );
             },
+            tooltip: 'Ajustes',
             icon: const Icon(
               Icons.settings_outlined,
               color: AppTheme.textSecondary,
@@ -377,7 +380,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AppTheme.textSecondary,
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.8,
                         ),
@@ -400,7 +403,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                         Curso.periodoActual(),
                         style: const TextStyle(
                           color: _primaryLight,
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -465,8 +468,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
-        height: 38,
-        padding: const EdgeInsets.all(3),
+        height: 50,
         decoration: BoxDecoration(
           color: _surfaceControl,
           borderRadius: BorderRadius.circular(12),
@@ -476,6 +478,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
           children: [
             Expanded(
               child: Container(
+                margin: const EdgeInsets.all(3),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: _surfaceElevated,
@@ -506,6 +509,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
             ),
             Expanded(
               child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () {
                   // Solo los docentes que también cursan materias.
                   final perfil = context.read<AuthViewModel>().perfil;
@@ -571,8 +575,8 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
         children: [
           // Input de búsqueda
           Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            height: 50,
+            padding: const EdgeInsets.only(left: 14),
             decoration: BoxDecoration(
               color: _surfaceControl,
               borderRadius: BorderRadius.circular(12),
@@ -603,17 +607,20 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   ),
                 ),
                 if (_busqueda.isNotEmpty)
-                  GestureDetector(
-                    onTap: () => setState(() {
+                  IconButton(
+                    onPressed: () => setState(() {
                       _buscador.clear();
                       _busqueda = '';
                     }),
-                    child: const Icon(
+                    tooltip: 'Borrar la búsqueda',
+                    icon: const Icon(
                       Icons.cancel,
                       color: AppTheme.textTertiary,
                       size: 18,
                     ),
-                  ),
+                  )
+                else
+                  const SizedBox(width: 14),
               ],
             ),
           ),
@@ -664,7 +671,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
     Color? iconColor,
   }) {
     final isSelected = _selectedFilter == index;
-    return GestureDetector(
+    return Tocable(
       onTap: () => setState(() => _selectedFilter = index),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -692,7 +699,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
               label,
               style: TextStyle(
                 color: isSelected ? Colors.white : AppTheme.textSecondary,
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
@@ -710,7 +717,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
                   count,
                   style: TextStyle(
                     color: isSelected ? Colors.white : AppTheme.textSecondary,
-                    fontSize: 10,
+                    fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -723,7 +730,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   }
 
   Widget _buildFloatingActionButton(BuildContext context) {
-    return GestureDetector(
+    return Tocable(
       onTap: () {
         Navigator.push(
           context,
@@ -731,7 +738,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
         );
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
           color: _primaryIndigo,
           borderRadius: BorderRadius.circular(24),
@@ -825,7 +832,7 @@ class _TeacherCourseCard extends StatelessWidget {
                                 color: isArchived
                                     ? AppTheme.textSecondary
                                     : const Color(0xFFC2C1FF),
-                                fontSize: 11,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -835,7 +842,7 @@ class _TeacherCourseCard extends StatelessWidget {
                             course.location,
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
-                              fontSize: 12,
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -857,31 +864,35 @@ class _TeacherCourseCard extends StatelessWidget {
                         course.group,
                         style: const TextStyle(
                           color: AppTheme.textSecondary,
-                          fontSize: 12,
+                          fontSize: 13,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Column(
-                  children: [
-                    CupertinoSwitch(
-                      value: !isArchived,
-                      activeTrackColor: const Color(0xFF30D158),
-                      onChanged: onArchivar,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isArchived ? 'Archivado' : 'Activo',
-                      style: TextStyle(
-                        color: isArchived
-                            ? AppTheme.textSecondary
-                            : const Color(0xFF47E266),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                // Junto con "Activo" debajo, para que TalkBack lo lea como
+                // un interruptor con nombre y el dedo tenga dónde caer.
+                MergeSemantics(
+                  child: Column(
+                    children: [
+                      CupertinoSwitch(
+                        value: !isArchived,
+                        activeTrackColor: const Color(0xFF30D158),
+                        onChanged: onArchivar,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        isArchived ? 'Archivado' : 'Activo',
+                        style: TextStyle(
+                          color: isArchived
+                              ? AppTheme.textSecondary
+                              : const Color(0xFF47E266),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -923,7 +934,7 @@ class _TeacherCourseCard extends StatelessWidget {
                                 : '${course.attendancePercent}%',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -953,7 +964,7 @@ class _TeacherCourseCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
-                              fontSize: 12,
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -979,7 +990,7 @@ class _TeacherCourseCard extends StatelessWidget {
                           course.schedule.split('•').first.trim(),
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
-                            fontSize: 11,
+                            fontSize: 13,
                           ),
                         ),
                       ),
@@ -990,7 +1001,7 @@ class _TeacherCourseCard extends StatelessWidget {
                             : course.schedule,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1025,7 +1036,7 @@ class _TeacherCourseCard extends StatelessWidget {
                             color: course.isSpecialToday
                                 ? const Color(0xFFFF9F0A)
                                 : AppTheme.textSecondary,
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: course.isSpecialToday
                                 ? FontWeight.w500
                                 : FontWeight.w400,
@@ -1050,23 +1061,24 @@ class _TeacherCourseCard extends StatelessWidget {
                       backgroundColor: const Color(0xFF5E5CE6),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                        horizontal: 14,
+                        vertical: 12,
                       ),
+                      minimumSize: const Size(48, 48),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 0,
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.radar, size: 15),
-                        SizedBox(width: 4),
+                        Icon(Icons.radar, size: 18),
+                        SizedBox(width: 6),
                         Text(
-                          'Iniciar Radar BLE',
+                          'Tomar asistencia',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

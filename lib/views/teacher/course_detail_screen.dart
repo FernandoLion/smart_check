@@ -8,6 +8,7 @@ import '../../models/inscrito_model.dart';
 import '../../services/curso_service.dart';
 import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../viewmodels/course_detail_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
 import '../../widgets/calendario_asistencia.dart' show horaCorta, tituloDelDia;
@@ -153,8 +154,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              GestureDetector(
+              Tocable(
                 onTap: () => Navigator.pop(context),
+                alineacion: AlignmentDirectional.centerStart,
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -186,7 +188,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       '${_curso.grupo}',
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
-                        fontSize: 11,
+                        fontSize: 13,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -197,10 +199,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 children: [
                   _buildActionCircle(
                     Icons.person_add_outlined,
+                    'Agregar estudiantes',
                     onTap: _agregarEstudiantes,
                   ),
-                  const SizedBox(width: 6),
-                  _buildActionCircle(Icons.more_horiz, onTap: _mostrarOpciones),
+                  _buildActionCircle(
+                    Icons.more_horiz,
+                    'Más opciones del curso',
+                    onTap: _mostrarOpciones,
+                  ),
                 ],
               ),
             ],
@@ -208,8 +214,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           const SizedBox(height: 14),
 
           // Cupertino Segmented Control (Sesiones / Estudiantes)
+          // 54 de alto: cada pestaña queda de 48, lo mínimo para el dedo.
           Container(
-            height: 36,
+            height: 54,
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               color: _surfaceControl,
@@ -231,11 +238,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               labelColor: Colors.white,
               unselectedLabelColor: AppTheme.textSecondary,
               labelStyle: const TextStyle(
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
               unselectedLabelStyle: const TextStyle(
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: FontWeight.normal,
               ),
               tabs: [
@@ -275,7 +282,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                             '${_vm.totalInscritos}',
                             style: const TextStyle(
                               color: _primaryLight,
-                              fontSize: 10,
+                              fontSize: 13,
                             ),
                           ),
                         ),
@@ -291,19 +298,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  Widget _buildActionCircle(IconData icon, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: _surfaceControl.withValues(alpha: 0.8),
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: Icon(icon, color: _primaryLight, size: 17),
-      ),
+  Widget _buildActionCircle(
+    IconData icon,
+    String nombre, {
+    VoidCallback? onTap,
+  }) {
+    return BotonRedondo(
+      icono: icon,
+      nombre: nombre,
+      color: _primaryLight,
+      fondo: _surfaceControl,
+      tamanoIcono: 18,
+      onPressed: onTap,
     );
   }
 
@@ -633,8 +639,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         SnackBar(
           content: Text(
             geocerca == null
-                ? 'Geocerca quitada: el radar no comprobará el aula.'
-                : 'Geocerca guardada: ${geocerca.radioMetros.round()} m '
+                ? 'Zona del aula quitada: el radar no comprobará dónde estás.'
+                : 'Zona del aula guardada: ${geocerca.radioMetros.round()} m '
                     'alrededor de donde estás'
                     '${precision == null ? '' : ' (GPS ±$precision m)'}.',
           ),
@@ -734,7 +740,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           'CALENDARIO DEL CURSO',
           style: TextStyle(
             color: AppTheme.textSecondary,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
           ),
@@ -775,7 +781,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 'CLASES EXTRA',
                 style: TextStyle(
                   color: AppTheme.textSecondary,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.8,
                 ),
@@ -948,7 +954,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               'SESIONES ANTERIORES',
               style: TextStyle(
                 color: AppTheme.textSecondary,
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8,
               ),
@@ -959,7 +965,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   : '(${pasadas.length} registradas)',
               style: const TextStyle(
                 color: AppTheme.textTertiary,
-                fontSize: 11,
+                fontSize: 13,
               ),
             ),
           ],
@@ -1083,7 +1089,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     titulo,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.8,
                     ),
@@ -1106,7 +1112,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   insignia,
                   style: const TextStyle(
                     color: _tertiaryGreen,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1138,8 +1144,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               Expanded(
                 child: Text(
                   geocerca == null
-                      ? '${_curso.aula} • Sin geocerca asignada'
-                      : '${_curso.aula} • Geocerca ±'
+                      ? '${_curso.aula} • Sin zona del aula'
+                      : '${_curso.aula} • Zona de ±'
                             '${geocerca.radioMetros.round()}m',
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
@@ -1253,7 +1259,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            'Editar Geocerca',
+                            'Editar zona del aula',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -1296,7 +1302,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   titulo,
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
-                    fontSize: 11,
+                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -1353,8 +1359,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 children: [
                   // Calendario miniatura
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 46,
+                    height: 46,
                     decoration: BoxDecoration(
                       color: _surfaceControl,
                       borderRadius: BorderRadius.circular(10),
@@ -1369,7 +1375,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           _dias[sesion.franja.weekday - 1],
                           style: const TextStyle(
                             color: AppTheme.textTertiary,
-                            fontSize: 9,
+                            fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -1427,7 +1433,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                   color: aviso
                                       ? _systemAmber
                                       : AppTheme.textSecondary,
-                                  fontSize: 10,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1444,7 +1450,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                         '${resumen.inscritos})',
                               style: TextStyle(
                                 color: aviso ? _systemAmber : _tertiaryGreen,
-                                fontSize: 12,
+                                fontSize: 14,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -1458,7 +1464,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                 '${_horaDe(sesion.fin)}',
                                 style: const TextStyle(
                                   color: AppTheme.textSecondary,
-                                  fontSize: 12,
+                                  fontSize: 13,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1507,8 +1513,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       children: [
         // Buscador
         Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          height: 50,
+          padding: const EdgeInsets.only(left: 12),
           decoration: BoxDecoration(
             color: _surfaceControl,
             borderRadius: BorderRadius.circular(12),
@@ -1535,14 +1541,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 ),
               ),
               if (busqueda.isNotEmpty)
-                GestureDetector(
-                  onTap: _buscador.clear,
-                  child: const Icon(
+                IconButton(
+                  onPressed: _buscador.clear,
+                  tooltip: 'Borrar la búsqueda',
+                  icon: const Icon(
                     Icons.cancel,
                     color: AppTheme.textTertiary,
                     size: 18,
                   ),
-                ),
+                )
+              else
+                const SizedBox(width: 12),
             ],
           ),
         ),
@@ -1618,7 +1627,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                             '${AsistenciaResumen.minimo}% de asistencia',
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
-                              fontSize: 11,
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -1649,7 +1658,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     'Promedio',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
-                      fontSize: 11,
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -1665,7 +1674,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             'LISTA DE INSCRITOS',
             style: TextStyle(
               color: AppTheme.textSecondary,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
             ),
@@ -1709,7 +1718,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   'asignatura. Solo cuentan las clases ya cerradas.',
                   style: TextStyle(
                     color: AppTheme.textSecondary,
-                    fontSize: 12,
+                    fontSize: 13,
                     height: 1.35,
                   ),
                 ),
@@ -1859,7 +1868,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                             id,
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
-                              fontSize: 12,
+                              fontSize: 13,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1875,7 +1884,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                       : isWarning
                                       ? _systemAmber
                                       : _tertiaryGreen,
-                                  fontSize: 11,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -1887,7 +1896,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                 attendanceText,
                                 style: const TextStyle(
                                   color: AppTheme.textSecondary,
-                                  fontSize: 11,
+                                  fontSize: 13,
                                 ),
                               ),
                             ],
@@ -1913,7 +1922,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   badgeLabel,
                   style: TextStyle(
                     color: badgeColor,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1937,7 +1946,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           : isWarning
                           ? _systemAmber
                           : AppTheme.textTertiary,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: isRiskCritical
                           ? FontWeight.w600
                           : FontWeight.normal,
@@ -1949,7 +1958,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       color: isRiskCritical
                           ? _systemRed
                           : AppTheme.textSecondary,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: isRiskCritical
                           ? FontWeight.bold
                           : FontWeight.normal,

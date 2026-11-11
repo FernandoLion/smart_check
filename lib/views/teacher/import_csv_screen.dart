@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/inscrito_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../utils/csv_inscritos.dart';
 import '../../utils/hoja_de_calculo.dart';
 
@@ -163,8 +164,9 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         children: [
-          GestureDetector(
+          Tocable(
             onTap: () => Navigator.pop(context),
+            alineacion: AlignmentDirectional.centerStart,
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -197,7 +199,7 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
                     widget.courseName,
                     style: const TextStyle(
                       color: AppTheme.textSecondary,
-                      fontSize: 12,
+                      fontSize: 13,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -205,8 +207,9 @@ class _ImportCsvScreenState extends State<ImportCsvScreen> {
               ],
             ),
           ),
-          GestureDetector(
+          Tocable(
             onTap: _confirmar,
+            alineacion: AlignmentDirectional.centerEnd,
             child: const Text(
               'Confirmar',
               style: TextStyle(

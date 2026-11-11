@@ -5,6 +5,7 @@ import '../../models/curso_model.dart';
 import '../../models/inscrito_model.dart';
 import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../widgets/hoja_geocerca.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
@@ -141,7 +142,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
         SnackBar(
           content: Text('Curso "$nombre" actualizado'),
           backgroundColor: AppTheme.success,
-          duration: const Duration(seconds: 2),
+          duration: const Duration(seconds: 4),
         ),
       );
       navigator.pop(editado);
@@ -169,7 +170,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
       SnackBar(
         content: Text('Curso "$nombre" creado'),
         backgroundColor: AppTheme.success,
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 4),
       ),
     );
     navigator.pop();
@@ -273,8 +274,9 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GestureDetector(
+          Tocable(
             onTap: () => Navigator.pop(context),
+            alineacion: AlignmentDirectional.centerStart,
             child: const Text(
               'Cancelar',
               style: TextStyle(
@@ -301,8 +303,9 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          GestureDetector(
+          Tocable(
             onTap: _handleSaveCourse,
+            alineacion: AlignmentDirectional.centerEnd,
             child: context.watch<TeacherViewModel>().guardando
                 ? const SizedBox(
                     width: 18,
@@ -312,7 +315,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 : const Text(
                     'Guardar',
                     style: TextStyle(
-                      color: _primaryIndigo,
+                      color: AppTheme.primaryTexto,
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
                     ),
@@ -384,7 +387,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                   'Docente\nTitular',
                   style: TextStyle(
                     color: _tertiaryGreen,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     height: 1.1,
                   ),
@@ -407,7 +410,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
             'DATOS GENERALES',
             style: TextStyle(
               color: AppTheme.textSecondary,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
             ),
@@ -449,11 +452,10 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                             'Nombre de la Materia',
                             style: TextStyle(
                               color: AppTheme.textSecondary,
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 2),
                           TextField(
                             controller: _courseNameController,
                             style: const TextStyle(
@@ -463,7 +465,9 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                             ),
                             decoration: const InputDecoration(
                               isDense: true,
-                              contentPadding: EdgeInsets.zero,
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 13,
+                              ),
                               border: InputBorder.none,
                               hintText: 'Ej. Ingeniería de Software II',
                               hintStyle: TextStyle(
@@ -476,10 +480,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
                         color: _surfaceControl,
                         borderRadius: BorderRadius.circular(8),
@@ -488,20 +489,20 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                         ),
                       ),
                       child: SizedBox(
-                        width: 72,
+                        width: 80,
                         child: TextField(
                           controller: _courseCodeController,
                           textCapitalization: TextCapitalization.characters,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 14,
                             fontFamily: 'monospace',
                             fontWeight: FontWeight.bold,
                           ),
                           decoration: const InputDecoration(
                             isDense: true,
-                            contentPadding: EdgeInsets.zero,
+                            contentPadding: EdgeInsets.symmetric(vertical: 15),
                             border: InputBorder.none,
                             hintText: 'CÓDIGO',
                             hintStyle: TextStyle(color: AppTheme.textTertiary),
@@ -543,7 +544,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                               'Horario Semanal',
                               style: TextStyle(
                                 color: AppTheme.textSecondary,
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -625,11 +626,10 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                               'Aula / Ubicación Física',
                               style: TextStyle(
                                 color: AppTheme.textSecondary,
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(height: 2),
                             TextField(
                               controller: _classroomController,
                               style: const TextStyle(
@@ -639,7 +639,9 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                               ),
                               decoration: const InputDecoration(
                                 isDense: true,
-                                contentPadding: EdgeInsets.zero,
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 13,
+                                ),
                                 border: InputBorder.none,
                                 hintText: 'Ej. Bloque B2 - Aula 301',
                                 hintStyle: TextStyle(
@@ -664,7 +666,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Text(
             _geocerca == null
-                ? 'Sin geocerca, el radar no comprobará que la clase se dicte '
+                ? 'Sin zona del aula, el radar no comprobará que la clase se dicte '
                       'en el aula. Párate en el aula y toca la insignia.'
                 : 'El radar solo abrirá la clase a menos de '
                       '${_geocerca!.radioMetros.round()} m de este punto.',
@@ -682,10 +684,10 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   Widget _buildInsigniaGeocerca() {
     final puesta = _geocerca != null;
     final color = puesta ? _tertiaryGreen : _primaryLight;
-    return GestureDetector(
+    return Tocable(
       onTap: _marcandoAula ? null : _abrirHojaGeocerca,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: (puesta ? _tertiaryContainer : _primaryIndigo).withValues(
             alpha: 0.2,
@@ -711,11 +713,11 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
             const SizedBox(width: 5),
             Text(
               puesta
-                  ? 'Geocerca\n±${_geocerca!.radioMetros.round()}m'
-                  : 'Sin\ngeocerca',
+                  ? 'Zona\n±${_geocerca!.radioMetros.round()}m'
+                  : 'Sin\nzona',
               style: TextStyle(
                 color: color,
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 height: 1.1,
               ),
@@ -782,7 +784,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 'ESTUDIANTES',
                 style: TextStyle(
                   color: AppTheme.textSecondary,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.8,
                 ),
@@ -791,7 +793,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                 '${_pendientes.length} por inscribir',
                 style: const TextStyle(
                   color: _tertiaryGreen,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -847,7 +849,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                         'Oficial Chairá',
                         style: TextStyle(
                           color: _tertiaryGreen,
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -929,7 +931,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                         'Manual',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -987,7 +989,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
             'VISTA PREVIA (${visibles.length} DE ${_pendientes.length})',
             style: const TextStyle(
               color: AppTheme.textSecondary,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.6,
             ),
@@ -1116,11 +1118,10 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                   titulo,
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 2),
                 TextField(
                   controller: controller,
                   style: const TextStyle(
@@ -1130,7 +1131,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
                   ),
                   decoration: InputDecoration(
                     isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 13),
                     border: InputBorder.none,
                     hintText: pista,
                     hintStyle: const TextStyle(color: AppTheme.textTertiary),
@@ -1233,7 +1234,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
               'Listo',
               style: TextStyle(
                 color: _tertiaryGreen,
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
             ),

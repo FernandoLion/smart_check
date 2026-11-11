@@ -5,6 +5,7 @@ import '../../models/curso_model.dart';
 import '../../models/inscrito_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../widgets/add_students_modal.dart';
 import 'import_csv_screen.dart';
@@ -119,7 +120,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       SnackBar(
         content: Text('${inscrito.nombre} agregado'),
         backgroundColor: AppTheme.success,
-        duration: const Duration(seconds: 1),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -218,7 +219,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
       // Altura mínima, no fija: con letra grande el título y el subtítulo
       // necesitan más.
       constraints: const BoxConstraints(minHeight: 56),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: _surfaceElevated.withValues(alpha: 0.85),
         border: Border(
@@ -229,8 +230,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Leading: "< Volver"
-          GestureDetector(
+          Tocable(
             onTap: _salir,
+            alineacion: AlignmentDirectional.centerStart,
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -268,7 +270,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                   widget.courseTitle,
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
-                    fontSize: 12,
+                    fontSize: 13,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -281,27 +283,17 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              GestureDetector(
-                onTap: _openQuickModal,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: _surfaceControl,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.layers_outlined,
-                    color: _primaryLight,
-                    size: 16,
-                  ),
-                ),
+              BotonRedondo(
+                icono: Icons.layers_outlined,
+                nombre: 'Agregar varios estudiantes',
+                color: _primaryLight,
+                fondo: _surfaceControl,
+                tamanoIcono: 18,
+                onPressed: _openQuickModal,
               ),
-              GestureDetector(
+              Tocable(
                 onTap: _salir,
+                alineacion: AlignmentDirectional.centerEnd,
                 child: const Text(
                   'Listo',
                   style: TextStyle(
@@ -344,8 +336,8 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
 
         // Cupertino Search Bar Container
         Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          height: 52,
+          padding: const EdgeInsets.only(right: 12),
           decoration: BoxDecoration(
             color: _surfaceControl,
             borderRadius: BorderRadius.circular(14),
@@ -353,8 +345,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
           ),
           child: Row(
             children: [
-              GestureDetector(
+              Tocable(
                 onTap: _performChairaSearch,
+                nombre: 'Buscar en Chairá',
                 child: isVerifying
                     ? const SizedBox(
                         width: 18,
@@ -367,10 +360,9 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                     : const Icon(
                         Icons.search,
                         color: AppTheme.textSecondary,
-                        size: 20,
+                        size: 22,
                       ),
               ),
-              const SizedBox(width: 10),
               Expanded(
                 child: TextField(
                   controller: _searchController,
@@ -391,17 +383,17 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                     ),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ),
               if (_searchController.text.isNotEmpty)
-                GestureDetector(
+                Tocable(
                   onTap: () => setState(() => _searchController.clear()),
+                  nombre: 'Borrar',
                   child: Container(
-                    width: 20,
-                    height: 20,
-                    margin: const EdgeInsets.only(right: 8),
+                    width: 22,
+                    height: 22,
                     decoration: BoxDecoration(
                       color: AppTheme.textTertiary.withValues(alpha: 0.4),
                       shape: BoxShape.circle,
@@ -432,7 +424,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                       'Chairá',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -506,7 +498,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                           'Encontrado en Chairá',
                           style: TextStyle(
                             color: _tertiaryGreen,
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
                           maxLines: 1,
@@ -522,7 +514,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 'Periodo ${Curso.periodoActual()}',
                 style: TextStyle(
                   color: AppTheme.textSecondary,
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -628,7 +620,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                             programa,
                             style: const TextStyle(
                               color: AppTheme.textSecondary,
-                              fontSize: 12,
+                              fontSize: 13,
                             ),
                           ),
                         if (tipo.isNotEmpty)
@@ -648,7 +640,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                             tipo,
                             style: const TextStyle(
                               color: _primaryFixed,
-                              fontSize: 10,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -692,7 +684,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                             'su correo; él lo verá igual al registrarse.',
                     style: const TextStyle(
                       color: Color(0xFFE4E2E4),
-                      fontSize: 12,
+                      fontSize: 13,
                       height: 1.3,
                     ),
                   ),
@@ -761,7 +753,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                     'AÑADIDOS RECIENTEMENTE',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.8,
                     ),
@@ -782,7 +774,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                       '${_recentlyAdded.length}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -797,7 +789,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: AppTheme.textTertiary,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -912,7 +904,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                               '✓ Agregado',
                               style: TextStyle(
                                 color: _tertiaryGreen,
-                                fontSize: 10,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -924,7 +916,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                         student.idAndProgram,
                         style: const TextStyle(
                           color: AppTheme.textSecondary,
-                          fontSize: 12,
+                          fontSize: 13,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -943,20 +935,21 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                 student.timeAgo,
                 style: const TextStyle(
                   color: AppTheme.textTertiary,
-                  fontSize: 11,
+                  fontSize: 13,
                 ),
               ),
               const SizedBox(width: 8),
-              GestureDetector(
+              Tocable(
                 onTap: () {
                   setState(() {
                     _recentlyAdded.removeAt(index);
                     _agregados.removeAt(index);
                   });
                 },
+                nombre: 'Quitar de la lista',
                 child: Container(
-                  width: 28,
-                  height: 28,
+                  width: 32,
+                  height: 32,
                   decoration: const BoxDecoration(
                     color: Color(0xFF1F1F21),
                     shape: BoxShape.circle,
@@ -993,7 +986,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppTheme.textTertiary,
-                fontSize: 11,
+                fontSize: 13,
                 height: 1.35,
               ),
             ),

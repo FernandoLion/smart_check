@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../models/usuario_perfil_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../attendance/face_verification_screen.dart';
 
@@ -180,17 +181,11 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // Botón Cerrar ('X') -> Vuelve a Pantalla 5 (Portal Estudiante)
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: AppTheme.surfaceControl,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.close, color: Colors.white, size: 19),
-          ),
+        BotonRedondo(
+          icono: Icons.close,
+          nombre: 'Cerrar',
+          fondo: AppTheme.surfaceControl,
+          onPressed: () => Navigator.pop(context),
         ),
 
         // Pill central: "CARNÉ UDLA"
@@ -215,7 +210,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.8,
                     ),
@@ -345,7 +340,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                                   'UNIVERSIDAD DE LA AMAZONIA',
                                   style: TextStyle(
                                     color: AppTheme.textSecondary,
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
                                   maxLines: 1,
@@ -356,7 +351,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                                   'CARNÉ DIGITAL',
                                   style: TextStyle(
                                     color: _primaryLight,
-                                    fontSize: 11,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 0.5,
                                   ),
@@ -388,7 +383,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                             'VERIFICADO',
                             style: TextStyle(
                               color: _tertiaryGreen,
-                              fontSize: 11,
+                              fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -478,7 +473,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                                   rol,
                                   style: const TextStyle(
                                     color: _primaryLight,
-                                    fontSize: 11,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -531,78 +526,85 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.smartphone,
-                            color: _secondaryBlue,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Celular vinculado',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _corto(
-                                  context
-                                      .watch<AuthViewModel>()
-                                      .dispositivoVinculado,
-                                ),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontFamily: 'monospace',
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      if (context.watch<AuthViewModel>().dispositivoVinculado !=
-                          null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surfaceElevated,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                      Flexible(
                         child: Row(
                           children: [
-                            Icon(
-                              _esElVinculado
-                                  ? Icons.check_circle
-                                  : Icons.timer_outlined,
-                              color: _esElVinculado
-                                  ? _tertiaryGreen
-                                  : _systemAmber,
-                              size: 14,
+                            const Icon(
+                              Icons.smartphone,
+                              color: _secondaryBlue,
+                              size: 22,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _esElVinculado ? 'este' : 'otro',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontFamily: 'monospace',
-                                fontWeight: FontWeight.bold,
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Celular vinculado',
+                                    style: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _corto(
+                                      context
+                                          .watch<AuthViewModel>()
+                                          .dispositivoVinculado,
+                                    ),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontFamily: 'monospace',
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 1.5,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      if (context.watch<AuthViewModel>().dispositivoVinculado !=
+                          null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceElevated,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _esElVinculado
+                                    ? Icons.check_circle
+                                    : Icons.timer_outlined,
+                                color: _esElVinculado
+                                    ? _tertiaryGreen
+                                    : _systemAmber,
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _esElVinculado ? 'este' : 'otro',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontFamily: 'monospace',
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -862,7 +864,7 @@ class _BiometricValidationScreenState extends State<BiometricValidationScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppTheme.textTertiary,
-                fontSize: 12,
+                fontSize: 13,
                 height: 1.3,
               ),
             ),

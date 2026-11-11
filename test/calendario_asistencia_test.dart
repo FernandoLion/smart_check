@@ -129,7 +129,7 @@ void main() {
     await tester.pump();
     expect(find.text('Lunes 2 de noviembre'), findsOneWidget);
     expect(
-      find.text('Clase de las 06:00: asistió (radar BLE, 06:05)'),
+      find.text('Clase de las 06:00: asistió (por Bluetooth, 06:05)'),
       findsOneWidget,
     );
 

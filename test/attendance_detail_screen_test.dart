@@ -75,7 +75,7 @@ void main() {
     await tester.tap(find.text('Historial Completo'));
     await tester.pumpAndSettle();
     expect(find.text('Lunes 19 de octubre'), findsOneWidget);
-    expect(find.text('Radar BLE • 08:05'), findsOneWidget);
+    expect(find.text('Por Bluetooth • 08:05'), findsOneWidget);
     expect(find.text('Martes 20 de octubre'), findsOneWidget);
     expect(find.text('Sin marca'), findsOneWidget);
     expect(find.text('Asistió'), findsOneWidget);

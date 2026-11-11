@@ -16,6 +16,7 @@ import '../login_screen.dart';
 import 'attendance_detail_screen.dart';
 import 'biometric_validation_screen.dart';
 import '../../widgets/ajustes_compartidos.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../widgets/texto_sin_cortes.dart';
 
 class StudentSettingsScreen extends StatefulWidget {
@@ -217,7 +218,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                             : 'ID: $_idDelDispositivo',
                                         style: const TextStyle(
                                           color: AppTheme.textSecondary,
-                                          fontSize: 12,
+                                          fontSize: 13,
                                           fontFamily: 'monospace',
                                         ),
                                       ),
@@ -232,7 +233,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                   .watch<AuthViewModel>()
                                   .dispositivoVinculado !=
                               null)
-                          GestureDetector(
+                          Tocable(
                             onTap: _handleCopyDeviceId,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -258,7 +259,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                     _isCopied ? '¡Copiado!' : 'Copiar',
                                     style: const TextStyle(
                                       color: _primaryLight,
-                                      fontSize: 12,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -285,8 +286,9 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                     _buildDivider(),
                     _buildNavRow(
                       icon: Icons.podcasts,
-                      title: 'Baliza Bluetooth',
-                      subtitle: 'Se enciende sola al marcar asistencia y se '
+                      title: 'Señal de asistencia',
+                      subtitle:
+                          'Se enciende sola al marcar asistencia y se '
                           'apaga al cerrarse el llamado',
                       onTap: () => mostrarAyuda(context, docente: false),
                     ),
@@ -341,7 +343,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                           'Vuelve a pedir tu asistencia',
                                           style: TextStyle(
                                             color: AppTheme.textSecondary,
-                                            fontSize: 12,
+                                            fontSize: 13,
                                           ),
                                         ),
                                       ],
@@ -454,31 +456,36 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: const SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: Icon(
+          Expanded(
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  tooltip: 'Volver',
+                  icon: const Icon(
                     Icons.arrow_back_ios_new,
                     color: _primaryLight,
                     size: 24,
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Configuración',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.3,
+                const SizedBox(width: 4),
+                const Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      'Configuración',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           Row(
             children: [
@@ -530,7 +537,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
               ),
               SizedBox(height: 2),
               Text(
-                'Parámetros de cuenta, baliza y privacidad',
+                'Cuenta, señal de asistencia y privacidad',
                 style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -655,7 +662,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                                 'Estudiante',
                                 style: TextStyle(
                                   color: _primaryLight,
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -666,7 +673,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                           idInfo,
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
-                            fontSize: 12,
+                            fontSize: 13,
                           ),
                         ),
                       ],
@@ -680,7 +687,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
           // Estos datos no se editan aquí: son los de Chairá.
           const Text(
             'Tus datos vienen de Chairá. Si algo está mal, corrígelo allá.',
-            style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+            style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
           ),
         ],
       ),
@@ -694,7 +701,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
         title,
         style: const TextStyle(
           color: AppTheme.textSecondary,
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.8,
         ),
@@ -1014,7 +1021,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
                               subtitle,
                               style: const TextStyle(
                                 color: AppTheme.textSecondary,
-                                fontSize: 12,
+                                fontSize: 13,
                                 height: 1.3,
                               ),
                             ),

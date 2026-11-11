@@ -203,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: GestureDetector(
               onTap: () => setState(() => _segmentedControlGroupValue = 0),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                constraints: const BoxConstraints(minHeight: 44),
                 decoration: BoxDecoration(
                   color: _segmentedControlGroupValue == 0
                       ? const Color(0xFF39393b)
@@ -246,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 );
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                constraints: const BoxConstraints(minHeight: 44),
                 decoration: BoxDecoration(
                   color: _segmentedControlGroupValue == 1
                       ? const Color(0xFF39393b)
@@ -329,6 +329,9 @@ class _LoginScreenState extends State<LoginScreen> {
               size: 22,
             ),
             suffixIcon: IconButton(
+              tooltip: _obscurePassword
+                  ? 'Mostrar contraseña'
+                  : 'Ocultar contraseña',
               icon: Icon(
                 _obscurePassword ? Icons.visibility_off : Icons.visibility,
                 color: AppTheme.textSecondary,
@@ -432,7 +435,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // del estudiante, comparada con su foto del carné.
         Text(
           'Tu cuenta se verifica con Chairá y con tu rostro',
-          style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+          style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
         ),
       ],
     );
@@ -829,7 +832,7 @@ class _VincularDocumentoSheetState extends State<_VincularDocumentoSheet> {
               Text(
                 authViewModel.errorMessage!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppTheme.error, fontSize: 12),
+                style: const TextStyle(color: AppTheme.error, fontSize: 14),
               ),
             ],
             const SizedBox(height: 16),

@@ -192,7 +192,7 @@ class CursoService {
           .doc(cursoId)
           .update({'geocerca': geocerca?.toMap()}).timeout(_timeout);
     } catch (e) {
-      throw CursoException(_mensaje(e, 'guardar la geocerca'));
+      throw CursoException(_mensaje(e, 'guardar la zona del aula'));
     }
   }
 

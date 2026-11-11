@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+
 import '../models/verificacion_result_model.dart';
 import '../services/identidad_facial_service.dart';
 import '../viewmodels/auth_viewmodel.dart';
@@ -264,7 +265,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                         verificationError,
                         style: const TextStyle(
                           color: Colors.redAccent,
-                          fontSize: 12,
+                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -292,7 +293,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
             const Text(
               'Al registrarte aceptas las políticas de seguridad biométrica y acceso físico del campus universitario.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+              style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
             ),
             const SizedBox(height: 24),
           ],
@@ -367,7 +368,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                 MaterialPageRoute(builder: (_) => const LoginScreen()),
               ),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                constraints: const BoxConstraints(minHeight: 44),
                 alignment: Alignment.center,
                 color: Colors.transparent,
                 child: const Text(
@@ -379,7 +380,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
           ),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              constraints: const BoxConstraints(minHeight: 44),
               decoration: BoxDecoration(
                 color: AppTheme.surfaceElevated,
                 borderRadius: BorderRadius.circular(10),
@@ -413,7 +414,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
               title,
               style: const TextStyle(
                 color: AppTheme.textSecondary,
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
               ),
@@ -441,7 +442,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
           'Sincronizado',
           style: TextStyle(
             color: AppTheme.success,
-            fontSize: 11,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -559,15 +560,18 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.check_circle, color: AppTheme.success, size: 14),
                     SizedBox(width: 4),
-                    Text(
-                      'VERIFICADO EN SISTEMA',
-                      style: TextStyle(
-                        color: AppTheme.success,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        'VERIFICADO EN SISTEMA',
+                        style: TextStyle(
+                          color: AppTheme.success,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -580,6 +584,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.account_balance,
@@ -587,12 +592,14 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                       size: 14,
                     ),
                     SizedBox(width: 4),
-                    Text(
-                      'UDLA OFICIAL',
-                      style: TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                    Flexible(
+                      child: Text(
+                        'UDLA OFICIAL',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -655,7 +662,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                                 data.tipoUsuario ?? 'Estudiante',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 11,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -666,7 +673,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                           'ID: ${data.cedula ?? data.documentoConsultado}',
                           style: const TextStyle(
                             color: AppTheme.textTertiary,
-                            fontSize: 11,
+                            fontSize: 13,
                           ),
                         ),
                       ],
@@ -711,7 +718,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                     'ESTADO DE ACCESO',
                     style: TextStyle(
                       color: AppTheme.textTertiary,
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -737,7 +744,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                     'NFC Ready',
                     style: TextStyle(
                       color: AppTheme.textSecondary,
-                      fontSize: 11,
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -924,6 +931,9 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                 ),
               ),
               IconButton(
+                tooltip: _obscurePassword
+                    ? 'Mostrar contraseña'
+                    : 'Ocultar contraseña',
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_off : Icons.visibility,
                   color: AppTheme.textSecondary,
@@ -1002,7 +1012,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                           color: _passwordStrength > 0
                               ? AppTheme.success
                               : AppTheme.textSecondary,
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1012,7 +1022,7 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
                     '${_passwordController.text.length} caracteres detectados',
                     style: const TextStyle(
                       color: AppTheme.textTertiary,
-                      fontSize: 11,
+                      fontSize: 13,
                     ),
                   ),
                 ],

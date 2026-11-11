@@ -11,6 +11,7 @@ import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
 import '../login_screen.dart';
 import '../../widgets/ajustes_compartidos.dart';
+import '../../widgets/botones_accesibles.dart';
 import 'import_csv_screen.dart';
 
 class TeacherSettingsScreen extends StatefulWidget {
@@ -244,9 +245,12 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GestureDetector(
+          Tocable(
             onTap: () => Navigator.pop(context),
+            nombre: 'Volver',
+            alineacion: AlignmentDirectional.centerStart,
             child: const Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.arrow_back_ios_new,
@@ -391,7 +395,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
                         'Docente',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -404,7 +408,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppTheme.textSecondary,
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -435,7 +439,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Tus datos vienen de Chairá.',
-                  style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+                  style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
                 ),
               ],
             ),
@@ -463,7 +467,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
         'En el horario del curso',
       ),
       _buildDivider(),
-      _buildInfoRow(Icons.place_outlined, 'Dónde', 'Dentro de la geocerca'),
+      _buildInfoRow(Icons.place_outlined, 'Dónde', 'Dentro de la zona del aula'),
     ]);
   }
 
@@ -548,12 +552,12 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
         const SizedBox(height: 16),
         const Text(
           'Versión 1.0.0 • SmartCheck UDLA',
-          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
         ),
         const SizedBox(height: 2),
         const Text(
           'Universidad de la Amazonia',
-          style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+          style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
         ),
       ],
     );
@@ -566,7 +570,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
         title,
         style: const TextStyle(
           color: AppTheme.textSecondary,
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.8,
         ),
@@ -661,7 +665,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
                       trailingBadgeText,
                       style: const TextStyle(
                         color: AppTheme.textSecondary,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

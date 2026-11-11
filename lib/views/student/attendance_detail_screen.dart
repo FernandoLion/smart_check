@@ -6,6 +6,7 @@ import '../../models/sesion_model.dart';
 import '../../models/student_subject_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/student_viewmodel.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../widgets/calendario_asistencia.dart';
 import '../../widgets/texto_sin_cortes.dart';
 
@@ -110,7 +111,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
 
   Widget _buildNavigationHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      padding: const EdgeInsets.fromLTRB(8, 0, 16, 4),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.85),
         border: Border(
@@ -119,16 +120,21 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
       ),
       child: Row(
         children: [
-          GestureDetector(
+          Tocable(
             onTap: () => Navigator.pop(context),
+            alineacion: AlignmentDirectional.centerStart,
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.chevron_left, color: _primaryIndigo, size: 26),
+                Icon(
+                  Icons.chevron_left,
+                  color: AppTheme.primaryTexto,
+                  size: 26,
+                ),
                 Text(
                   'Mis materias',
                   style: TextStyle(
-                    color: _primaryIndigo,
+                    color: AppTheme.primaryTexto,
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.3,
@@ -161,7 +167,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                 materia.code,
                 style: const TextStyle(
                   color: _primaryFixed,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.6,
                 ),
@@ -171,7 +177,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
               '• Grupo ${materia.group}',
               style: const TextStyle(
                 color: AppTheme.textSecondary,
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -319,7 +325,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                           '${conoce ? ' de ${r.clasesContables} clases' : ''}',
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
-                            fontSize: 12,
+                            fontSize: 13,
                           ),
                         ),
                       ],
@@ -343,7 +349,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                       aviso,
                       style: TextStyle(
                         color: color,
-                        fontSize: 11,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -399,42 +405,63 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
           const SizedBox(height: 14),
           Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _buildContador(
+          LayoutBuilder(
+            builder: (context, caja) {
+              final contadores = [
+                _buildContador(
                   punto: _tertiaryGreen,
                   valor: '${r.asistidas}',
                   etiqueta: 'Asistidas',
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildContador(
+                _buildContador(
                   punto: _systemRed,
                   valor: '${r.faltas}',
                   etiqueta: 'Fallas',
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildContador(
+                _buildContador(
                   punto: AppTheme.textSecondary,
                   valor: conoce
                       ? '${r.sesiones}/${r.clasesContables}'
                       : '${r.sesiones}',
                   etiqueta: 'Dictadas',
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildContador(
+                _buildContador(
                   punto: color,
                   valor: conoce ? '${r.faltasDisponibles}' : '—',
                   etiqueta: 'Restantes',
                 ),
-              ),
-            ],
+              ];
+              // Los cuatro en fila si cabe la etiqueta más larga entera; si
+              // no (celular angosto o letra grande), de dos en dos.
+              final medida = TextPainter(
+                text: TextSpan(
+                  text: 'Restantes',
+                  style: DefaultTextStyle.of(
+                    context,
+                  ).style.copyWith(fontSize: 13),
+                ),
+                textDirection: TextDirection.ltr,
+                textScaler: MediaQuery.textScalerOf(context),
+              )..layout();
+              final porFila =
+                  (caja.maxWidth - 18) / 4 >= medida.width + 10 ? 4 : 2;
+              medida.dispose();
+              return Column(
+                children: [
+                  for (var i = 0; i < contadores.length; i += porFila) ...[
+                    if (i > 0) const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        for (var j = i; j < i + porFila; j++) ...[
+                          if (j > i) const SizedBox(width: 6),
+                          Expanded(child: contadores[j]),
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -486,7 +513,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
     required String etiqueta,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
       decoration: BoxDecoration(
         color: AppTheme.surfaceControl.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(12),
@@ -520,10 +547,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
           TextoSinCortes(
             etiqueta,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 11,
-            ),
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
           ),
         ],
       ),
@@ -632,7 +656,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
       detalle = marca == null ? 'Sin marca' : 'Marcado ausente por el docente';
     } else {
       final hora = _hora(marca!.hora);
-      detalle = porRadar ? 'Radar BLE • $hora' : 'Marcado a mano • $hora';
+      detalle = porRadar ? 'Por Bluetooth • $hora' : 'Marcado a mano • $hora';
     }
 
     return Container(
@@ -680,7 +704,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                   detalle,
                   style: const TextStyle(
                     color: AppTheme.textSecondary,
-                    fontSize: 12,
+                    fontSize: 13,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

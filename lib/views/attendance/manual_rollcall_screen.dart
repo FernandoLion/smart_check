@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/inscrito_model.dart';
 import '../../models/sesion_model.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/botones_accesibles.dart';
 import '../../viewmodels/radar_viewmodel.dart';
 
 class ManualRollcallScreen extends StatefulWidget {
@@ -65,9 +66,9 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
               curso.periodo,
             ].join(' • '),
       globalAttendance: '—',
-      faultsSummary: 'Asistencia del curso en el detalle',
+      faultsSummary: 'Ver en el detalle del curso',
       classroom: curso?.aula ?? '',
-      riskLabel: 'NO DETECTADO POR BLE',
+      riskLabel: 'NO LO DETECTÓ EL RADAR',
       probableReason:
           'Motivo probable: Bluetooth apagado o sin permisos en su celular',
       initials: _iniciales(inscrito.nombre),
@@ -117,7 +118,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                   : 'Llamado manual completado ($total estudiantes)',
             ),
             backgroundColor: AppTheme.success,
-            duration: const Duration(seconds: 2),
+            duration: const Duration(seconds: 4),
           ),
         );
         Navigator.pop(context);
@@ -251,16 +252,21 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              GestureDetector(
+              Tocable(
                 onTap: () => Navigator.pop(context),
+                alineacion: AlignmentDirectional.centerStart,
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.chevron_left, color: _primaryIndigo, size: 24),
+                    Icon(
+                      Icons.chevron_left,
+                      color: AppTheme.primaryTexto,
+                      size: 24,
+                    ),
                     Text(
                       'Radar',
                       style: TextStyle(
-                        color: _primaryIndigo,
+                        color: AppTheme.primaryTexto,
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
                       ),
@@ -287,7 +293,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                       'Restantes: ',
                       style: TextStyle(
                         color: AppTheme.textSecondary,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -295,7 +301,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                       '$remainingCount de $total',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -353,7 +359,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
             TextSpan(
               style: const TextStyle(
                 color: AppTheme.textSecondary,
-                fontSize: 12,
+                fontSize: 13,
               ),
               children: [
                 const TextSpan(
@@ -450,7 +456,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                               nextStudent.name,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -548,7 +554,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                     'AUSENTE',
                     style: TextStyle(
                       color: _systemRed,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.6,
                     ),
@@ -593,7 +599,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                     'PRESENTE',
                     style: TextStyle(
                       color: _tertiaryGreen,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.6,
                     ),
@@ -722,7 +728,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 12,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -751,7 +757,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: AppTheme.textSecondary,
-                                    fontSize: 11,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -783,10 +789,10 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                               ),
                               SizedBox(width: 6),
                               Text(
-                                'Sin baliza BLE',
+                                'Sin señal',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -817,7 +823,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                         student.riskLabel,
                         style: const TextStyle(
                           color: _systemAmber,
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
                         ),
@@ -884,7 +890,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                                     student.semesterGroup,
                                     style: const TextStyle(
                                       color: AppTheme.textSecondary,
-                                      fontSize: 12,
+                                      fontSize: 13,
                                     ),
                                   ),
                                 ],
@@ -915,7 +921,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                                             'Asistencia global',
                                             style: TextStyle(
                                               color: AppTheme.textSecondary,
-                                              fontSize: 11,
+                                              fontSize: 13,
                                             ),
                                           ),
                                           const SizedBox(height: 3),
@@ -942,7 +948,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                                                   style: const TextStyle(
                                                     color:
                                                         AppTheme.textSecondary,
-                                                    fontSize: 11,
+                                                    fontSize: 13,
                                                     fontWeight: FontWeight.w500,
                                                   ),
                                                   overflow:
@@ -978,7 +984,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                                             'Ubicación asignada',
                                             style: TextStyle(
                                               color: AppTheme.textSecondary,
-                                              fontSize: 11,
+                                              fontSize: 13,
                                             ),
                                           ),
                                           const SizedBox(height: 3),
@@ -1037,7 +1043,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                                         student.probableReason,
                                         style: const TextStyle(
                                           color: AppTheme.textSecondary,
-                                          fontSize: 12,
+                                          fontSize: 13,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -1059,160 +1065,138 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
     );
   }
 
+  /// Un botón redondo del dock con su nombre debajo: con solo el ícono no
+  /// todos saben qué hace cada uno.
+  Widget _botonDelDock({
+    required IconData icono,
+    required String texto,
+    required Color color,
+    required double diametro,
+    required VoidCallback onTap,
+  }) {
+    // El de deshacer es gris; los demás llevan el color de lo que marcan.
+    final gris = color == AppTheme.textSecondary;
+    return Expanded(
+      child: Semantics(
+        button: true,
+        label: texto,
+        excludeSemantics: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: diametro,
+                height: diametro,
+                decoration: BoxDecoration(
+                  color: gris ? _surfaceControl : color.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                  border: gris
+                      ? Border.all(color: Colors.white.withValues(alpha: 0.08))
+                      : Border.all(color: color, width: 2),
+                  boxShadow: gris || diametro < 64
+                      ? null
+                      : [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.25),
+                            blurRadius: 18,
+                          ),
+                        ],
+                ),
+                child: Icon(icono, color: color, size: diametro / 2),
+              ),
+              const SizedBox(height: 6),
+              // Con la letra grande se encoge antes que salirse.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  texto,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: gris ? AppTheme.textSecondary : color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomControls(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Swipe Instructions Visual Pill
-          // Si no cabe en una línea, la segunda indicación baja.
+          // Cómo se usa: cada botón dice lo que hace, y la tarjeta también
+          // se puede deslizar.
           const Wrap(
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
             runSpacing: 2,
             children: [
-              Icon(Icons.arrow_back, color: AppTheme.textTertiary, size: 13),
-              SizedBox(width: 4),
+              Icon(Icons.swipe, color: AppTheme.textTertiary, size: 16),
+              SizedBox(width: 6),
               Text(
-                'Desliza izquierda: Ausente',
-                style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  '•',
-                  style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
-                ),
-              ),
-              Text(
-                'Desliza derecha: Presente',
-                style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
-              ),
-              SizedBox(width: 4),
-              Icon(Icons.arrow_forward, color: AppTheme.textTertiary, size: 13),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                child: Text(
-                  '•',
-                  style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
-                ),
-              ),
-              Text(
-                'Botón azul: Justificada',
-                style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+                'Desliza a la izquierda: ausente · a la derecha: presente',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
               ),
             ],
           ),
           const SizedBox(height: 10),
 
-          // Tactile Floating Control Dock (4 Circular Buttons)
+          // Los cuatro botones, cada uno con su nombre debajo.
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Botón 1: Undo / Rebobinar
-                GestureDetector(
+                _botonDelDock(
+                  icono: Icons.replay,
+                  texto: 'Deshacer',
+                  color: AppTheme.textSecondary,
+                  diametro: 48,
                   onTap: _handleUndo,
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: _surfaceControl,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.replay,
-                      color: AppTheme.textSecondary,
-                      size: 20,
-                    ),
-                  ),
                 ),
-
-                // Botón 2: AUSENTE (Coral Red Soft Glow)
-                GestureDetector(
+                _botonDelDock(
+                  icono: Icons.close,
+                  texto: 'Ausente',
+                  color: _systemRed,
+                  diametro: 64,
                   onTap: () =>
                       _triggerCardSwipe(estado: EstadoAsistencia.ausente),
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: _systemRed.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _systemRed, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _systemRed.withValues(alpha: 0.25),
-                          blurRadius: 18,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.close, color: _systemRed, size: 32),
-                  ),
                 ),
-
-                // Botón 3: JUSTIFICADA. No vino, pero con excusa: esa clase
-                // no se le cuenta.
-                Semantics(
-                  button: true,
-                  label: 'Falta justificada',
-                  child: GestureDetector(
-                    onTap: () =>
-                        _triggerCardSwipe(estado: EstadoAsistencia.justificada),
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: _azulJustificada.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _azulJustificada, width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.assignment_turned_in_outlined,
-                        color: _azulJustificada,
-                        size: 26,
-                      ),
-                    ),
-                  ),
+                // No vino, pero con excusa: esa clase no se le cuenta.
+                _botonDelDock(
+                  icono: Icons.assignment_turned_in_outlined,
+                  texto: 'Justificar',
+                  color: _azulJustificada,
+                  diametro: 56,
+                  onTap: () =>
+                      _triggerCardSwipe(estado: EstadoAsistencia.justificada),
                 ),
-
-                // Botón 4: PRESENTE (Neon Green Soft Glow)
-                GestureDetector(
+                _botonDelDock(
+                  icono: Icons.check,
+                  texto: 'Presente',
+                  color: _tertiaryGreen,
+                  diametro: 64,
                   onTap: () =>
                       _triggerCardSwipe(estado: EstadoAsistencia.presente),
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      color: _tertiaryGreen.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _tertiaryGreen, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _tertiaryGreen.withValues(alpha: 0.25),
-                          blurRadius: 18,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      color: _tertiaryGreen,
-                      size: 32,
-                    ),
-                  ),
                 ),
-
               ],
             ),
           ),
           const SizedBox(height: 10),
 
           // Volver al radar, que tiene la lista completa
-          GestureDetector(
+          Tocable(
             onTap: () => Navigator.pop(context),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:provider/provider.dart';
 
@@ -62,7 +63,7 @@ class FaceVerificationScreen extends StatefulWidget {
 }
 
 class _FaceVerificationScreenState extends State<FaceVerificationScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // Colores exactos del HTML de Stitch (todos declarados para evitar errores)
   static const Color _surfaceOled = Color(0xFF000000);
   static const Color _surfaceElevated = Color(0xFF1C1C1E);
@@ -70,9 +71,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
   static const Color _primaryIndigo = Color(0xFF5E5CE6); // primary-container
   static const Color _primaryLight = Color(0xFFC2C1FF); // primary
   static const Color _tertiaryGreen = Color(0xFF47E266); // tertiary
-  static const Color _tertiaryContainer = Color(0xFF00802D);
   static const Color _systemAmber = Color(0xFFFF9F0A);
-  static const Color _systemRed = Color(0xFFFF453A);
 
   late final AnimationController _laserController;
   late final AnimationController _pulseController;
@@ -88,6 +87,10 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
   bool _saliendo = false;
   bool _tomandoFoto = false;
   String? _errorDeCamara;
+
+  /// Si la cámara no abrió porque le falta el permiso: se ofrece ir a los
+  /// ajustes y, al volver, se intenta de nuevo.
+  bool _sinPermisoDeCamara = false;
 
   bool get _isValidated => _vm.verificado;
 
@@ -116,7 +119,21 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
               : MotivoVerificacion.cuenta,
     );
     _vm.addListener(_alCambiar);
+    WidgetsBinding.instance.addObserver(this);
     _encenderLaCamara();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState estado) {
+    if (estado == AppLifecycleState.resumed &&
+        _sinPermisoDeCamara &&
+        _camara == null) {
+      setState(() {
+        _errorDeCamara = null;
+        _sinPermisoDeCamara = false;
+      });
+      _encenderLaCamara();
+    }
   }
 
   IdentidadFacial _identidadDeLaSesion() {
@@ -224,7 +241,10 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       await control.startImageStream(_alLlegarFotograma);
     } on CameraException catch (e) {
       if (!mounted) return;
-      setState(() => _errorDeCamara = _mensajeDeCamara(e));
+      setState(() {
+        _errorDeCamara = _mensajeDeCamara(e);
+        _sinPermisoDeCamara = _faltaPermiso(e);
+      });
     } catch (_) {
       // Un celular sin el plugin de cámara (o un emulador raro) no debe
       // dejar la pantalla en blanco.
@@ -233,10 +253,13 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     }
   }
 
+  static bool _faltaPermiso(CameraException e) =>
+      e.code.toLowerCase().contains('denied');
+
   static String _mensajeDeCamara(CameraException e) {
-    if (e.code.toLowerCase().contains('denied')) {
+    if (_faltaPermiso(e)) {
       return 'Sin permiso de cámara no se puede verificar tu rostro. '
-          'Dáselo a SmartCheck desde los ajustes del celular.';
+          'Dáselo a SmartCheck en los ajustes.';
     }
     return 'No se pudo abrir la cámara: ${e.description ?? e.code}';
   }
@@ -291,6 +314,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _vm.removeListener(_alCambiar);
     _vm.identidad?.cerrar();
     _vm.dispose();
@@ -314,12 +338,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
 
             // 2. CENTER SECTION: BIOMETRIC SCANNING CIRCULAR CUTOUT & FACE ID HUD
             Expanded(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _buildCenterBiometricScanner(context),
-                ),
-              ),
+              child: Center(child: _buildCenterBiometricScanner(context)),
             ),
 
             // 3. BOTTOM SECTION: FROSTED GLASS CLASS CARD & CANCEL ACTION
@@ -335,97 +354,72 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
       child: Column(
         children: [
-          // iOS 18 Dynamic Island Pill with Active Telemetry
+          // En un llamado, recuerda que la señal no sale hasta verificar.
+          if (widget.curso != null) ...[
           Container(
-            width: 210,
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 4,
-                        backgroundColor: _tertiaryGreen,
+                Icon(
+                  _isValidated ? Icons.bluetooth : Icons.bluetooth_disabled,
+                    color: _isValidated
+                      ? _tertiaryGreen
+                        : AppTheme.textTertiary,
+                        size: 16,
                       ),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
-                          widget.classroom,
+                      _isValidated
+                          ? 'Listo para enviar tu asistencia'
+                          : 'Señal de asistencia en espera',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            color: AppTheme.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.bluetooth_disabled,
-                  color: AppTheme.textTertiary,
-                  size: 15,
-                ),
-                const SizedBox(width: 4),
-                const Text(
-                  'BLE en espera',
-                  style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+            const SizedBox(height: 10),
               ],
-            ),
-          ),
-          const SizedBox(height: 12),
 
-          // Action Pill Buttons (Linterna | Aula | Info)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Volver a empezar con otro gesto. (Aquí había una linterna,
               // pero la cámara frontal del celular no tiene flash.)
-              GestureDetector(
-                onTap: _camara == null ? null : _reintentar,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _surfaceElevated.withValues(alpha: 0.8),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
+              IconButton(
+                onPressed: _camara == null ? null : _reintentar,
+                tooltip: 'Volver a empezar',
+                style: IconButton.styleFrom(
+                  backgroundColor: _surfaceElevated,
+                  disabledBackgroundColor: _surfaceElevated,
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                  minimumSize: const Size(48, 48),
+                ),
+                icon: Icon(
+                  Icons.refresh,
+                  color: _camara == null ? AppTheme.textTertiary : Colors.white,
+                  size: 22,
                     ),
                   ),
-                  child: Icon(
-                    Icons.refresh,
-                    color: _camara == null
-                        ? AppTheme.textTertiary
-                        : Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-
               const SizedBox(width: 8),
-              // Live Beacon Geofence Status Chip
-              Flexible(
+              Expanded(
+              child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 7,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
                     color: _surfaceElevated.withValues(alpha: 0.85),
@@ -450,7 +444,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                                     ? 'Registro de cuenta'
                                     : 'Vinculación de celular')
                               // La ubicación la comprueba después la
-                              // baliza, no esta pantalla.
+                              // pantalla de la señal, no esta.
                               : widget._sinAula
                                   ? widget.classroom
                                   : 'Aula: ${widget.classroom}',
@@ -458,7 +452,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: _tertiaryGreen,
-                            fontSize: 12,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -467,30 +461,14 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                   ),
                 ),
               ),
-
-              const SizedBox(width: 8),
-              // Botón Info
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _surfaceElevated.withValues(alpha: 0.8),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
                   ),
-                ),
-                child: const Icon(
-                  Icons.info_outline,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
+              // Del ancho del botón de la izquierda, para que el aula quede
+              // centrada.
+              const SizedBox(width: 56),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
-          // Verification Title & Course Hierarchy
           Text(
             widget.curso == null
                 ? 'Verificando tu identidad...'
@@ -505,26 +483,86 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           ),
           const SizedBox(height: 4),
           const Text(
-            'Mantén tu rostro dentro del marco',
+            'Mantén tu rostro dentro del círculo',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 15),
           ),
         ],
       ),
     );
   }
 
+  /// Lo que se le dice debajo del círculo: el paso que toca, el motivo por
+  /// el que falló o por qué no se ve la cámara.
+  String get _textoDeInstruccion {
+    final error = _errorDeCamara;
+    if (error != null) return error;
+    // En depuración se ve la similitud, para calibrar los umbrales con
+    // caras reales.
+    if (kDebugMode && _vm.similitudCalculada != null) {
+      return '${_vm.instruccion} '
+          '(${_vm.similitudCalculada!.toStringAsFixed(2)})';
+    }
+    return _vm.instruccion;
+  }
+
+  Color get _colorDeInstruccion {
+    if (_errorDeCamara != null) return _systemAmber;
+    if (_isValidated) return _tertiaryGreen;
+    if (_vm.paso == PasoVerificacion.fallido) return AppTheme.errorTexto;
+    return Colors.white;
+  }
+
   Widget _buildCenterBiometricScanner(BuildContext context) {
-    return Column(
+    return LayoutBuilder(
+      builder: (context, espacio) {
+        // El círculo se achica en celulares bajos para que la instrucción y
+        // el botón de reintentar se vean sin desplazar.
+        final diametro = espacio.maxHeight.isFinite
+            ? (espacio.maxHeight - 190).clamp(170.0, 280.0)
+            : 280.0;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Master Circular Target Viewfinder (280x280)
-        SizedBox(
+              SizedBox.square(
+                dimension: diametro,
+                child: FittedBox(child: _buildCirculo()),
+              ),
+              const SizedBox(height: 16),
+
+              // La instrucción, grande y con el color del estado. TalkBack
+              // la lee cada vez que cambia.
+              Semantics(
+                liveRegion: true,
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: TextStyle(
+                    color: _colorDeInstruccion,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
+                  child: Text(_textoDeInstruccion, textAlign: TextAlign.center),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildAccionOEstado(),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// El visor circular de 280: anillos, esquinas, cámara y barrido.
+  Widget _buildCirculo() {
+    return SizedBox(
           width: 280,
-          height: 290,
+          height: 280,
           child: Stack(
             alignment: Alignment.center,
-            clipBehavior: Clip.none,
             children: [
               // Anillo exterior pulsante
               ScaleTransition(
@@ -646,74 +684,41 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                   ],
                 ),
               ),
-
-              // Badge Flotante Inferior: Analizando % -> ¡Identidad Validada Con Éxito!
-              Positioned(
-                bottom: -6,
-                left: 10,
-                right: 10,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _isValidated
-                        ? _tertiaryContainer.withValues(alpha: 0.45)
-                        : _surfaceElevated.withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _isValidated
-                          ? _tertiaryGreen
-                          : _primaryIndigo.withValues(alpha: 0.6),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        blurRadius: 12,
-                      ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.fingerprint,
-                        color: _primaryIndigo,
-                        size: 15,
+    );
+  }
+
+  /// Debajo de la instrucción: un botón claro cuando hay algo que hacer
+  /// (reintentar, dar el permiso) y, mientras tanto, cómo va cada prueba.
+  Widget _buildAccionOEstado() {
+    if (_errorDeCamara != null) {
+      if (!_sinPermisoDeCamara) return const SizedBox.shrink();
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          // Al volver de los ajustes se intenta abrir la cámara otra vez
+          // (ver didChangeAppLifecycleState).
+          onPressed: Geolocator.openAppSettings,
+          icon: const Icon(Icons.settings, size: 20),
+          label: const Text('Abrir ajustes'),
                       ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          // En depuración se ve la similitud, para
-                          // calibrar los umbrales con caras reales.
-                          kDebugMode && _vm.similitudCalculada != null
-                              ? '${_vm.instruccion} '
-                                    '(${_vm.similitudCalculada!.toStringAsFixed(2)})'
-                              : _vm.instruccion,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+      );
+    }
+    if (_vm.paso == PasoVerificacion.fallido) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _camara == null ? null : _reintentar,
+          icon: const Icon(Icons.refresh, size: 20),
+          label: const Text('Intentar de nuevo'),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // Real-time Quality Telemetry Checklist (Horizontal Cupertino Pills)
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+      );
+    }
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
             children: [
               _buildTelemetryPill(
                 // Solo hay distancia que juzgar cuando hay una cara.
@@ -725,10 +730,9 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                 label: switch (_vm.paso) {
                   PasoVerificacion.buscando => 'Buscando tu cara',
                   PasoVerificacion.encuadrando => 'Acércate',
-                  _ => 'Distancia óptima',
+                  _ => 'Distancia correcta',
                 },
               ),
-              const SizedBox(width: 8),
               _buildTelemetryPill(
                 icon: _vm.reto == Reto.parpadeo
                     ? Icons.remove_red_eye_outlined
@@ -737,43 +741,29 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                     ? 'Gesto: parpadear'
                     : 'Gesto: girar la cabeza',
               ),
-              const SizedBox(width: 8),
               _buildTelemetryPill(
                 icon: _isValidated ? Icons.verified : Icons.timelapse,
                 label: _isValidated
-                    ? 'Identidad: OK'
+                    ? 'Identidad confirmada'
                     : _vm.paso == PasoVerificacion.comparando
                     ? 'Comparando con tu rostro'
                     : 'Prueba de vida: ${(_vm.progreso * 100).round()}%',
               ),
             ],
-          ),
-        ),
-      ],
     );
   }
 
-  /// Lo que ve la cámara, o el motivo por el que no se ve nada.
+  /// Lo que ve la cámara o, si no se puede abrir, una silueta (el motivo
+  /// va en la instrucción, en letra grande).
   Widget _buildVistaDeLaCamara() {
     final camara = _camara;
     if (camara == null || !camara.value.isInitialized) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: _errorDeCamara == null
-              ? Icon(
-                  Icons.person,
-                  size: 150,
-                  color: _primaryLight.withValues(alpha: 0.12),
-                )
-              : Text(
-                  _errorDeCamara!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
+        child: Icon(
+          _errorDeCamara == null ? Icons.person : Icons.no_photography_outlined,
+          size: _errorDeCamara == null ? 150 : 72,
+          color: _primaryLight.withValues(
+            alpha: _errorDeCamara == null ? 0.12 : 0.4,
                 ),
         ),
       );
@@ -793,7 +783,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
 
   Widget _buildTelemetryPill({required IconData icon, required String label}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: _surfaceControl.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(20),
@@ -802,13 +792,13 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: _tertiaryGreen, size: 14),
+          Icon(icon, color: _tertiaryGreen, size: 16),
           const SizedBox(width: 6),
           Text(
             label,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -823,9 +813,8 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Floating Frosted Glass Course Metadata Card
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: _surfaceElevated.withValues(alpha: 0.88),
               borderRadius: BorderRadius.circular(18),
@@ -839,13 +828,9 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
               ],
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Row(
                         children: [
                           Container(
                             width: 40,
@@ -859,7 +844,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                             ),
                             child: const Icon(
                               Icons.school,
-                              color: _primaryIndigo,
+                              color: AppTheme.primaryTexto,
                               size: 22,
                             ),
                           ),
@@ -879,105 +864,47 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 2),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.person_outline,
-                                      color: AppTheme.textTertiary,
-                                      size: 13,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
+                          Text(
                                         widget.professorName,
                                         style: const TextStyle(
                                           color: AppTheme.textSecondary,
-                                          fontSize: 12,
+                                          fontSize: 14,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
                                 ),
                               ],
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _surfaceControl,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.08),
-                        ),
-                      ),
-                      child: const Text(
-                        'Presencial',
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
                 const SizedBox(height: 10),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Flexible(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.alarm, color: _systemAmber, size: 16),
-                          SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              'Sin verificar el rostro no se emite baliza',
-                              style: TextStyle(
+                    Icon(
+                      widget.curso != null
+                          ? Icons.info_outline
+                          : Icons.lock_outline,
                                 color: _systemAmber,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
+                      size: 18,
                     ),
                     const SizedBox(width: 8),
-                    Flexible(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.pin_drop_outlined,
-                            color: AppTheme.textTertiary,
-                            size: 14,
+                    Expanded(
+                      child: Text(
+                        widget.curso != null
+                            ? 'Sin verificar tu rostro no se envía la señal '
+                                  'de asistencia.'
+                            : 'Tu rostro se compara en este celular: no sale '
+                                  'ninguna foto.',
+                        style: const TextStyle(
+                          color: _systemAmber,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
                           ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              widget.classroom,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppTheme.textTertiary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ],
@@ -987,32 +914,25 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           ),
           const SizedBox(height: 12),
 
-          // Botón de acción: Cancelar Verificación (o Confirmar si ya terminó)
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
+          SizedBox(
               height: 50,
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: _surfaceControl.withValues(alpha: 0.9),
+            child: TextButton.icon(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                backgroundColor: _surfaceControl.withValues(alpha: 0.9),
+                foregroundColor: AppTheme.errorTexto,
+                shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
               ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.close, color: _systemRed, size: 18),
-                  SizedBox(width: 8),
-                  Text(
-                    'Cancelar Verificación',
-                    style: TextStyle(
-                      color: _systemRed,
+                textStyle: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
+                icon: const Icon(Icons.close, size: 20),
+              label: const Text('Cancelar'),
             ),
           ),
         ],

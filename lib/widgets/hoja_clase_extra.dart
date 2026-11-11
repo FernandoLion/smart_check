@@ -295,7 +295,7 @@ class _Etiqueta extends StatelessWidget {
         texto,
         style: const TextStyle(
           color: AppTheme.textSecondary,
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.8,
         ),
