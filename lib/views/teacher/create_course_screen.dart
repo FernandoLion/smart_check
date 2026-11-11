@@ -74,7 +74,10 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
   String get _resumenHorario {
     if (_horarios.isEmpty) return 'Toca para agregar';
     return _horarios
-        .map((h) => '${_dias[h.dia]} ${h.inicio}-${h.fin}')
+        .map(
+          (h) => '${_dias[h.dia]} ${horaAmPmDeMinutos(h.inicioMinutos)}-'
+              '${horaAmPmDeMinutos(h.finMinutos)}',
+        )
         .join(' • ');
   }
 
@@ -1365,7 +1368,8 @@ class _EditorHorarioState extends State<_EditorHorario> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(
-                  '${_dias[h.dia]}  ${h.inicio} - ${h.fin}',
+                  '${_dias[h.dia]}  ${horaAmPmDeMinutos(h.inicioMinutos)} - '
+                  '${horaAmPmDeMinutos(h.finMinutos)}',
                   style: const TextStyle(color: Colors.white),
                 ),
                 trailing: IconButton(
@@ -1396,7 +1400,7 @@ class _EditorHorarioState extends State<_EditorHorario> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _elegir(true),
-                    child: Text('Inicio ${_hhmm(_inicio)}'),
+                    child: Text('Inicio ${horaAmPm(_inicio)}'),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1409,7 +1413,7 @@ class _EditorHorarioState extends State<_EditorHorario> {
                             side: const BorderSide(color: AppTheme.errorTexto),
                           )
                         : null,
-                    child: Text('Fin ${_hhmm(_fin)}'),
+                    child: Text('Fin ${horaAmPm(_fin)}'),
                   ),
                 ),
               ],

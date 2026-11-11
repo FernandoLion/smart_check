@@ -178,7 +178,9 @@ void main() {
       expect(clase, isNotNull);
       expect(clase!.inicio, DateTime(2026, 11, 19, 11));
       expect(clase.fin, DateTime(2026, 11, 19, 13));
-      expect(clase.aula, '201');
+      // Ya no se pide el aula: es la de siempre, la de la zona del curso.
+      expect(clase.aula, isEmpty);
+      expect(find.text('AULA'), findsNothing);
     });
 
     testWidgets('de noche ya no cabe hoy: propone mañana a las 08:00',
@@ -201,7 +203,10 @@ void main() {
       );
 
       expect(clase, isNull);
-      expect(find.textContaining('Se cruza con el horario'), findsOneWidget);
+      expect(
+        find.textContaining('Se cruza con el horario de la clase (10:30 AM a 12:00 PM)'),
+        findsOneWidget,
+      );
     });
   });
 }

@@ -4,9 +4,9 @@ import '../models/curso_model.dart';
 import '../utils/app_theme.dart';
 import 'elegir_hora.dart';
 
-/// Hoja para programar una clase extra: el día (de hoy al fin del semestre),
-/// la hora de inicio y de fin, y el aula si cambia. Devuelve la [ClaseExtra]
-/// con `Navigator.pop`, o null si se cancela.
+/// Hoja para programar una clase extra: el día (de hoy al fin del semestre)
+/// y la hora de inicio y de fin. Es en el aula de siempre, la de la zona del
+/// curso. Devuelve la [ClaseExtra] con `Navigator.pop`, o null si se cancela.
 ///
 /// El día se elige de una fila de fechas en español en vez del selector de
 /// Flutter, que sin las traducciones del SDK sale en inglés.
@@ -49,7 +49,6 @@ class _HojaClaseExtraState extends State<HojaClaseExtra> {
     minute: 0,
   );
   late TimeOfDay _fin = TimeOfDay(hour: _inicio.hour + 2, minute: 0);
-  late final _aula = TextEditingController(text: widget.curso.aula);
   String? _error;
 
   DateTime get _hoy =>
@@ -72,17 +71,7 @@ class _HojaClaseExtraState extends State<HojaClaseExtra> {
   static String _etiquetaDia(DateTime d) =>
       '${_diasCortos[d.weekday - 1]} ${d.day} ${_mesesCortos[d.month - 1]}';
 
-  static String _hhmm(TimeOfDay t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-
-  static String _hhmmDe(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-
-  @override
-  void dispose() {
-    _aula.dispose();
-    super.dispose();
-  }
+  static String _horaDe(DateTime d) => horaAmPm(TimeOfDay.fromDateTime(d));
 
   Future<void> _elegirHora(bool esInicio) async {
     final elegida = await elegirHora(
@@ -119,9 +108,9 @@ class _HojaClaseExtraState extends State<HojaClaseExtra> {
         null,
         f.esExtra
             ? 'Se cruza con otra clase extra de ese día '
-                '(${_hhmmDe(f.inicio)} a ${_hhmmDe(f.fin)}).'
+                '(${_horaDe(f.inicio)} a ${_horaDe(f.fin)}).'
             : 'Se cruza con el horario de la clase '
-                '(${_hhmmDe(f.inicio)} a ${_hhmmDe(f.fin)}).',
+                '(${_horaDe(f.inicio)} a ${_horaDe(f.fin)}).',
       );
     }
     return (
@@ -129,7 +118,6 @@ class _HojaClaseExtraState extends State<HojaClaseExtra> {
         id: '${inicio.millisecondsSinceEpoch}',
         inicio: inicio,
         fin: fin,
-        aula: _aula.text.trim(),
       ),
       null,
     );
@@ -219,34 +207,17 @@ class _HojaClaseExtraState extends State<HojaClaseExtra> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _elegirHora(true),
-                    child: Text('Inicio ${_hhmm(_inicio)}'),
+                    child: Text('Inicio ${horaAmPm(_inicio)}'),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _elegirHora(false),
-                    child: Text('Fin ${_hhmm(_fin)}'),
+                    child: Text('Fin ${horaAmPm(_fin)}'),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 18),
-            const _Etiqueta('AULA'),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _aula,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'La de siempre',
-                hintStyle: const TextStyle(color: AppTheme.textTertiary),
-                filled: true,
-                fillColor: AppTheme.surfaceControl,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
