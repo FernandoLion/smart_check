@@ -833,66 +833,68 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
             ],
           ),
           // Las correcciones, como botones del alto de un dedo y a la vista:
-          // a quien quedó presente también se le puede corregir.
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: guardando
-                ? const SizedBox(
-                    height: 48,
-                    child: Center(
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  )
-                : Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: 8,
-                    children: [
-                      Tocable(
-                        onTap: () => _corregir(
-                          fila,
-                          fila.presente
-                              ? EstadoAsistencia.ausente
-                              : EstadoAsistencia.presente,
-                        ),
-                        child: Text(
-                          fila.presente
-                              ? '${_hora(marca!.hora)} · Marcar ausente'
-                              : 'Marcar presente',
-                          style: const TextStyle(
-                            color: _primaryLight,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+          // a quien quedó presente también se le puede corregir. Con el
+          // curso archivado no: es de solo lectura.
+          if (!widget.curso.archivado)
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: guardando
+                  ? const SizedBox(
+                      height: 48,
+                      child: Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       ),
-                      // A quien no vino se le puede justificar la falta (la
-                      // excusa suele llegar después), y quitarle la justificación.
-                      if (!fila.presente)
+                    )
+                  : Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 8,
+                      children: [
                         Tocable(
                           onTap: () => _corregir(
                             fila,
-                            fila.justificada
+                            fila.presente
                                 ? EstadoAsistencia.ausente
-                                : EstadoAsistencia.justificada,
+                                : EstadoAsistencia.presente,
                           ),
                           child: Text(
-                            fila.justificada
-                                ? 'Quitar justificación'
-                                : 'Justificar',
+                            fila.presente
+                                ? '${_hora(marca!.hora)} · Marcar ausente'
+                                : 'Marcar presente',
                             style: const TextStyle(
-                              color: AppTheme.secondaryTexto,
+                              color: _primaryLight,
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                    ],
-                  ),
-          ),
+                        // A quien no vino se le puede justificar la falta (la
+                        // excusa suele llegar después), y quitarle la justificación.
+                        if (!fila.presente)
+                          Tocable(
+                            onTap: () => _corregir(
+                              fila,
+                              fila.justificada
+                                  ? EstadoAsistencia.ausente
+                                  : EstadoAsistencia.justificada,
+                            ),
+                            child: Text(
+                              fila.justificada
+                                  ? 'Quitar justificación'
+                                  : 'Justificar',
+                              style: const TextStyle(
+                                color: AppTheme.secondaryTexto,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
         ],
       ),
     );

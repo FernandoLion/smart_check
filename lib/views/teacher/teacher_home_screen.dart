@@ -10,6 +10,7 @@ import '../../widgets/botones_accesibles.dart';
 import '../../widgets/texto_sin_cortes.dart';
 import '../../models/curso_model.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/radar_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
 import '../student/student_home_screen.dart';
 import 'create_course_screen.dart';
@@ -1056,6 +1057,19 @@ class _TeacherCourseCard extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
+                    // Sin zona del aula no se abre: que lo diga aquí, sin
+                    // tener que entrar al radar para enterarse.
+                    final falta =
+                        RadarViewModel.motivoParaNoLlamar(course.curso);
+                    if (falta != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(falta),
+                          duration: const Duration(seconds: 6),
+                        ),
+                      );
+                      return;
+                    }
                     Navigator.push(
                       context,
                       MaterialPageRoute(

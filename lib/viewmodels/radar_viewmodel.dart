@@ -192,6 +192,8 @@ class RadarViewModel extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
+      final falta = motivoParaNoLlamar(curso);
+      if (falta != null) throw _RadarException(falta);
       final ahora = _ahora();
       // Del horario semanal o una clase extra programada.
       final bloque = curso.franjaEn(ahora);
@@ -204,6 +206,7 @@ class RadarViewModel extends ChangeNotifier {
       await _comprobarGeocerca(curso);
 
       _inscritos = await _cursos.inscritos(curso.id).first;
+      if (_inscritos.isEmpty) throw const _RadarException(sinInscritos);
       // Cada inscrito se indexa por cédula y por correo: el docente pudo
       // inscribirlo por uno y el estudiante emitir con el otro.
       _porHuella.clear();
@@ -244,6 +247,26 @@ class RadarViewModel extends ChangeNotifier {
       _ocupado = false;
       notifyListeners();
     }
+  }
+
+  static const sinInscritos = 'Este curso no tiene estudiantes inscritos. '
+      'Agrégalos antes de abrir el radar.';
+
+  /// Por qué [curso] no puede abrir un llamado, sea la hora que sea, o null
+  /// si puede. Las pantallas lo preguntan antes de ofrecer el radar, y el
+  /// servidor lo vuelve a comprobar al crear el llamado. Que tenga inscritos
+  /// se mira aparte, con la lista de verdad: el total guardado en el curso
+  /// puede faltar en los cursos viejos.
+  static String? motivoParaNoLlamar(Curso curso) {
+    if (curso.archivado) {
+      return 'El curso está archivado. Actívalo para volver a tomar '
+          'asistencia.';
+    }
+    if (curso.geocerca == null) {
+      return 'El curso no tiene zona del aula. Párate en el aula y márcala '
+          'en "Editar zona del aula" antes de abrir el radar.';
+    }
+    return null;
   }
 
   Future<void> _comprobarGeocerca(Curso curso) async {

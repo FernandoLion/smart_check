@@ -90,13 +90,16 @@ class FakeBleService implements BleService {
 }
 
 /// Un curso cuyo bloque de clase está en curso ahora mismo.
+/// Por defecto con la zona del [aula], que el radar exige; `geocerca: null`
+/// es un curso sin zona.
 Curso cursoEnClase({
   String id = 'c1',
-  Geocerca? geocerca,
+  Geocerca? geocerca = aula,
   DateTime? ahora,
   Duration empezoHace = const Duration(minutes: 5),
   Duration termina = const Duration(hours: 1),
   int? dia,
+  bool archivado = false,
 }) {
   final momento = ahora ?? DateTime.now();
   // El bloque no puede cruzar la medianoche (un horario es de un solo día):
@@ -126,6 +129,7 @@ Curso cursoEnClase({
       ),
     ],
     geocerca: geocerca,
+    archivado: archivado,
   );
 }
 

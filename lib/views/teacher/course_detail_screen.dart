@@ -10,6 +10,7 @@ import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/botones_accesibles.dart';
 import '../../viewmodels/course_detail_viewmodel.dart';
+import '../../viewmodels/radar_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
 import '../../widgets/calendario_asistencia.dart' show horaCorta, tituloDelDia;
 import '../../widgets/calendario_curso.dart';
@@ -199,7 +200,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   _buildActionCircle(
                     Icons.person_add_outlined,
                     'Agregar estudiantes',
-                    onTap: _agregarEstudiantes,
+                    // Archivado es de solo lectura.
+                    onTap: _curso.archivado ? null : _agregarEstudiantes,
                   ),
                   _buildActionCircle(
                     Icons.more_horiz,
@@ -354,18 +356,21 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                opcion(
-                  Icons.person_add_alt_1_outlined,
-                  'Agregar estudiantes',
-                  _agregarEstudiantes,
-                  detalle: 'Por cédula, por correo o pegando una lista',
-                ),
-                opcion(
-                  Icons.edit_outlined,
-                  'Editar curso',
-                  _editarCurso,
-                  detalle: 'Nombre, código, grupo, aula, horario',
-                ),
+                // Archivado, el curso es de solo lectura.
+                if (!_curso.archivado) ...[
+                  opcion(
+                    Icons.person_add_alt_1_outlined,
+                    'Agregar estudiantes',
+                    _agregarEstudiantes,
+                    detalle: 'Por cédula, por correo o pegando una lista',
+                  ),
+                  opcion(
+                    Icons.edit_outlined,
+                    'Editar curso',
+                    _editarCurso,
+                    detalle: 'Nombre, código, grupo, aula, horario',
+                  ),
+                ],
                 opcion(
                   Icons.table_view_outlined,
                   'Copiar asistencia (CSV)',
@@ -399,6 +404,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   /// Abre la pantalla de agregar (que también ofrece pegar la lista de
   /// Chairá) e inscribe a los que se agreguen allí.
   Future<void> _agregarEstudiantes() async {
+    if (_soloLectura()) return;
     final teacherVM = context.read<TeacherViewModel>();
     final messenger = ScaffoldMessenger.of(context);
     final nuevos = await Navigator.push<List<Inscrito>>(
@@ -468,23 +474,24 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 style: const TextStyle(color: Colors.white),
               ),
               const SizedBox(height: 8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.person_remove_outlined,
-                    color: _systemRed),
-                title: const Text(
-                  'Quitar del curso',
-                  style: TextStyle(
-                    color: _systemRed,
-                    fontWeight: FontWeight.w600,
+              if (!_curso.archivado)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.person_remove_outlined,
+                      color: _systemRed),
+                  title: const Text(
+                    'Quitar del curso',
+                    style: TextStyle(
+                      color: _systemRed,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                  subtitle: const Text(
+                    'Deja de aparecer en la lista y en los porcentajes',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                  onTap: () => Navigator.pop(hoja, true),
                 ),
-                subtitle: const Text(
-                  'Deja de aparecer en la lista y en los porcentajes',
-                  style: TextStyle(color: AppTheme.textSecondary),
-                ),
-                onTap: () => Navigator.pop(hoja, true),
-              ),
             ],
           ),
         ),
@@ -533,6 +540,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   }
 
   Future<void> _editarCurso() async {
+    if (_soloLectura()) return;
     final editado = await Navigator.push<Curso>(
       context,
       MaterialPageRoute(builder: (_) => CreateCourseScreen(curso: _curso)),
@@ -597,6 +605,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
   /// Marca la geocerca con la ubicación de ahora (o la quita) y la guarda.
   void _editarGeocerca() {
+    if (_soloLectura()) return;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: _surfaceElevated,
@@ -655,6 +664,39 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     } finally {
       if (mounted) setState(() => _guardandoGeocerca = false);
     }
+  }
+
+  /// Archivado, el curso es de solo lectura: lo avisa y devuelve true.
+  bool _soloLectura() {
+    if (!_curso.archivado) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'El curso está archivado. Actívalo en "Más opciones" para hacer '
+          'cambios.',
+        ),
+      ),
+    );
+    return true;
+  }
+
+  /// Abre el radar, o dice qué le falta al curso para poder abrirlo. El
+  /// radar lo vuelve a comprobar, y el servidor también.
+  void _abrirRadar() {
+    final falta = RadarViewModel.motivoParaNoLlamar(_curso) ??
+        (!_vm.cargando && _vm.totalInscritos == 0
+            ? RadarViewModel.sinInscritos
+            : null);
+    if (falta != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(falta), duration: const Duration(seconds: 6)),
+      );
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AttendanceRadarScreen(curso: _curso)),
+    );
   }
 
   void _avisarError(String mensaje) {
@@ -737,6 +779,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
+        if (_curso.archivado) ...[
+          _buildArchivado(),
+          const SizedBox(height: 16),
+        ],
         _buildClaseDeHoy(),
         const SizedBox(height: 24),
         const Text(
@@ -764,6 +810,40 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         const SizedBox(height: 24),
         _buildClasesExtra(),
       ],
+    );
+  }
+
+  /// Archivado: solo lectura, con el atajo para volver a activarlo.
+  Widget _buildArchivado() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: _surfaceControl,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.archive_outlined,
+            color: AppTheme.textSecondary,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Curso archivado: solo lectura. No se toma asistencia ni se '
+              'hacen cambios.',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+            ),
+          ),
+          TextButton(
+            onPressed: _alternarArchivo,
+            style: TextButton.styleFrom(minimumSize: const Size(64, 48)),
+            child: const Text('Activar'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -862,6 +942,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   }
 
   Future<void> _programarClaseExtra() async {
+    if (_soloLectura()) return;
     final clase = await showModalBottomSheet<ClaseExtra>(
       context: context,
       backgroundColor: _surfaceElevated,
@@ -892,6 +973,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   }
 
   Future<void> _quitarClaseExtra(ClaseExtra clase) async {
+    if (_soloLectura()) return;
     final confirma = await showDialog<bool>(
       context: context,
       builder: (dialogo) => AlertDialog(
@@ -1199,13 +1281,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          AttendanceRadarScreen(curso: _curso),
-                    ),
-                  ),
+                  onPressed: _abrirRadar,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryIndigo,
                     foregroundColor: Colors.white,

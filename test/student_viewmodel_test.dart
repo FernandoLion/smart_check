@@ -7,7 +7,8 @@ import 'package:smart_check/viewmodels/student_viewmodel.dart';
 
 import 'curso_fakes.dart';
 
-Curso cursoCon(String nombre, List<String> claves, {List<Horario> horarios = const []}) =>
+Curso cursoCon(String nombre, List<String> claves,
+        {List<Horario> horarios = const [], bool archivado = false}) =>
     Curso(
       codigo: 'SIS-402',
       nombre: nombre,
@@ -18,6 +19,7 @@ Curso cursoCon(String nombre, List<String> claves, {List<Horario> horarios = con
       docenteNombre: 'ANA MARÍA PÉREZ GÓMEZ',
       horarios: horarios,
       clavesInscritos: claves,
+      archivado: archivado,
     );
 
 /// Un llamado abierto de diez minutos, como el que acaba de abrir el
@@ -138,6 +140,20 @@ void main() {
       expect(vm.llamadoVigente, isNotNull);
       expect(vm.marcaVigente?.cuentaComoAsistio, isTrue);
       expect(vm.puedeRegistrar, isFalse);
+    });
+
+    test('en un curso archivado no se ofrece marcar, aunque quede un llamado',
+        () async {
+      servicio.cursos['b'] =
+          cursoCon('Redes', ['1117000000'], archivado: true);
+      servicio.sesionesPorCurso['b'] = [llamadoAbierto()];
+
+      vm.vigilarCursos(cedula: '1117000000');
+      await pumpEventQueue();
+
+      expect(vm.llamadoVigente, isNull);
+      expect(vm.puedeRegistrar, isFalse);
+      expect(vm.subjects.single.archivado, isTrue);
     });
 
     test('con un llamado abierto se puede registrar en esa materia', () async {

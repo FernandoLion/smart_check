@@ -46,6 +46,8 @@ class StudentViewModel extends ChangeNotifier {
   (Curso, Sesion)? get llamadoVigente {
     final ahora = DateTime.now();
     for (final curso in _cursos) {
+      // En un curso archivado no se marca (el servidor tampoco lo deja).
+      if (curso.archivado) continue;
       final sesion = _abiertos[curso.id];
       if (sesion != null && sesion.admiteAsistencia(ahora)) {
         return (curso, sesion);

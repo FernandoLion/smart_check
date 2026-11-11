@@ -3,7 +3,6 @@ import 'package:smart_check/models/inscrito_model.dart';
 import 'package:smart_check/models/presencia_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/services/ble_service.dart';
-import 'package:smart_check/services/ubicacion_service.dart';
 import 'package:smart_check/services/curso_service.dart';
 import 'package:smart_check/viewmodels/radar_viewmodel.dart';
 
@@ -101,11 +100,34 @@ void main() {
       expect(vm.detectados, 0);
     });
 
-    test('un curso sin geocerca no exige ubicación', () async {
-      ubicacion.fallo = const UbicacionException('sin permiso');
+    test('sin zona del aula no abre: nada comprobaría dónde es la clase',
+        () async {
+      expect(
+        await vm.iniciar(cursoEnClase(geocerca: null), 'uid-docente'),
+        isFalse,
+      );
+      expect(vm.error, contains('zona del aula'));
+      expect(ble.escaneando, isFalse);
+      expect(cursos.sesionesPorCurso['c1'], anyOf(isNull, isEmpty));
+    });
 
-      expect(await vm.iniciar(cursoEnClase(), 'uid-docente'), isTrue);
-      expect(vm.escaneando, isTrue);
+    test('sin estudiantes inscritos no abre', () async {
+      cursos.inscritosPorCurso['c1'] = {};
+
+      expect(await vm.iniciar(cursoEnClase(), 'uid-docente'), isFalse);
+      expect(vm.error, RadarViewModel.sinInscritos);
+      expect(ble.escaneando, isFalse);
+      expect(cursos.sesionesPorCurso['c1'], anyOf(isNull, isEmpty));
+    });
+
+    test('un curso archivado no abre, aunque sea su hora', () async {
+      expect(
+        await vm.iniciar(cursoEnClase(archivado: true), 'uid-docente'),
+        isFalse,
+      );
+      expect(vm.error, contains('archivado'));
+      expect(ble.escaneando, isFalse);
+      expect(cursos.sesionesPorCurso['c1'], anyOf(isNull, isEmpty));
     });
 
     test('a una clase que se está acabando no le abre llamado', () async {

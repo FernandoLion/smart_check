@@ -87,7 +87,7 @@ const _cedula = '1117000001';
 
 /// Datos largos a propósito: un nombre de materia y de docente reales de los
 /// que más ocupan.
-Curso _curso({String id = 'c1'}) {
+Curso _curso({String id = 'c1', bool archivado = false}) {
   final base = cursoEnClase(id: id);
   return Curso(
     id: id,
@@ -101,6 +101,8 @@ Curso _curso({String id = 'c1'}) {
     horarios: base.horarios,
     clavesInscritos: const [_cedula, _correo],
     totalInscritos: 2,
+    geocerca: base.geocerca,
+    archivado: archivado,
   );
 }
 
@@ -211,6 +213,12 @@ final Map<String, Future<Widget> Function(_Mundo)> _vistas = {
           asistencia: const AsistenciaResumen(sesiones: 12, asistidas: 9),
         ),
       ),
+  'Detalle de materia archivada': (m) async => AttendanceDetailScreen(
+        subject: StudentSubjectModel.desdeCurso(
+          _curso(archivado: true),
+          asistencia: const AsistenciaResumen(sesiones: 12, asistidas: 9),
+        ),
+      ),
   'Celular vinculado': (_) async => const BiometricValidationScreen(),
   'Verificación facial': (m) async => FaceVerificationScreen(curso: _curso()),
   'Baliza del estudiante': (m) async => BleBeaconScreen(
@@ -243,6 +251,10 @@ final Map<String, Future<Widget> Function(_Mundo)> _vistas = {
       ),
   'Detalle del curso': (m) async => CourseDetailScreen(
         curso: _curso(),
+        vm: CourseDetailViewModel(servicio: m.cursos),
+      ),
+  'Detalle del curso archivado': (m) async => CourseDetailScreen(
+        curso: _curso(archivado: true),
         vm: CourseDetailViewModel(servicio: m.cursos),
       ),
   'Detalle de sesión': (m) async {

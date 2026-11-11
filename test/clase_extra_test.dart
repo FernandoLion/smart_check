@@ -27,6 +27,8 @@ Curso curso({List<ClaseExtra> extras = const [], List<Horario>? horarios}) =>
       horarios: horarios ??
           const [Horario(dia: DateTime.thursday, inicio: '06:00', fin: '09:00')],
       clasesExtra: extras,
+      // La clase extra usa la zona del aula del curso.
+      geocerca: aula,
     );
 
 /// Una reposición el sábado 21 de 14:00 a 16:00.

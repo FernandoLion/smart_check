@@ -75,21 +75,41 @@ service cloud.firestore {
         return autenticado() && curso().claves_inscritos.hasAny(misClaves());
       }
 
+      // Un curso archivado es de solo lectura: se puede ver, volver a
+      // activar o eliminar, y nada más.
+      function activo() {
+        return curso().get('archivado', false) != true;
+      }
+
+      // Para abrir un llamado el curso necesita la zona del aula (sin ella
+      // nada comprueba dónde se dicta la clase) y alguien a quien llamar.
+      function listoParaLlamar() {
+        return curso().get('geocerca', null) != null
+          && curso().claves_inscritos.size() > 0;
+      }
+
       allow read: if autenticado()
         && (resource.data.docente_uid == request.auth.uid
           || resource.data.claves_inscritos.hasAny(misClaves()));
       allow create: if soyDocente()
         && request.resource.data.docente_uid == request.auth.uid
         && request.resource.data.claves_inscritos is list;
+      // Archivado, lo único que se le cambia es eso: volver a activarlo.
       allow update: if autenticado()
         && resource.data.docente_uid == request.auth.uid
-        && request.resource.data.docente_uid == resource.data.docente_uid;
+        && request.resource.data.docente_uid == resource.data.docente_uid
+        && (resource.data.get('archivado', false) != true
+          || request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['archivado']));
       allow delete: if autenticado()
         && resource.data.docente_uid == request.auth.uid;
 
       match /inscritos/{clave} {
         allow read: if soySuDocente() || clave in misClaves();
-        allow write: if soySuDocente();
+        allow create, update: if soySuDocente() && activo();
+        // Borrar sí, aunque esté archivado: así se elimina el curso entero.
+        // Quitar a uno solo también cambia el curso, y eso ya no se deja.
+        allow delete: if soySuDocente();
       }
 
       match /sesiones/{sesionId} {
@@ -105,6 +125,8 @@ service cloud.firestore {
         // `bloque_inicio` es la franja del horario, y es por donde se agrupan
         // los llamados al contar la asistencia.
         allow create: if soySuDocente()
+          && activo()
+          && listoParaLlamar()
           && request.resource.data.abierta == true
           && request.resource.data.fin > request.resource.data.inicio
           && request.resource.data.fin
@@ -113,7 +135,8 @@ service cloud.firestore {
           && request.resource.data.inicio >= request.time - duration.value(10, 'm')
           && request.resource.data.bloque_inicio is timestamp
           && request.resource.data.bloque_inicio <= request.resource.data.inicio;
-        // Solo se puede cerrar; no se reabre ni se cambia la franja.
+        // Solo se puede cerrar; no se reabre ni se cambia la franja. Cerrar
+        // vale aunque el curso esté archivado: no le cambia nada.
         allow update: if soySuDocente()
           && request.resource.data.abierta == false
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['abierta']);
@@ -122,10 +145,11 @@ service cloud.firestore {
 
         // Solo el celular del docente escribe asistencias. Por BLE, con la
         // sesión abierta y dentro de su franja (hora del servidor); a mano,
-        // también después, para corregir.
+        // también después, para corregir. Con el curso archivado, ninguna.
         match /asistencias/{clave} {
           allow read: if soySuDocente() || clave in misClaves();
           allow create, update: if soySuDocente()
+            && activo()
             && clave in curso().claves_inscritos
             && request.resource.data.registrado_por == request.auth.uid
             && (request.resource.data.metodo == 'manual'
@@ -136,7 +160,8 @@ service cloud.firestore {
                 // asistencia por BLE. A mano sigue pudiendo el docente, que
                 // es la corrección de siempre y queda marcada como tal.
                 && exists(/databases/$(database)/documents/cursos/$(cursoId)/sesiones/$(sesionId)/presencias/$(clave))));
-          // Solo al eliminar el curso completo.
+          // Al eliminar el curso completo, y al deshacer una marca en el
+          // llamado manual (el inscrito vuelve a quedar sin marca).
           allow delete: if soySuDocente();
         }
 
@@ -147,6 +172,7 @@ service cloud.firestore {
         match /presencias/{clave} {
           allow read: if soySuDocente() || clave in misClaves();
           allow create: if autenticado()
+            && activo()
             && clave in misClaves()
             && clave in curso().claves_inscritos
             && sesion().abierta

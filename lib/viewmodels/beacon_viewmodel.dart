@@ -185,6 +185,7 @@ class BeaconViewModel extends ChangeNotifier {
   Future<(Curso, Sesion)?> _buscarLlamadoAbierto(List<Curso> cursos) async {
     final ahora = DateTime.now();
     for (final curso in cursos) {
+      if (curso.archivado) continue;
       for (final sesion in await _cursos.llamadosAbiertos(curso.id).first) {
         if (sesion.admiteAsistencia(ahora)) return (curso, sesion);
       }

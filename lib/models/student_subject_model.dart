@@ -29,6 +29,9 @@ class StudentSubjectModel {
   /// Cuándo empiezan las clases extra programadas, para el calendario.
   final List<DateTime> fechasExtra;
 
+  /// El docente lo archivó: ya no se toma asistencia en él.
+  final bool archivado;
+
   const StudentSubjectModel({
     required this.cursoId,
     required this.code,
@@ -42,6 +45,7 @@ class StudentSubjectModel {
     this.semestre,
     this.periodo = '',
     this.fechasExtra = const [],
+    this.archivado = false,
   });
 
   factory StudentSubjectModel.desdeCurso(
@@ -61,6 +65,7 @@ class StudentSubjectModel {
       semestre: curso.semestre,
       periodo: curso.periodo,
       fechasExtra: curso.clasesExtra.map((e) => e.inicio).toList(),
+      archivado: curso.archivado,
     );
   }
 

@@ -82,6 +82,36 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 40),
                 children: [
                   _buildCourseTitleSection(materia),
+                  if (materia.archivado) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceControl,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.archive_outlined,
+                            color: AppTheme.textSecondary,
+                            size: 20,
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'El docente archivó este curso: ya no se toma '
+                              'asistencia. Tu historial sigue aquí.',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   // El portal leyó la asistencia al abrirse, y el docente
                   // pudo corregirla después (una falta justificada, una

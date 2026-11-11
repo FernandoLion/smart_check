@@ -105,7 +105,7 @@ void main() {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
     ubicacion.fallo = const UbicacionException('sin permiso');
 
-    expect(await marcar([cursoEnClase()]), isTrue);
+    expect(await marcar([cursoEnClase(geocerca: null)]), isTrue);
 
     expect(ble.anunciando, '1117000000');
   });
@@ -198,7 +198,7 @@ void main() {
   test('sin geocerca la firma no inventa la distancia', () async {
     cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
 
-    expect(await marcar([cursoEnClase()]), isTrue);
+    expect(await marcar([cursoEnClase(geocerca: null)]), isTrue);
 
     final mapa = cursos.presenciasPorSesion['llamado-1']!.single.toMap();
     expect(mapa.containsKey('distancia_aula'), isFalse);

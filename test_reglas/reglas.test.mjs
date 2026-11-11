@@ -41,6 +41,8 @@ import {
 const VINCULADO = Timestamp.fromMillis(Date.UTC(2026, 9, 1, 13, 0));
 const CELULAR_ANA = 'celular-ana-001';
 const CELULAR_BETO = 'celular-beto-02';
+/** La zona del aula del curso de prueba. */
+const ZONA = { latitud: 1.62, longitud: -75.6, radio_metros: 40 };
 
 let entorno;
 
@@ -87,7 +89,10 @@ async function sembrar() {
     await setDoc(doc(db, 'cursos/c1'), {
       docente_uid: 'docente',
       claves_inscritos: ['111', '222'],
+      geocerca: ZONA,
     });
+    await setDoc(doc(db, 'cursos/c1/inscritos/111'), { cedula: '111', nombre: 'ANA' });
+    await setDoc(doc(db, 'cursos/c1/inscritos/222'), { cedula: '222', nombre: 'BETO' });
     // El llamado de ahora: empezó hace un minuto y dura diez.
     await setDoc(doc(db, 'cursos/c1/sesiones/s1'), {
       abierta: true,
@@ -309,6 +314,102 @@ describe('asistencia (la otra llave)', () => {
         ...asistencia('ble'),
         registrado_por: 'ana',
       }),
+    );
+  });
+});
+
+/** Un llamado nuevo que empieza ahora, como lo abre el radar. */
+const llamadoNuevo = () => {
+  const ahora = Date.now();
+  return {
+    abierta: true,
+    inicio: Timestamp.fromMillis(ahora),
+    fin: Timestamp.fromMillis(ahora + 10 * 60_000),
+    bloque_inicio: Timestamp.fromMillis(ahora - 5 * 60_000),
+  };
+};
+
+/** Cambia el curso sin pasar por las reglas. */
+const prepararCurso = (cambios) =>
+  entorno.withSecurityRulesDisabled((ctx) =>
+    updateDoc(doc(ctx.firestore(), 'cursos/c1'), cambios),
+  );
+
+describe('abrir un llamado', () => {
+  const nuevo = (db) => doc(db, 'cursos/c1/sesiones/nuevo');
+
+  test('con zona del aula e inscritos, se abre', async () => {
+    await assertSucceeds(setDoc(nuevo(comoDocente()), llamadoNuevo()));
+  });
+
+  test('sin zona del aula, no', async () => {
+    await prepararCurso({ geocerca: null });
+    await assertFails(setDoc(nuevo(comoDocente()), llamadoNuevo()));
+  });
+
+  test('sin estudiantes inscritos, no', async () => {
+    await prepararCurso({ claves_inscritos: [] });
+    await assertFails(setDoc(nuevo(comoDocente()), llamadoNuevo()));
+  });
+});
+
+describe('curso archivado (solo lectura)', () => {
+  const curso = (db) => doc(db, 'cursos/c1');
+
+  beforeEach(() => prepararCurso({ archivado: true }));
+
+  test('no se abre un llamado', async () => {
+    await assertFails(
+      setDoc(doc(comoDocente(), 'cursos/c1/sesiones/nuevo'), llamadoNuevo()),
+    );
+  });
+
+  test('no se le marca asistencia, ni a mano', async () => {
+    await assertFails(
+      setDoc(
+        doc(comoDocente(), 'cursos/c1/sesiones/ayer/asistencias/222'),
+        asistencia('manual'),
+      ),
+    );
+  });
+
+  test('el estudiante no firma', async () => {
+    await assertFails(
+      setDoc(
+        doc(comoAna(), 'cursos/c1/sesiones/s1/presencias/111'),
+        firmaDeAna(),
+      ),
+    );
+  });
+
+  test('no se inscribe a nadie', async () => {
+    await assertFails(
+      setDoc(doc(comoDocente(), 'cursos/c1/inscritos/333'), {
+        cedula: '333',
+        nombre: 'CARLA',
+      }),
+    );
+  });
+
+  test('no se edita', async () => {
+    await assertFails(updateDoc(curso(comoDocente()), { nombre: 'Otro' }));
+  });
+
+  test('sí se vuelve a activar', async () => {
+    await assertSucceeds(updateDoc(curso(comoDocente()), { archivado: false }));
+  });
+
+  test('sí se elimina entero', async () => {
+    const db = comoDocente();
+    await assertSucceeds(deleteDoc(doc(db, 'cursos/c1/sesiones/s1')));
+    await assertSucceeds(deleteDoc(doc(db, 'cursos/c1/inscritos/111')));
+    await assertSucceeds(deleteDoc(curso(db)));
+  });
+
+  test('activo otra vez, se puede todo de nuevo', async () => {
+    await updateDoc(curso(comoDocente()), { archivado: false });
+    await assertSucceeds(
+      setDoc(doc(comoDocente(), 'cursos/c1/sesiones/nuevo'), llamadoNuevo()),
     );
   });
 });

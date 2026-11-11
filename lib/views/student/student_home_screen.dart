@@ -1041,6 +1041,29 @@ class _SubjectPassCard extends StatelessWidget {
                                 ),
                               ],
                             ),
+                            if (subject.archivado) ...[
+                              const SizedBox(height: 6),
+                              const Row(
+                                children: [
+                                  Icon(
+                                    Icons.archive_outlined,
+                                    color: AppTheme.textSecondary,
+                                    size: 15,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      'Archivado por el docente: ya no se '
+                                      'toma asistencia en este curso.',
+                                      style: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
