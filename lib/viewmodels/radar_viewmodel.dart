@@ -151,38 +151,6 @@ class RadarViewModel extends ChangeNotifier {
     return lista;
   }
 
-  /// El acta del llamado en CSV, como está en este momento: cada inscrito
-  /// con su estado, cómo se marcó y a qué hora.
-  String actaEnCsv() {
-    String dos(int n) => n.toString().padLeft(2, '0');
-    String celda(String v) =>
-        v.contains(RegExp('[;"\n]')) ? '"${v.replaceAll('"', '""')}"' : v;
-    final filas = [...lista]
-      ..sort((a, b) => a.inscrito.nombre.compareTo(b.inscrito.nombre));
-    return [
-      'Estudiante;Identificación;Estado;Cómo se marcó;Hora',
-      for (final f in filas)
-        [
-          f.inscrito.nombre,
-          f.inscrito.cedula ?? f.inscrito.email ?? '',
-          switch (f.asistencia?.estado) {
-            null => 'Sin registro',
-            EstadoAsistencia.ausente => 'Ausente',
-            EstadoAsistencia.tarde => 'Tarde',
-            _ => 'Presente',
-          },
-          switch (f.asistencia?.metodo) {
-            null => '',
-            MetodoAsistencia.ble => 'Bluetooth',
-            _ => 'A mano',
-          },
-          f.asistencia == null
-              ? ''
-              : '${dos(f.asistencia!.hora.hour)}:${dos(f.asistencia!.hora.minute)}',
-        ].map(celda).join(';'),
-    ].join('\n');
-  }
-
   /// Abre el llamado de la clase de ahora y empieza a escuchar. Devuelve
   /// false si no se pudo (el motivo queda en [error]).
   Future<bool> iniciar(Curso curso, String docenteUid) async {

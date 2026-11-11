@@ -460,23 +460,6 @@ void main() {
       expect(fila.asistencia!.estado, EstadoAsistencia.ausente);
       expect(vm.error, 'Sin conexión');
     });
-
-    test('el acta del llamado sale en CSV con cada estado', () async {
-      await vm.iniciar(cursoEnClase(), 'uid-docente');
-      final carlos = cursos.inscritosPorCurso['c1']!['ca.munoz@udla.edu.co']!;
-      ble.oir('1117000000');
-      await pumpEventQueue();
-      await vm.marcarManual(carlos, estado: EstadoAsistencia.ausente);
-
-      final filas = vm.actaEnCsv().split('\n');
-      expect(filas.first, 'Estudiante;Identificación;Estado;Cómo se marcó;Hora');
-      expect(filas[1], startsWith('ANA PÉREZ;1117000000;Presente;Bluetooth;'));
-      expect(
-        filas[2],
-        startsWith('CARLOS MUÑOZ;ca.munoz@udla.edu.co;Ausente;A mano;'),
-      );
-      expect(vm.detectados, 1);
-    });
   });
 
   test('detener cierra la sesión y apaga el escaneo', () async {

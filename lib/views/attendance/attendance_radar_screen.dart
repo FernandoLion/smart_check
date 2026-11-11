@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../models/curso_model.dart';
 import '../../models/sesion_model.dart';
@@ -1434,38 +1433,6 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-
-          // Botón Secundario Derecho: copia el acta del llamado (CSV).
-          Tocable(
-            nombre: 'Copiar el acta del llamado',
-            onTap: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              await Clipboard.setData(ClipboardData(text: _vm.actaEnCsv()));
-              messenger.showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Acta copiada: ${_vm.detectados} de '
-                    '${_vm.totalInscritos} presentes. Pégala en Excel.',
-                  ),
-                ),
-              );
-            },
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: _surfaceControl.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: const Icon(
-                Icons.ios_share,
-                color: AppTheme.textSecondary,
-                size: 20,
               ),
             ),
           ),
