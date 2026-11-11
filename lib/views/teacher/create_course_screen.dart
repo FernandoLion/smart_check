@@ -6,6 +6,7 @@ import '../../models/inscrito_model.dart';
 import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/botones_accesibles.dart';
+import '../../widgets/elegir_hora.dart';
 import '../../widgets/hoja_geocerca.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
@@ -666,8 +667,8 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Text(
             _geocerca == null
-                ? 'Sin zona del aula, el radar no comprobará que la clase se dicte '
-                      'en el aula. Párate en el aula y toca la insignia.'
+                ? 'Sin zona del aula no podrás abrir el radar. Puedes marcarla '
+                      'después: párate en el aula y toca la insignia.'
                 : 'El radar solo abrirá la clase a menos de '
                       '${_geocerca!.radioMetros.round()} m de este punto.',
             style: const TextStyle(
@@ -974,7 +975,7 @@ class _CreateCourseScreenState extends State<CreateCourseScreen> {
         padding: EdgeInsets.symmetric(horizontal: 4),
         child: Text(
           'Todavía no hay estudiantes. Puedes crear el curso sin ellos y '
-          'agregarlos después.',
+          'agregarlos después; sin estudiantes no se abre el radar.',
           style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
         ),
       );
@@ -1291,16 +1292,27 @@ class _EditorHorarioState extends State<_EditorHorario> {
   TimeOfDay _inicio = const TimeOfDay(hour: 8, minute: 0);
   TimeOfDay _fin = const TimeOfDay(hour: 10, minute: 0);
 
+  /// Por qué no se agregó el bloque. Va dentro de la hoja: un aviso abajo
+  /// de la pantalla quedaría tapado por ella.
+  String? _error;
+
+  /// La hora de fin no puede quedar antes del inicio; se marca en cuanto
+  /// pasa, sin esperar al botón.
+  bool get _finAntesDelInicio =>
+      _fin.hour * 60 + _fin.minute <= _inicio.hour * 60 + _inicio.minute;
+
   static String _hhmm(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   Future<void> _elegir(bool esInicio) async {
-    final elegido = await showTimePicker(
-      context: context,
-      initialTime: esInicio ? _inicio : _fin,
+    final elegido = await elegirHora(
+      context,
+      inicial: esInicio ? _inicio : _fin,
+      esInicio: esInicio,
     );
     if (elegido == null) return;
     setState(() {
+      _error = null;
       if (esInicio) {
         _inicio = elegido;
       } else {
@@ -1310,16 +1322,11 @@ class _EditorHorarioState extends State<_EditorHorario> {
   }
 
   void _agregar() {
-    final inicio = _inicio.hour * 60 + _inicio.minute;
-    final fin = _fin.hour * 60 + _fin.minute;
-    if (fin <= inicio) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('La hora de fin debe ser después del inicio'),
-        ),
-      );
+    if (_finAntesDelInicio) {
+      setState(() => _error = 'La hora de fin debe ser después del inicio.');
       return;
     }
+    _error = null;
     widget.horarios
       ..add(Horario(dia: _dia, inicio: _hhmm(_inicio), fin: _hhmm(_fin)))
       ..sort(
@@ -1396,11 +1403,27 @@ class _EditorHorarioState extends State<_EditorHorario> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => _elegir(false),
+                    style: _finAntesDelInicio
+                        ? OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.errorTexto,
+                            side: const BorderSide(color: AppTheme.errorTexto),
+                          )
+                        : null,
                     child: Text('Fin ${_hhmm(_fin)}'),
                   ),
                 ),
               ],
             ),
+            if (_error != null || _finAntesDelInicio) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error ?? 'La hora de fin debe ser después del inicio.',
+                style: const TextStyle(
+                  color: AppTheme.errorTexto,
+                  fontSize: 13,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/curso_model.dart';
 import '../utils/app_theme.dart';
+import 'elegir_hora.dart';
 
 /// Hoja para programar una clase extra: el día (de hoy al fin del semestre),
 /// la hora de inicio y de fin, y el aula si cambia. Devuelve la [ClaseExtra]
@@ -84,16 +85,10 @@ class _HojaClaseExtraState extends State<HojaClaseExtra> {
   }
 
   Future<void> _elegirHora(bool esInicio) async {
-    final elegida = await showTimePicker(
-      context: context,
-      initialTime: esInicio ? _inicio : _fin,
-      helpText: esInicio ? 'Hora de inicio' : 'Hora de fin',
-      cancelText: 'Cancelar',
-      confirmText: 'Listo',
-      builder: (context, hijo) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: hijo!,
-      ),
+    final elegida = await elegirHora(
+      context,
+      inicial: esInicio ? _inicio : _fin,
+      esInicio: esInicio,
     );
     if (elegida == null) return;
     setState(() {
