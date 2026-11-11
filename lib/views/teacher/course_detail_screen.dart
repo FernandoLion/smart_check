@@ -651,7 +651,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         SnackBar(
           content: Text(
             geocerca == null
-                ? 'Zona del aula quitada: el radar no comprobará dónde estás.'
+                ? 'Zona del aula quitada: el radar no se abrirá hasta que la '
+                    'vuelvas a marcar.'
                 : 'Zona del aula guardada: ${geocerca.radioMetros.round()} m '
                     'alrededor de donde estás'
                     '${precision == null ? '' : ' (GPS ±$precision m)'}.',
