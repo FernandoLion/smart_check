@@ -12,6 +12,7 @@ import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/models/student_subject_model.dart';
 import 'package:smart_check/models/usuario_perfil_model.dart';
 import 'package:smart_check/utils/app_theme.dart';
+import 'package:smart_check/utils/escala_proporcional.dart';
 import 'package:smart_check/utils/escala_texto.dart';
 import 'package:smart_check/viewmodels/auth_viewmodel.dart';
 import 'package:smart_check/viewmodels/beacon_viewmodel.dart';
@@ -74,6 +75,10 @@ const _pantallas = [
     Size(320, 4000),
     escalaMaximaDeTexto,
   ),
+  // Tablets: la app se agranda en proporción (ver escala_proporcional.dart).
+  _Pantalla('tablet 800×1280', Size(800, 1280), 1.0),
+  _Pantalla('tablet 1200×1920, letra máxima', Size(1200, 1920),
+      escalaMaximaDeTexto),
 ];
 
 const _correo = 'an.perez@udla.edu.co';
@@ -163,7 +168,7 @@ class _Mundo {
         ],
         child: MaterialApp(
           theme: _conRoboto(AppTheme.darkTheme),
-          builder: limitarEscalaDeTexto,
+          builder: adaptarAPantalla,
           home: pantalla,
         ),
       );
