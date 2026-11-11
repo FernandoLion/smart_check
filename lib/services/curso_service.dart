@@ -328,6 +328,23 @@ class CursoService {
     }
   }
 
+  /// Borra la asistencia de [clave] en un llamado: es deshacer una marca a
+  /// mano del llamado manual, y el inscrito vuelve a quedar sin marca.
+  Future<void> quitarAsistencia(
+    String cursoId,
+    String sesionId,
+    String clave,
+  ) async {
+    try {
+      await _asistencias(cursoId, sesionId)
+          .doc(clave)
+          .delete()
+          .timeout(_timeout);
+    } catch (e) {
+      throw CursoException(_mensaje(e, 'deshacer la marca'), _codigo(e));
+    }
+  }
+
   /// La marca que cuenta de un estudiante en la clase de [franja], sumando
   /// todos los llamados que el docente abrió en ese bloque (pudo cerrar el
   /// radar y volver a abrirlo). null si no tiene ninguna. [claves] son su

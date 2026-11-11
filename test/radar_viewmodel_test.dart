@@ -411,6 +411,34 @@ void main() {
       expect(vm.faltantes, 2);
     });
 
+    test('deshacer una marca a mano la borra de la base', () async {
+      await vm.iniciar(cursoEnClase(), 'uid-docente');
+      final sesionId = vm.sesion!.id;
+      final carlos = cursos.inscritosPorCurso['c1']!['ca.munoz@udla.edu.co']!;
+      await vm.marcarManual(carlos, estado: EstadoAsistencia.justificada);
+      expect(cursos.asistenciasPorSesion[sesionId], hasLength(1));
+
+      expect(await vm.quitarMarcaManual(carlos), isTrue);
+
+      // Ni en la base ni en el radar: vuelve a quedar sin marcar.
+      expect(cursos.asistenciasPorSesion[sesionId], isEmpty);
+      final fila = vm.lista.firstWhere((i) => i.inscrito.clave == carlos.clave);
+      expect(fila.registrado, isFalse);
+    });
+
+    test('si no se puede deshacer, la marca sigue y se avisa', () async {
+      await vm.iniciar(cursoEnClase(), 'uid-docente');
+      final carlos = cursos.inscritosPorCurso['c1']!['ca.munoz@udla.edu.co']!;
+      await vm.marcarManual(carlos, estado: EstadoAsistencia.ausente);
+      cursos.fallo = CursoException('Sin conexión');
+
+      expect(await vm.quitarMarcaManual(carlos), isFalse);
+
+      final fila = vm.lista.firstWhere((i) => i.inscrito.clave == carlos.clave);
+      expect(fila.asistencia!.estado, EstadoAsistencia.ausente);
+      expect(vm.error, 'Sin conexión');
+    });
+
     test('el acta del llamado sale en CSV con cada estado', () async {
       await vm.iniciar(cursoEnClase(), 'uid-docente');
       final carlos = cursos.inscritosPorCurso['c1']!['ca.munoz@udla.edu.co']!;

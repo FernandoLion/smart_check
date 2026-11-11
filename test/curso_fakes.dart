@@ -197,6 +197,18 @@ class FakeCursoService extends Fake implements CursoService {
   int escriturasDeAsistencia = 0;
 
   @override
+  Future<void> quitarAsistencia(
+    String cursoId,
+    String sesionId,
+    String clave,
+  ) async {
+    if (fallo != null) throw fallo!;
+    asistenciasPorSesion[sesionId]
+        ?.removeWhere((a) => a.claveInscrito == clave);
+    _cambios.add(null);
+  }
+
+  @override
   Future<void> registrarAsistencia(
     String cursoId,
     String sesionId,

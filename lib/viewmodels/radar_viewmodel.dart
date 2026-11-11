@@ -353,6 +353,26 @@ class RadarViewModel extends ChangeNotifier {
     );
   }
 
+  /// Deshace la marca a mano de [inscrito] en este llamado: la borra de la
+  /// base y vuelve a quedar sin marca. El llamado manual solo muestra a
+  /// quienes no tenían ninguna, así que no hay otra que restaurar.
+  Future<bool> quitarMarcaManual(Inscrito inscrito) async {
+    final curso = _curso;
+    final sesion = _sesion;
+    if (curso == null || sesion == null) return false;
+    final antes = _asistencias.remove(inscrito.clave);
+    notifyListeners();
+    try {
+      await _cursos.quitarAsistencia(curso.id, sesion.id, inscrito.clave);
+      return true;
+    } on CursoException catch (e) {
+      if (antes != null) _asistencias[inscrito.clave] = antes;
+      _error = e.mensaje;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> _registrar(
     String clave,
     String metodo, {

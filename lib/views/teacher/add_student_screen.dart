@@ -434,9 +434,44 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+
+        // Un botón que dice lo que hace: con la lupa y la tecla del teclado
+        // no se veía cómo buscar después de escribir la cédula.
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: isVerifying || _searchController.text.trim().isEmpty
+                ? null
+                : _performChairaSearch,
+            icon: isVerifying
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(
+                    _esCorreo ? Icons.person_add_alt_1 : Icons.search,
+                    size: 20,
+                  ),
+            label: Text(
+              isVerifying
+                  ? 'Buscando en Chairá...'
+                  : _esCorreo
+                  ? 'Agregar por correo'
+                  : 'Buscar estudiante',
+            ),
+          ),
+        ),
       ],
     );
   }
+
+  /// Con un correo no se busca en Chairá: se agrega tal cual.
+  bool get _esCorreo => _searchController.text.contains('@');
 
   Widget _buildVerifiedStudentCard(VerificacionResult? liveResult) {
     // Solo se llama con una consulta exitosa: todo sale de Chairá.

@@ -86,7 +86,45 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
 
   int _currentIndex = 0;
   double _dragOffsetX = 0.0;
+  double _dragOffsetY = 0.0;
   bool _isAnimatingOut = false;
+
+  /// Cuánto hay que arrastrar la tarjeta para que cuente.
+  static const _umbralDelGesto = 95.0;
+
+  /// Lo que marcaría la tarjeta si se suelta ahora, según hacia dónde va:
+  /// arriba justificada, derecha presente, izquierda ausente.
+  String? get _estadoDelGesto {
+    final arriba = -_dragOffsetY;
+    if (arriba > 20 && arriba > _dragOffsetX.abs()) {
+      return EstadoAsistencia.justificada;
+    }
+    if (_dragOffsetX > 20) return EstadoAsistencia.presente;
+    if (_dragOffsetX < -20) return EstadoAsistencia.ausente;
+    return null;
+  }
+
+  /// Si ya se arrastró lo suficiente hacia ese lado.
+  bool get _gestoCompleto =>
+      _estadoDelGesto == EstadoAsistencia.justificada
+          ? -_dragOffsetY > _umbralDelGesto
+          : _dragOffsetX.abs() > _umbralDelGesto;
+
+  /// El borde de la tarjeta se va pintando con el color de lo que marcaría
+  /// (verde, rojo o azul) mientras se arrastra; quieta, null.
+  Color? get _colorDelGesto {
+    final estado = _estadoDelGesto;
+    if (estado == null) return null;
+    final avance = estado == EstadoAsistencia.justificada
+        ? -_dragOffsetY
+        : _dragOffsetX.abs();
+    final color = switch (estado) {
+      EstadoAsistencia.presente => _tertiaryGreen,
+      EstadoAsistencia.ausente => _systemRed,
+      _ => _azulJustificada,
+    };
+    return color.withValues(alpha: (avance / _umbralDelGesto).clamp(0.0, 1.0));
+  }
 
   /// Marca la tarjeta de arriba con [estado] (presente, ausente o
   /// justificada) y pasa a la siguiente.
@@ -96,7 +134,12 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
     final inscrito = _pendientes[_currentIndex];
     setState(() {
       _isAnimatingOut = true;
-      _dragOffsetX = estado == EstadoAsistencia.presente ? 420.0 : -420.0;
+      if (estado == EstadoAsistencia.justificada) {
+        _dragOffsetX = 0.0;
+        _dragOffsetY = -700.0;
+      } else {
+        _dragOffsetX = estado == EstadoAsistencia.presente ? 420.0 : -420.0;
+      }
     });
     _registrar(inscrito, estado);
 
@@ -106,6 +149,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
         setState(() {
           _currentIndex++;
           _dragOffsetX = 0.0;
+          _dragOffsetY = 0.0;
           _isAnimatingOut = false;
         });
       } else {
@@ -139,15 +183,24 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
     );
   }
 
-  /// Deshacer vuelve a la tarjeta anterior; la asistencia se corrige al
-  /// volver a pasarla.
-  void _handleUndo() {
-    if (_currentIndex > 0 && !_isAnimatingOut) {
-      setState(() {
-        _currentIndex--;
-        _dragOffsetX = 0.0;
-      });
-    }
+  /// Deshacer vuelve a la tarjeta anterior y borra la marca que se le
+  /// guardó: queda sin marcar, como antes, hasta que se vuelva a pasar.
+  Future<void> _handleUndo() async {
+    if (_currentIndex == 0 || _isAnimatingOut) return;
+    final anterior = _pendientes[_currentIndex - 1];
+    setState(() {
+      _currentIndex--;
+      _dragOffsetX = 0.0;
+      _dragOffsetY = 0.0;
+    });
+    final ok = await widget.radar.quitarMarcaManual(anterior);
+    if (!mounted || ok) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(widget.radar.error ?? 'No se pudo deshacer la marca.'),
+        backgroundColor: AppTheme.error,
+      ),
+    );
   }
 
   Widget _buildTodosDetectados() {
@@ -497,133 +550,58 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
           ),
 
         // CARD 1: ACTIVE FOREGROUND CARD (Draggable / Swipable)
+        // Derecha: presente. Izquierda: ausente. Arriba: justificada.
         GestureDetector(
-          onHorizontalDragUpdate: (details) {
+          onPanUpdate: (details) {
             if (_isAnimatingOut) return;
             setState(() {
               _dragOffsetX += details.delta.dx;
+              // Hacia abajo no hay nada que marcar.
+              _dragOffsetY = (_dragOffsetY + details.delta.dy).clamp(
+                -400.0,
+                0.0,
+              );
             });
           },
-          onHorizontalDragEnd: (details) {
+          onPanEnd: (_) {
             if (_isAnimatingOut) return;
-            if (_dragOffsetX > 95) {
-              _triggerCardSwipe(estado: EstadoAsistencia.presente);
-            } else if (_dragOffsetX < -95) {
-              _triggerCardSwipe(estado: EstadoAsistencia.ausente);
+            final estado = _estadoDelGesto;
+            if (estado != null && _gestoCompleto) {
+              _triggerCardSwipe(estado: estado);
             } else {
-              setState(() => _dragOffsetX = 0.0);
+              setState(() {
+                _dragOffsetX = 0.0;
+                _dragOffsetY = 0.0;
+              });
             }
           },
           child: AnimatedContainer(
             duration: Duration(milliseconds: _isAnimatingOut ? 240 : 80),
             curve: Curves.easeOut,
             transform: Matrix4.identity()
-              ..translateByDouble(_dragOffsetX, 0.0, 0.0, 1.0)
+              ..translateByDouble(_dragOffsetX, _dragOffsetY, 0.0, 1.0)
               ..rotateZ(rotationAngle),
             transformAlignment: Alignment.center,
             child: _buildActiveForegroundCard(currentStudent),
           ),
         ),
 
-        // AUSENTE: aparece al deslizar a la izquierda. Quieto no se ve, para
-        // no tapar el nombre (los botones de abajo ya dicen qué hace cada
-        // lado).
-        Positioned(
-          left: 0,
-          child: IgnorePointer(
-            child: Opacity(
-              opacity: (-_dragOffsetX / 80).clamp(0.0, 1.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: _systemRed.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _systemRed, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _systemRed.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.close, color: _systemRed, size: 22),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'AUSENTE',
-                    style: TextStyle(
-                      color: _systemRed,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // PRESENTE: aparece al deslizar a la derecha.
-        Positioned(
-          right: 0,
-          child: IgnorePointer(
-            child: Opacity(
-              opacity: (_dragOffsetX / 80).clamp(0.0, 1.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: _tertiaryGreen.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: _tertiaryGreen, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _tertiaryGreen.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      color: _tertiaryGreen,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'PRESENTE',
-                    style: TextStyle(
-                      color: _tertiaryGreen,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
 
   Widget _buildActiveForegroundCard(_UndetectedStudent student) {
+    final gesto = _colorDelGesto;
     return Container(
       width: double.infinity,
       height: 475,
       decoration: BoxDecoration(
         color: _surfaceElevated,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(
+          color: gesto ?? Colors.white.withValues(alpha: 0.08),
+          width: gesto == null ? 1 : 3,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.7),
@@ -636,8 +614,11 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
       child: Column(
         children: [
           // 1. Student Photo Canvas (~52% card height)
+          // La foto es decorativa (las iniciales): se lleva la parte menor
+          // del alto, para que los datos de abajo no se encojan en un
+          // celular, donde la tarjeta no alcanza su alto completo.
           Expanded(
-            flex: 52,
+            flex: 34,
             child: Container(
               width: double.infinity,
               color: _surfaceHigh,
@@ -656,19 +637,25 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                         ],
                       ),
                     ),
-                    child: Center(
-                      child: CircleAvatar(
-                        radius: 52,
-                        backgroundColor: _surfaceControl,
-                        child: Text(
-                          student.initials,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 34,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                    // Con poco alto (un celular) las etiquetas lo taparían:
+                    // ahí se queda sin él; el nombre está justo abajo.
+                    child: LayoutBuilder(
+                      builder: (context, caja) => caja.maxHeight < 160
+                          ? const SizedBox.shrink()
+                          : Center(
+                              child: CircleAvatar(
+                                radius: 40,
+                                backgroundColor: _surfaceControl,
+                                child: Text(
+                                  student.initials,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
                     ),
                   ),
 
@@ -838,9 +825,9 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
             ),
           ),
 
-          // 2. Card Body Content (~48% card height)
+          // 2. Los datos del estudiante: la mayor parte del alto.
           Expanded(
-            flex: 48,
+            flex: 66,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
               child: // La tarjeta tiene alto fijo: si con letra grande el contenido no
@@ -1147,7 +1134,8 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
               Icon(Icons.swipe, color: AppTheme.textTertiary, size: 16),
               SizedBox(width: 6),
               Text(
-                'Desliza a la izquierda: ausente · a la derecha: presente',
+                'Desliza a la derecha: presente · a la izquierda: ausente '
+                '· arriba: justificada',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppTheme.textTertiary, fontSize: 13),
               ),
