@@ -82,6 +82,13 @@ class CourseDetailViewModel extends ChangeNotifier {
   String? get error => _error;
   int get totalInscritos => _inscritos.length;
 
+  /// La hora con la que se decide qué clases ya pasaron.
+  DateTime get ahora => _ahora();
+
+  /// Las clases del curso en todo el semestre, para el límite de fallas de
+  /// cada inscrito. Lo pone la pantalla, que es la que conoce el curso.
+  int? clasesDelSemestre;
+
   /// Las sesiones de la más reciente a la más antigua.
   List<Sesion> get sesiones => _sesiones;
 
@@ -279,7 +286,11 @@ class CourseDetailViewModel extends ChangeNotifier {
       }
       return InscritoAsistencia(
         i,
-        AsistenciaResumen(sesiones: sesiones, asistidas: asistidas),
+        AsistenciaResumen(
+          sesiones: sesiones,
+          asistidas: asistidas,
+          clasesDelSemestre: clasesDelSemestre,
+        ),
       );
     }).toList();
     lista.sort((a, b) {

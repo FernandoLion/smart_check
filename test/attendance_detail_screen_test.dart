@@ -81,7 +81,13 @@ void main() {
     await abrir(tester);
 
     expect(find.text('50%'), findsOneWidget);
-    // Con 2 clases el 80 % no deja ninguna falla, y ya lleva una.
-    expect(find.text('Por debajo del mínimo'), findsOneWidget);
+    // Las fallas se cuentan sobre el semestre, no sobre las 2 clases
+    // dictadas: lleva 1 y le quedan las demás.
+    final total = curso.clasesDelSemestre!;
+    final permitidas = (total * 20 / 100).floor();
+    expect(find.text('Te quedan ${permitidas - 1} fallas'), findsOneWidget);
+    expect(find.text('2/$total'), findsOneWidget);
+    expect(find.textContaining('de $total clases'), findsOneWidget);
+    expect(find.text('Por debajo del mínimo'), findsNothing);
   });
 }

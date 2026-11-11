@@ -3,7 +3,11 @@ import 'package:smart_check/models/asistencia_resumen.dart';
 import 'package:smart_check/models/curso_model.dart';
 import 'package:smart_check/models/student_subject_model.dart';
 
-StudentSubjectModel materia({int sesiones = 0, int asistidas = 0}) =>
+StudentSubjectModel materia({
+  int sesiones = 0,
+  int asistidas = 0,
+  int? semestre,
+}) =>
     StudentSubjectModel(
       cursoId: 'c1',
       code: 'SIS-402',
@@ -12,8 +16,11 @@ StudentSubjectModel materia({int sesiones = 0, int asistidas = 0}) =>
       room: 'Aula 204',
       schedule: 'Mar / Jue • 08:00 - 10:00',
       professor: 'ANA MARÍA PÉREZ GÓMEZ',
-      asistencia:
-          AsistenciaResumen(sesiones: sesiones, asistidas: asistidas),
+      asistencia: AsistenciaResumen(
+        sesiones: sesiones,
+        asistidas: asistidas,
+        clasesDelSemestre: semestre,
+      ),
     );
 
 void main() {
@@ -64,14 +71,18 @@ void main() {
     });
 
     test('avisa cuando ya está por debajo del mínimo', () {
-      expect(materia(sesiones: 10, asistidas: 5).absencesBadge,
+      // Con 10 clases en el semestre se puede faltar a 2.
+      expect(materia(sesiones: 10, asistidas: 5, semestre: 10).absencesBadge,
           'Por debajo del mínimo');
-      expect(materia(sesiones: 10, asistidas: 8).absencesBadge,
+      expect(materia(sesiones: 10, asistidas: 8, semestre: 10).absencesBadge,
           'Sin faltas disponibles');
-      expect(materia(sesiones: 20, asistidas: 19).absencesBadge,
-          '3 faltas disponibles');
-      expect(materia(sesiones: 10, asistidas: 9).absencesBadge,
+      expect(materia(sesiones: 10, asistidas: 9, semestre: 10).absencesBadge,
           '1 falta disponible');
+      // Lo que importa es el semestre, no lo dictado hasta hoy: con 1 clase
+      // de 32 todavía quedan las 6 (antes decía que ninguna).
+      expect(materia(sesiones: 1, asistidas: 1, semestre: 32).absencesBadge,
+          '6 faltas disponibles');
+      expect(materia(semestre: 32).absencesBadge, '6 faltas disponibles');
     });
   });
 
@@ -97,6 +108,17 @@ void main() {
     expect(materia.professor, 'ANA MARÍA PÉREZ GÓMEZ');
     expect(materia.schedule, 'Mar • 08:00 - 10:00');
     expect(materia.attendancePercent, 75);
-    expect(materia.status, NivelAsistencia.riesgo);
+    // Una falta de las 16 clases del semestre no pone en riesgo a nadie,
+    // aunque hasta hoy lleve 75 %.
+    expect(materia.asistencia.clasesDelSemestre, 16);
+    expect(materia.status, NivelAsistencia.alDia);
+    expect(materia.semestre, isNotNull);
+  });
+
+  test('sin fechas del semestre no inventa cuántas faltas quedan', () {
+    final sinFechas = materia(sesiones: 4, asistidas: 3);
+
+    expect(sinFechas.absencesBadge, '1 falta');
+    expect(materia(sesiones: 1, asistidas: 1).absencesBadge, '0 faltas');
   });
 }

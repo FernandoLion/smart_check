@@ -236,11 +236,19 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
       NivelAsistencia.atencion => _systemAmber,
       NivelAsistencia.riesgo => _systemRed,
     };
+    final conoce = r.conoceElSemestre;
     final String aviso;
-    if (r.sesiones == 0) {
-      aviso = 'Aún no hay clases';
+    if (!conoce) {
+      // Sin las fechas del semestre no se sabe el límite: se dice lo que hay.
+      aviso = r.sesiones == 0
+          ? 'Aún no hay clases'
+          : r.faltas == 1
+              ? 'Llevas 1 falla'
+              : 'Llevas ${r.faltas} fallas';
     } else if (r.faltas > r.faltasPermitidas) {
       aviso = 'Por debajo del mínimo';
+    } else if (r.faltasDisponibles == 0) {
+      aviso = 'No te quedan fallas';
     } else if (r.faltasDisponibles == 1) {
       aviso = 'Te queda 1 falla';
     } else {
@@ -277,11 +285,11 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                     child: Icon(Icons.thermostat, color: color, size: 20),
                   ),
                   const SizedBox(width: 10),
-                  const Flexible(
+                  Flexible(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Termómetro de asistencia',
                           style: TextStyle(
                             color: Colors.white,
@@ -290,10 +298,11 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                             letterSpacing: -0.3,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
-                          'Mínimo para aprobar: ${AsistenciaResumen.minimo}%',
-                          style: TextStyle(
+                          'Mínimo para aprobar: ${AsistenciaResumen.minimo}%'
+                          '${conoce ? ' de ${r.clasesDelSemestre} clases' : ''}',
+                          style: const TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 12,
                           ),
@@ -359,7 +368,11 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                       ),
                     ),
                     TextSpan(
-                      text: ' / ${r.faltasPermitidas} fallas permitidas',
+                      text: conoce
+                          ? ' / ${r.faltasPermitidas} fallas permitidas'
+                          : r.faltas == 1
+                              ? ' falla'
+                              : ' fallas',
                     ),
                   ],
                 ),
@@ -392,7 +405,9 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
               Expanded(
                 child: _buildContador(
                   punto: AppTheme.textSecondary,
-                  valor: '${r.sesiones}',
+                  valor: conoce
+                      ? '${r.sesiones}/${r.clasesDelSemestre}'
+                      : '${r.sesiones}',
                   etiqueta: 'Dictadas',
                 ),
               ),
@@ -400,7 +415,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
               Expanded(
                 child: _buildContador(
                   punto: color,
-                  valor: '${r.faltasDisponibles}',
+                  valor: conoce ? '${r.faltasDisponibles}' : '—',
                   etiqueta: 'Restantes',
                 ),
               ),
@@ -469,13 +484,19 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
             children: [
               CircleAvatar(radius: 4, backgroundColor: punto),
               const SizedBox(width: 5),
-              Text(
-                valor,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.bold,
-                  height: 1.1,
+              // "12/33" no cabe entero en un celular angosto: se encoge.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    valor,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      height: 1.1,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -526,6 +547,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
             return CalendarioAsistencia(
               clases: estado.data ?? const [],
               diasDeClase: widget.subject.diasDeClase,
+              semestre: widget.subject.semestre,
               hoy: DateTime.now(),
             );
           },

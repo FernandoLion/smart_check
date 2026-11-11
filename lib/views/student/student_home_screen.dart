@@ -1123,51 +1123,52 @@ class _SubjectPassCard extends StatelessWidget {
                   const SizedBox(height: 14),
 
                   // 3. BARRA DE PROGRESO DE ASISTENCIA
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  // Si la etiqueta de faltas no cabe al lado, baja.
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    runSpacing: 4,
                     children: [
-                      Flexible(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(_attendanceIcon, color: accent, size: 14),
-                            const SizedBox(width: 4),
-                            const Text(
-                              'Asistencia: ',
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 12,
-                              ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_attendanceIcon, color: accent, size: 14),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'Asistencia: ',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12,
                             ),
-                            Text(
-                              porcentaje == null ? '— ' : '$porcentaje% ',
+                          ),
+                          Text(
+                            porcentaje == null ? '— ' : '$porcentaje% ',
+                            style: TextStyle(
+                              color:
+                                  subject.status == NivelAsistencia.atencion
+                                  ? Colors.white
+                                  : accent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Flexible(
+                            child: Text(
+                              '(mínimo ${AsistenciaResumen.minimo}%)',
                               style: TextStyle(
                                 color:
-                                    subject.status == NivelAsistencia.atencion
-                                    ? Colors.white
-                                    : accent,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                                    subject.status == NivelAsistencia.riesgo
+                                    ? accent
+                                    : AppTheme.textTertiary,
+                                fontSize: 11,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            Flexible(
-                              child: Text(
-                                '(mínimo ${AsistenciaResumen.minimo}%)',
-                                style: TextStyle(
-                                  color:
-                                      subject.status == NivelAsistencia.riesgo
-                                      ? accent
-                                      : AppTheme.textTertiary,
-                                  fontSize: 11,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,

@@ -491,10 +491,12 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           const SizedBox(height: 14),
 
           // Verification Title & Course Hierarchy
-          const Text(
-            'Verificando Identidad para Asistencia...',
+          Text(
+            widget.curso == null
+                ? 'Verificando tu identidad...'
+                : 'Verificando Identidad para Asistencia...',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 22,
               fontWeight: FontWeight.bold,

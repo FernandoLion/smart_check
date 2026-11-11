@@ -1,5 +1,9 @@
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'calendario_academico.dart';
+
 /// Un bloque semanal de clase: día (1 = lunes ... 7 = domingo, como
 /// [DateTime.weekday]) y horas de inicio y fin en formato "HH:mm".
 class Horario {
@@ -94,6 +98,10 @@ class Curso {
   /// y su radar no se ofrece, pero conserva inscritos y asistencias.
   final bool archivado;
 
+  /// Cuándo se creó. Las clases del horario de antes de esta fecha no se le
+  /// pueden reclamar al docente. Null en un curso que aún no se ha guardado.
+  final DateTime? creadoEn;
+
   const Curso({
     this.id = '',
     required this.codigo,
@@ -108,6 +116,7 @@ class Curso {
     this.clavesInscritos = const [],
     this.totalInscritos = 0,
     this.archivado = false,
+    this.creadoEn,
   });
 
   factory Curso.fromMap(String id, Map<String, dynamic> map) {
@@ -129,6 +138,7 @@ class Curso {
           List<String>.from(map['claves_inscritos'] as List? ?? const []),
       totalInscritos: map['total_inscritos'] as int? ?? 0,
       archivado: map['archivado'] as bool? ?? false,
+      creadoEn: (map['creado_en'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -145,7 +155,20 @@ class Curso {
         'claves_inscritos': clavesInscritos,
         'total_inscritos': totalInscritos,
         'archivado': archivado,
+        // Va para que rearmar el curso en memoria no la pierda. Al crearlo,
+        // el servicio pone la hora del servidor encima.
+        if (creadoEn != null) 'creado_en': Timestamp.fromDate(creadoEn!),
       };
+
+  /// Las fechas del semestre de este curso, si están en el calendario.
+  Semestre? get semestre => CalendarioAcademico.de(periodo);
+
+  /// Las clases que tendrá en todo el semestre, o null si no se sabe.
+  int? get clasesDelSemestre {
+    final fechas = semestre;
+    if (fechas == null || horarios.isEmpty) return null;
+    return fechas.clasesSegun(horarios.map((h) => h.dia));
+  }
 
   /// Periodo académico de [momento]: "2026-1" (ene-jun) o "2026-2" (jul-dic).
   static String periodoActual([DateTime? momento]) {

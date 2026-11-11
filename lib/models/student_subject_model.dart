@@ -1,4 +1,5 @@
 import 'asistencia_resumen.dart';
+import 'calendario_academico.dart';
 import 'curso_model.dart';
 
 /// Una materia del estudiante tal como se ve en su tarjeta: horario, docente
@@ -19,6 +20,9 @@ class StudentSubjectModel {
   /// Los días de la semana con clase (1 = lunes), para el calendario.
   final List<int> diasDeClase;
 
+  /// Las fechas del semestre, si se conocen.
+  final Semestre? semestre;
+
   const StudentSubjectModel({
     required this.cursoId,
     required this.code,
@@ -29,6 +33,7 @@ class StudentSubjectModel {
     required this.professor,
     this.asistencia = const AsistenciaResumen(),
     this.diasDeClase = const [],
+    this.semestre,
   });
 
   factory StudentSubjectModel.desdeCurso(
@@ -43,8 +48,9 @@ class StudentSubjectModel {
       room: curso.aula,
       schedule: horarioLegible(curso.horarios),
       professor: curso.docenteNombre,
-      asistencia: asistencia,
+      asistencia: asistencia.conClasesDelSemestre(curso.clasesDelSemestre),
       diasDeClase: curso.horarios.map((h) => h.dia).toSet().toList(),
+      semestre: curso.semestre,
     );
   }
 
@@ -89,7 +95,11 @@ class StudentSubjectModel {
   }
 
   String get absencesBadge {
-    if (asistencia.sesiones == 0) return 'Sin clases aún';
+    if (!asistencia.conoceElSemestre) {
+      if (asistencia.sesiones == 0) return 'Sin clases aún';
+      final llevadas = asistencia.faltas;
+      return llevadas == 1 ? '1 falta' : '$llevadas faltas';
+    }
     if (asistencia.nivel == NivelAsistencia.riesgo) {
       return 'Por debajo del mínimo';
     }

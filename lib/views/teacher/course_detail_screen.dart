@@ -10,6 +10,7 @@ import '../../services/ubicacion_service.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/course_detail_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
+import '../../widgets/calendario_curso.dart';
 import '../../widgets/hoja_geocerca.dart';
 import '../attendance/attendance_radar_screen.dart';
 import 'add_student_screen.dart';
@@ -78,7 +79,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _vm = (widget.vm ?? CourseDetailViewModel())..vigilar(_curso.id);
+    _vm = (widget.vm ?? CourseDetailViewModel())
+      ..clasesDelSemestre = _curso.clasesDelSemestre
+      ..vigilar(_curso.id);
     _buscador.addListener(() => setState(() {}));
   }
 
@@ -523,7 +526,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       context,
       MaterialPageRoute(builder: (_) => CreateCourseScreen(curso: _curso)),
     );
-    if (editado != null && mounted) setState(() => _curso = editado);
+    if (editado != null && mounted) {
+      setState(() {
+        _curso = editado;
+        // Si cambió el horario, cambian las clases del semestre.
+        _vm.clasesDelSemestre = editado.clasesDelSemestre;
+      });
+    }
   }
 
   Future<void> _copiarAsistencia() async {
@@ -718,6 +727,26 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
         _buildClaseDeHoy(),
+        const SizedBox(height: 24),
+        const Text(
+          'CALENDARIO DEL CURSO',
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 10),
+        CalendarioDelCurso(
+          sesiones: pasadas,
+          horarios: _curso.horarios,
+          ahora: _vm.ahora,
+          creadoEn: _curso.creadoEn,
+          semestre: _curso.semestre,
+          archivado: _curso.archivado,
+          alAbrirClase: _abrirSesion,
+        ),
         const SizedBox(height: 24),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1097,26 +1126,30 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
+  /// El detalle de una clase dictada, desde la lista o desde el calendario.
+  void _abrirSesion(SesionResumen resumen) {
+    final sesion = resumen.sesion;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SessionDetailScreen(
+          curso: _curso,
+          vm: _vm,
+          franja: sesion.franja,
+          fechaTitulo: _fechaLarga(sesion.franja),
+          horario:
+              'Llamado ${_horaDe(sesion.inicio)} - ${_horaDe(sesion.fin)}',
+        ),
+      ),
+    );
+  }
+
   Widget _buildSessionTile(SesionResumen resumen) {
     final sesion = resumen.sesion;
     final aviso = resumen.bajaAsistencia;
     final porcentaje = resumen.porcentaje;
     return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SessionDetailScreen(
-              curso: _curso,
-              vm: _vm,
-              franja: sesion.franja,
-              fechaTitulo: _fechaLarga(sesion.franja),
-              horario:
-                  'Llamado ${_horaDe(sesion.inicio)} - ${_horaDe(sesion.fin)}',
-            ),
-          ),
-        );
-      },
+      onTap: () => _abrirSesion(resumen),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
@@ -1506,9 +1539,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
     final String tituloRiesgo;
     final String subtituloRiesgo;
-    if (a.sesiones == 0) {
-      tituloRiesgo = 'Sin clases cerradas todavía';
-      subtituloRiesgo = 'Nada que contar';
+    if (!a.conoceElSemestre) {
+      // Sin las fechas del semestre no hay límite que mostrar.
+      tituloRiesgo = a.sesiones == 0
+          ? 'Sin clases cerradas todavía'
+          : a.faltas == 0
+              ? 'Sin inasistencias registradas'
+              : _faltas(a.faltas);
+      subtituloRiesgo =
+          a.sesiones == 0 ? 'Nada que contar' : 'Sin fechas del semestre';
     } else {
       tituloRiesgo = a.faltas == 0
           ? 'Sin inasistencias registradas'
@@ -1541,7 +1580,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           : alerta
           ? _systemAmber
           : _tertiaryGreen,
-      progressFraction: a.faltasPermitidas == 0
+      progressFraction: !a.conoceElSemestre || a.faltasPermitidas == 0
           ? 0
           : a.faltas / a.faltasPermitidas,
       riskTitle: tituloRiesgo,

@@ -13,7 +13,26 @@ class AsistenciaResumen {
   final int sesiones;
   final int asistidas;
 
-  const AsistenciaResumen({this.sesiones = 0, this.asistidas = 0});
+  /// Las clases que tendrá el curso en todo el semestre, según su horario y
+  /// el calendario académico. Null si no se sabe. De aquí sale el límite de
+  /// fallas: se cuenta sobre el semestre, no sobre lo dictado hasta hoy.
+  final int? clasesDelSemestre;
+
+  const AsistenciaResumen({
+    this.sesiones = 0,
+    this.asistidas = 0,
+    this.clasesDelSemestre,
+  });
+
+  AsistenciaResumen conClasesDelSemestre(int? total) => AsistenciaResumen(
+        sesiones: sesiones,
+        asistidas: asistidas,
+        clasesDelSemestre: total,
+      );
+
+  /// Si se sabe cuántas clases tiene el semestre. Sin eso no hay un límite
+  /// de fallas que mostrar.
+  bool get conoceElSemestre => (clasesDelSemestre ?? 0) > 0;
 
   /// El resumen de las clases que ya terminaron, una por franja.
   factory AsistenciaResumen.de(List<ClaseDelEstudiante> clases) =>
@@ -26,17 +45,29 @@ class AsistenciaResumen {
   int? get porcentaje =>
       sesiones == 0 ? null : (asistidas * 100 / sesiones).round();
 
+  /// El semáforo. Conociendo el semestre, sale del porcentaje que aún puede
+  /// alcanzar al final: así el rojo llega justo cuando se pasa del límite de
+  /// fallas, y no por faltar a una de las dos primeras clases.
   NivelAsistencia get nivel {
-    final p = porcentaje;
-    if (p == null || p >= 90) return NivelAsistencia.alDia;
-    if (p >= minimo) return NivelAsistencia.atencion;
+    if (!conoceElSemestre) return nivelDe(porcentaje);
+    final total = clasesDelSemestre!;
+    return nivelDe(((total - faltas) * 100 / total).floor());
+  }
+
+  /// El nivel de un porcentaje; sin dato no hay nada que juzgar.
+  static NivelAsistencia nivelDe(int? porcentaje) {
+    if (porcentaje == null || porcentaje >= 90) return NivelAsistencia.alDia;
+    if (porcentaje >= minimo) return NivelAsistencia.atencion;
     return NivelAsistencia.riesgo;
   }
 
   int get faltas => sesiones - asistidas;
 
-  /// Faltas que permite el mínimo sobre el total de sesiones dictadas.
-  int get faltasPermitidas => (sesiones * (100 - minimo) / 100).floor();
+  /// Faltas que permite el mínimo sobre las clases del semestre. Si no se
+  /// conoce, sobre las dictadas: es solo una cota, y las pantallas no la
+  /// muestran (ver [conoceElSemestre]).
+  int get faltasPermitidas =>
+      ((clasesDelSemestre ?? sesiones) * (100 - minimo) / 100).floor();
 
   /// Las que todavía puede darse sin bajar del mínimo.
   int get faltasDisponibles {

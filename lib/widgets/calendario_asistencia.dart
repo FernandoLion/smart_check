@@ -1,8 +1,372 @@
 import 'package:flutter/material.dart';
 
 import '../models/asistencia_resumen.dart';
+import '../models/calendario_academico.dart';
 import '../models/sesion_model.dart';
 import '../utils/app_theme.dart';
+
+// --- La cuadrícula, que comparten el estudiante y el docente ----------------
+
+const _nombresDeMes = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
+const _diasCortos = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const _diasLargos = [
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado',
+  'Domingo',
+];
+
+/// "noviembre", para las frases del resumen del mes.
+String nombreDelMes(DateTime mes) => _nombresDeMes[mes.month - 1].toLowerCase();
+
+/// "Lunes 2 de noviembre".
+String tituloDelDia(DateTime fecha) =>
+    '${_diasLargos[fecha.weekday - 1]} ${fecha.day} de ${nombreDelMes(fecha)}';
+
+String horaCorta(DateTime d) =>
+    '${d.hour.toString().padLeft(2, '0')}:'
+    '${d.minute.toString().padLeft(2, '0')}';
+
+/// Hasta qué mes dejan llegar las flechas: el siguiente al de hoy, sin pasar
+/// del último mes del semestre.
+DateTime ultimoMesDelCalendario(DateTime hoy, Semestre? semestre) {
+  final siguiente = DateTime(hoy.year, hoy.month + 1);
+  if (semestre == null) return siguiente;
+  final ultimo = DateTime(semestre.fin.year, semestre.fin.month);
+  return siguiente.isAfter(ultimo) ? ultimo : siguiente;
+}
+
+/// Cómo se pinta un día: relleno si ya pasó algo, con contorno si no.
+class DiaPintado {
+  final Color color;
+  final bool relleno;
+
+  /// Texto pequeño debajo del número, como el porcentaje del grupo.
+  final String? nota;
+
+  /// Lo que lee el lector de pantalla.
+  final String descripcion;
+
+  const DiaPintado({
+    required this.color,
+    required this.relleno,
+    required this.descripcion,
+    this.nota,
+  });
+}
+
+class ItemLeyenda {
+  final Color color;
+  final bool relleno;
+  final String texto;
+
+  const ItemLeyenda(this.color, this.texto, {this.relleno = true});
+}
+
+/// Un mes con sus días pintados, flechas para cambiar de mes, leyenda,
+/// resumen y el detalle del día que se toque. Qué significa cada color lo
+/// decide quien lo usa.
+class CalendarioMensual extends StatefulWidget {
+  final DateTime hoy;
+
+  /// Hasta dónde dejan llegar las flechas.
+  final DateTime primerMes;
+  final DateTime ultimoMes;
+
+  final Map<int, DiaPintado> Function(DateTime mes) diasDe;
+  final List<ItemLeyenda> leyenda;
+  final String Function(DateTime mes) resumenDe;
+  final Widget Function(DateTime fecha) detalleDe;
+
+  /// Días cuadrados, con espacio para [DiaPintado.nota].
+  final bool cuadrado;
+
+  const CalendarioMensual({
+    super.key,
+    required this.hoy,
+    required this.primerMes,
+    required this.ultimoMes,
+    required this.diasDe,
+    required this.leyenda,
+    required this.resumenDe,
+    required this.detalleDe,
+    this.cuadrado = false,
+  });
+
+  @override
+  State<CalendarioMensual> createState() => _CalendarioMensualState();
+}
+
+class _CalendarioMensualState extends State<CalendarioMensual> {
+  late DateTime _mes = _mesInicial;
+  int? _seleccionado;
+
+  DateTime get _mesInicial {
+    final actual = DateTime(widget.hoy.year, widget.hoy.month);
+    return actual.isAfter(widget.ultimoMes) ? widget.ultimoMes : actual;
+  }
+
+  bool get _hayAnterior => _mes.isAfter(widget.primerMes);
+  bool get _haySiguiente => _mes.isBefore(widget.ultimoMes);
+
+  void _moverMes(int delta) => setState(() {
+        _mes = DateTime(_mes.year, _mes.month + delta);
+        _seleccionado = null;
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    final dias = widget.diasDe(_mes);
+    final seleccionado = _seleccionado;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceElevated,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _encabezado(),
+          const SizedBox(height: 4),
+          _cuadricula(dias),
+          const SizedBox(height: 12),
+          _leyenda(),
+          const SizedBox(height: 10),
+          Text(
+            widget.resumenDe(_mes),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+          ),
+          // El día pudo dejar de estar pintado si cambiaron los datos.
+          if (seleccionado != null && dias.containsKey(seleccionado)) ...[
+            const SizedBox(height: 10),
+            widget.detalleDe(DateTime(_mes.year, _mes.month, seleccionado)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _encabezado() {
+    return Row(
+      children: [
+        IconButton(
+          onPressed: _hayAnterior ? () => _moverMes(-1) : null,
+          icon: const Icon(Icons.chevron_left),
+          color: Colors.white,
+          disabledColor: AppTheme.textTertiary,
+          tooltip: 'Mes anterior',
+        ),
+        Expanded(
+          child: Text(
+            '${_nombresDeMes[_mes.month - 1]} ${_mes.year}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: _haySiguiente ? () => _moverMes(1) : null,
+          icon: const Icon(Icons.chevron_right),
+          color: Colors.white,
+          disabledColor: AppTheme.textTertiary,
+          tooltip: 'Mes siguiente',
+        ),
+      ],
+    );
+  }
+
+  Widget _cuadricula(Map<int, DiaPintado> dias) {
+    final hoy = widget.hoy;
+    final diasDelMes = DateTime(_mes.year, _mes.month + 1, 0).day;
+    final huecos = DateTime(_mes.year, _mes.month).weekday - 1;
+    return GridView.count(
+      crossAxisCount: 7,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 4,
+      crossAxisSpacing: 4,
+      children: [
+        for (final d in _diasCortos)
+          Center(
+            child: Text(
+              d,
+              style: const TextStyle(
+                color: AppTheme.textTertiary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        for (var i = 0; i < huecos; i++) const SizedBox.shrink(),
+        for (var d = 1; d <= diasDelMes; d++)
+          _dia(
+            d,
+            dias[d],
+            esHoy: hoy.year == _mes.year &&
+                hoy.month == _mes.month &&
+                hoy.day == d,
+          ),
+      ],
+    );
+  }
+
+  Widget _dia(int d, DiaPintado? dia, {required bool esHoy}) {
+    final relleno = dia?.relleno ?? false;
+    final seleccionado = _seleccionado == d;
+    final Color colorTexto;
+    if (relleno) {
+      colorTexto = Colors.black;
+    } else if (dia != null) {
+      colorTexto = Color.lerp(dia.color, Colors.white, 0.5)!;
+    } else {
+      colorTexto = AppTheme.textSecondary;
+    }
+    final borde = Border.all(
+      color: seleccionado
+          ? Colors.white
+          : esHoy
+              ? Colors.white.withValues(alpha: 0.7)
+              : dia != null && !relleno
+                  ? dia.color
+                  : Colors.transparent,
+      width: seleccionado ? 2.5 : 1.5,
+    );
+    return Semantics(
+      button: dia != null,
+      label: '$d${dia == null ? '' : ', ${dia.descripcion}'}',
+      child: GestureDetector(
+        onTap: dia == null
+            ? null
+            : () => setState(() => _seleccionado = seleccionado ? null : d),
+        child: Container(
+          decoration: BoxDecoration(
+            shape: widget.cuadrado ? BoxShape.rectangle : BoxShape.circle,
+            borderRadius: widget.cuadrado ? BorderRadius.circular(10) : null,
+            color: relleno ? dia!.color.withValues(alpha: 0.85) : null,
+            border: borde,
+          ),
+          padding: const EdgeInsets.all(4),
+          child: FittedBox(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$d',
+                  style: TextStyle(
+                    color: colorTexto,
+                    fontSize: 14,
+                    fontWeight:
+                        relleno || esHoy ? FontWeight.w700 : FontWeight.w400,
+                  ),
+                ),
+                if (dia?.nota != null)
+                  Text(
+                    dia!.nota!,
+                    style: TextStyle(
+                      color: colorTexto,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _leyenda() {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 14,
+      runSpacing: 6,
+      children: [
+        for (final item in widget.leyenda)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: item.relleno ? item.color : null,
+                  border: item.relleno
+                      ? null
+                      : Border.all(color: item.color, width: 1.5),
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                item.texto,
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+/// El recuadro con el detalle del día tocado.
+class PanelDelDia extends StatelessWidget {
+  final String titulo;
+  final List<Widget> hijos;
+
+  const PanelDelDia({super.key, required this.titulo, required this.hijos});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceControl,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            titulo,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          ...hijos,
+        ],
+      ),
+    );
+  }
+}
+
+// --- El calendario del estudiante en una materia ----------------------------
 
 /// Cómo le fue al estudiante un día del calendario.
 enum EstadoDia {
@@ -27,6 +391,7 @@ Map<int, EstadoDia> estadosDelMes({
   required List<ClaseDelEstudiante> clases,
   required List<int> diasDeClase,
   required DateTime hoy,
+  Semestre? semestre,
 }) {
   final porDia = <int, List<ClaseDelEstudiante>>{};
   for (final c in clases) {
@@ -44,6 +409,8 @@ Map<int, EstadoDia> estadosDelMes({
   for (var d = 1; d <= ultimo; d++) {
     final fecha = DateTime(mes.year, mes.month, d);
     if (fecha.isBefore(hoyDia) || estados.containsKey(d)) continue;
+    // Fuera de las fechas del semestre no hay clases que esperar.
+    if (semestre != null && !semestre.contiene(fecha)) continue;
     if (diasDeClase.contains(fecha.weekday)) estados[d] = EstadoDia.proxima;
   }
   return estados;
@@ -61,60 +428,34 @@ EstadoDia _estadoDe(List<ClaseDelEstudiante> clases) {
 /// El calendario mensual de asistencia de una materia, con los días
 /// pintados según lo que pasó en cada clase. Se navega de mes en mes, desde
 /// la primera clase hasta el mes siguiente al actual.
-class CalendarioAsistencia extends StatefulWidget {
+class CalendarioAsistencia extends StatelessWidget {
+  static const _verde = Color(0xFF30D158);
+  static const _ambar = Color(0xFFFF9F0A);
+  static const _rojo = Color(0xFFFF453A);
+  static const _indigo = Color(0xFF5E5CE6);
+
   final List<ClaseDelEstudiante> clases;
 
   /// Los días de la semana con clase (1 = lunes), para marcar las próximas.
   final List<int> diasDeClase;
 
   final DateTime hoy;
+  final Semestre? semestre;
 
   const CalendarioAsistencia({
     super.key,
     required this.clases,
     required this.diasDeClase,
     required this.hoy,
+    this.semestre,
   });
 
-  @override
-  State<CalendarioAsistencia> createState() => _CalendarioAsistenciaState();
-}
-
-class _CalendarioAsistenciaState extends State<CalendarioAsistencia> {
-  static const _verde = Color(0xFF30D158);
-  static const _ambar = Color(0xFFFF9F0A);
-  static const _rojo = Color(0xFFFF453A);
-  static const _indigo = Color(0xFF5E5CE6);
-
-  static const _meses = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio',
-    'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-  ];
-  static const _diasCortos = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-  static const _diasLargos = [
-    'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo',
-  ];
-
-  late DateTime _mes = DateTime(widget.hoy.year, widget.hoy.month);
-  int? _seleccionado;
-
   DateTime get _primerMes {
-    if (widget.clases.isEmpty) return DateTime(widget.hoy.year, widget.hoy.month);
-    final primera = widget.clases
-        .map((c) => c.franja)
-        .reduce((a, b) => a.isBefore(b) ? a : b);
+    if (clases.isEmpty) return DateTime(hoy.year, hoy.month);
+    final primera =
+        clases.map((c) => c.franja).reduce((a, b) => a.isBefore(b) ? a : b);
     return DateTime(primera.year, primera.month);
   }
-
-  DateTime get _ultimoMes => DateTime(widget.hoy.year, widget.hoy.month + 1);
-
-  bool get _hayAnterior => _mes.isAfter(_primerMes);
-  bool get _haySiguiente => _mes.isBefore(_ultimoMes);
-
-  void _moverMes(int delta) => setState(() {
-        _mes = DateTime(_mes.year, _mes.month + delta);
-        _seleccionado = null;
-      });
 
   static Color _color(EstadoDia e) => switch (e) {
         EstadoDia.asistio => _verde,
@@ -123,151 +464,6 @@ class _CalendarioAsistenciaState extends State<CalendarioAsistencia> {
         EstadoDia.proxima => _indigo,
       };
 
-  @override
-  Widget build(BuildContext context) {
-    final estados = estadosDelMes(
-      mes: _mes,
-      clases: widget.clases,
-      diasDeClase: widget.diasDeClase,
-      hoy: widget.hoy,
-    );
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _encabezado(),
-          const SizedBox(height: 4),
-          _cuadricula(estados),
-          const SizedBox(height: 12),
-          _leyenda(),
-          const SizedBox(height: 10),
-          _resumen(estados),
-          if (_seleccionado != null) ...[
-            const SizedBox(height: 10),
-            _detalleDelDia(_seleccionado!, estados[_seleccionado!]),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _encabezado() {
-    return Row(
-      children: [
-        IconButton(
-          onPressed: _hayAnterior ? () => _moverMes(-1) : null,
-          icon: const Icon(Icons.chevron_left),
-          color: Colors.white,
-          disabledColor: AppTheme.textTertiary,
-          tooltip: 'Mes anterior',
-        ),
-        Expanded(
-          child: Text(
-            '${_meses[_mes.month - 1]} ${_mes.year}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        IconButton(
-          onPressed: _haySiguiente ? () => _moverMes(1) : null,
-          icon: const Icon(Icons.chevron_right),
-          color: Colors.white,
-          disabledColor: AppTheme.textTertiary,
-          tooltip: 'Mes siguiente',
-        ),
-      ],
-    );
-  }
-
-  Widget _cuadricula(Map<int, EstadoDia> estados) {
-    final hoy = widget.hoy;
-    final diasDelMes = DateTime(_mes.year, _mes.month + 1, 0).day;
-    final huecos = DateTime(_mes.year, _mes.month).weekday - 1;
-    final celdas = <Widget>[
-      for (final d in _diasCortos)
-        Center(
-          child: Text(
-            d,
-            style: const TextStyle(
-              color: AppTheme.textTertiary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      for (var i = 0; i < huecos; i++) const SizedBox.shrink(),
-      for (var d = 1; d <= diasDelMes; d++)
-        _dia(
-          d,
-          estados[d],
-          esHoy: hoy.year == _mes.year && hoy.month == _mes.month && hoy.day == d,
-        ),
-    ];
-    return GridView.count(
-      crossAxisCount: 7,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 4,
-      crossAxisSpacing: 4,
-      children: celdas,
-    );
-  }
-
-  Widget _dia(int d, EstadoDia? estado, {required bool esHoy}) {
-    final color = estado == null ? null : _color(estado);
-    final relleno = estado != null && estado != EstadoDia.proxima;
-    final seleccionado = _seleccionado == d;
-    return Semantics(
-      button: estado != null,
-      label: '$d${estado == null ? '' : ', ${_texto(estado)}'}',
-      child: GestureDetector(
-        onTap: estado == null
-            ? null
-            : () => setState(() => _seleccionado = seleccionado ? null : d),
-        child: Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: relleno ? color!.withValues(alpha: 0.85) : null,
-            border: Border.all(
-              color: seleccionado
-                  ? Colors.white
-                  : esHoy
-                      ? Colors.white.withValues(alpha: 0.7)
-                      : estado == EstadoDia.proxima
-                          ? _indigo
-                          : Colors.transparent,
-              width: seleccionado ? 2.5 : 1.5,
-            ),
-          ),
-          padding: const EdgeInsets.all(4),
-          child: FittedBox(
-            child: Text(
-              '$d',
-              style: TextStyle(
-                color: relleno
-                    ? Colors.black
-                    : estado == EstadoDia.proxima
-                        ? const Color(0xFFC2C1FF)
-                        : AppTheme.textSecondary,
-                fontSize: 14,
-                fontWeight: relleno || esHoy ? FontWeight.w700 : FontWeight.w400,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   static String _texto(EstadoDia e) => switch (e) {
         EstadoDia.asistio => 'asistió',
         EstadoDia.parcial => 'tarde o a medias',
@@ -275,115 +471,72 @@ class _CalendarioAsistenciaState extends State<CalendarioAsistencia> {
         EstadoDia.proxima => 'próxima clase',
       };
 
-  Widget _leyenda() {
-    Widget item(EstadoDia e, String texto) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: e == EstadoDia.proxima ? null : _color(e),
-                border: e == EstadoDia.proxima
-                    ? Border.all(color: _indigo, width: 1.5)
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              texto,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-            ),
-          ],
-        );
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 14,
-      runSpacing: 6,
-      children: [
-        item(EstadoDia.asistio, 'Asistió'),
-        item(EstadoDia.parcial, 'Tarde o a medias'),
-        item(EstadoDia.falto, 'Faltó'),
-        item(EstadoDia.proxima, 'Próxima clase'),
-      ],
-    );
-  }
+  Map<int, EstadoDia> _estados(DateTime mes) => estadosDelMes(
+        mes: mes,
+        clases: clases,
+        diasDeClase: diasDeClase,
+        hoy: hoy,
+        semestre: semestre,
+      );
 
-  Widget _resumen(Map<int, EstadoDia> estados) {
-    final delMes = widget.clases.where(
-      (c) => c.franja.year == _mes.year && c.franja.month == _mes.month,
+  Map<int, DiaPintado> _dias(DateTime mes) => _estados(mes).map(
+        (d, e) => MapEntry(
+          d,
+          DiaPintado(
+            color: _color(e),
+            relleno: e != EstadoDia.proxima,
+            descripcion: _texto(e),
+          ),
+        ),
+      );
+
+  String _resumen(DateTime mes) {
+    final delMes = clases.where(
+      (c) => c.franja.year == mes.year && c.franja.month == mes.month,
     );
     final asistio = delMes.where((c) => c.asistio).length;
     final falto = delMes.length - asistio;
-    final mes = _meses[_mes.month - 1].toLowerCase();
-    final texto = delMes.isEmpty
-        ? 'En $mes no hubo clases con llamado.'
-        : 'En $mes: asistió a $asistio de ${delMes.length} '
-            '${delMes.length == 1 ? 'clase' : 'clases'}'
-            '${falto > 0 ? ', faltó a $falto' : ''}.';
-    return Text(
-      texto,
-      textAlign: TextAlign.center,
-      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-    );
+    final nombre = nombreDelMes(mes);
+    if (delMes.isEmpty) return 'En $nombre no hubo clases con llamado.';
+    return 'En $nombre: asistió a $asistio de ${delMes.length} '
+        '${delMes.length == 1 ? 'clase' : 'clases'}'
+        '${falto > 0 ? ', faltó a $falto' : ''}.';
   }
 
-  Widget _detalleDelDia(int d, EstadoDia? estado) {
-    final fecha = DateTime(_mes.year, _mes.month, d);
-    final titulo = '${_diasLargos[fecha.weekday - 1]} $d de '
-        '${_meses[_mes.month - 1].toLowerCase()}';
-    final clases = widget.clases
+  Widget _detalle(DateTime fecha) {
+    final estado = _estados(fecha)[fecha.day];
+    final delDia = clases
         .where(
           (c) =>
               c.franja.year == fecha.year &&
               c.franja.month == fecha.month &&
-              c.franja.day == d,
+              c.franja.day == fecha.day,
         )
         .toList()
       ..sort((a, b) => a.franja.compareTo(b.franja));
-    final lineas = clases.isEmpty
+    final lineas = delDia.isEmpty
         ? ['Clase programada según el horario.']
-        : [for (final c in clases) _lineaDeClase(c)];
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceControl,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            titulo,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          for (final l in lineas)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                l,
-                style: TextStyle(
-                  color: estado == null ? AppTheme.textSecondary : _color(estado),
-                  fontSize: 13,
-                ),
+        : [for (final c in delDia) _lineaDeClase(c)];
+    return PanelDelDia(
+      titulo: tituloDelDia(fecha),
+      hijos: [
+        for (final l in lineas)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              l,
+              style: TextStyle(
+                color: estado == null ? AppTheme.textSecondary : _color(estado),
+                fontSize: 13,
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
-  static String _hora(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:'
-      '${d.minute.toString().padLeft(2, '0')}';
-
   static String _lineaDeClase(ClaseDelEstudiante c) {
-    final clase = 'Clase de las ${_hora(c.franja)}';
+    final clase = 'Clase de las ${horaCorta(c.franja)}';
     final marca = c.marca;
     if (!c.asistio) {
       return marca == null
@@ -392,6 +545,24 @@ class _CalendarioAsistenciaState extends State<CalendarioAsistencia> {
     }
     final como = marca!.metodo == MetodoAsistencia.ble ? 'radar BLE' : 'a mano';
     final tarde = marca.estado == EstadoAsistencia.tarde ? 'llegó tarde, ' : '';
-    return '$clase: ${tarde}asistió ($como, ${_hora(marca.hora)})';
+    return '$clase: ${tarde}asistió ($como, ${horaCorta(marca.hora)})';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CalendarioMensual(
+      hoy: hoy,
+      primerMes: _primerMes,
+      ultimoMes: ultimoMesDelCalendario(hoy, semestre),
+      diasDe: _dias,
+      resumenDe: _resumen,
+      detalleDe: _detalle,
+      leyenda: const [
+        ItemLeyenda(_verde, 'Asistió'),
+        ItemLeyenda(_ambar, 'Tarde o a medias'),
+        ItemLeyenda(_rojo, 'Faltó'),
+        ItemLeyenda(_indigo, 'Próxima clase', relleno: false),
+      ],
+    );
   }
 }
