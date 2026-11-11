@@ -332,6 +332,13 @@ class CourseDetailViewModel extends ChangeNotifier {
     );
   }
 
+  /// Lo saca de la lista en el acto, sin esperar el aviso de Firestore: la
+  /// tarjeta que se deslizó para quitarlo ya no puede volver a pintarse.
+  void olvidarInscrito(String clave) {
+    _inscritos = _inscritos.where((i) => i.clave != clave).toList();
+    notifyListeners();
+  }
+
   /// Empieza a escuchar los inscritos y las sesiones de [cursoId]. Llamarlo
   /// otra vez con el mismo id no hace nada.
   void vigilar(String cursoId) {

@@ -4,6 +4,7 @@ import '../../models/inscrito_model.dart';
 import '../../models/sesion_model.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/botones_accesibles.dart';
+import '../../widgets/foto_de_chaira.dart';
 import '../../viewmodels/radar_viewmodel.dart';
 
 class ManualRollcallScreen extends StatefulWidget {
@@ -72,6 +73,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
       probableReason:
           'Motivo probable: Bluetooth apagado o sin permisos en su celular',
       initials: _iniciales(inscrito.nombre),
+      fotoUrl: inscrito.fotoUrl,
       isCritical: false,
     );
   }
@@ -643,15 +645,20 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                       builder: (context, caja) => caja.maxHeight < 160
                           ? const SizedBox.shrink()
                           : Center(
-                              child: CircleAvatar(
-                                radius: 40,
-                                backgroundColor: _surfaceControl,
-                                child: Text(
-                                  student.initials,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
+                              // Su cara, para reconocerlo de un vistazo.
+                              child: FotoDeChaira(
+                                url: student.fotoUrl,
+                                diametro: 80,
+                                enSuLugar: CircleAvatar(
+                                  radius: 40,
+                                  backgroundColor: _surfaceControl,
+                                  child: Text(
+                                    student.initials,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1228,6 +1235,7 @@ class _UndetectedStudent {
   final String riskLabel;
   final String probableReason;
   final String initials;
+  final String? fotoUrl;
   final bool isCritical;
 
   const _UndetectedStudent({
@@ -1241,6 +1249,7 @@ class _UndetectedStudent {
     required this.riskLabel,
     required this.probableReason,
     required this.initials,
+    this.fotoUrl,
     required this.isCritical,
   });
 }

@@ -14,6 +14,7 @@ import '../../viewmodels/radar_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
 import '../../widgets/calendario_asistencia.dart' show horaCorta, tituloDelDia;
 import '../../widgets/calendario_curso.dart';
+import '../../widgets/foto_de_chaira.dart';
 import '../../widgets/hoja_clase_extra.dart';
 import '../../widgets/hoja_geocerca.dart';
 import '../attendance/attendance_radar_screen.dart';
@@ -498,6 +499,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       ),
     );
     if (quitar != true || !mounted) return;
+    await _quitarInscrito(i);
+  }
+
+  /// Pregunta antes de sacar a [i] del curso y lo saca. Devuelve si quedó
+  /// fuera. Lo usan el menú de la tarjeta y el deslizar a la izquierda.
+  Future<bool> _quitarInscrito(Inscrito i) async {
+    if (_soloLectura()) return false;
     final confirma = await showDialog<bool>(
       context: context,
       builder: (dialogo) => AlertDialog(
@@ -523,7 +531,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         ],
       ),
     );
-    if (confirma != true || !mounted) return;
+    if (confirma != true || !mounted) return false;
     final teacherVM = context.read<TeacherViewModel>();
     final messenger = ScaffoldMessenger.of(context);
     final listo = await teacherVM.quitarInscrito(_curso.id, i);
@@ -537,6 +545,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         backgroundColor: listo ? null : AppTheme.error,
       ),
     );
+    return listo;
   }
 
   Future<void> _editarCurso() async {
@@ -1773,9 +1782,20 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           _buildAviso('Ningún inscrito coincide con la búsqueda.')
         else
           for (final inscrito in lista) ...[
-            GestureDetector(
-              onTap: () => _opcionesDelInscrito(inscrito),
-              child: _buildStudentCard(inscrito),
+            // Deslizar a la izquierda lo quita (con confirmación); tocarlo
+            // abre el mismo menú, que es lo que usa TalkBack.
+            Dismissible(
+              key: ValueKey('inscrito-${inscrito.inscrito.clave}'),
+              direction: _curso.archivado
+                  ? DismissDirection.none
+                  : DismissDirection.endToStart,
+              confirmDismiss: (_) => _quitarInscrito(inscrito.inscrito),
+              onDismissed: (_) => _vm.olvidarInscrito(inscrito.inscrito.clave),
+              background: _buildFondoQuitar(),
+              child: GestureDetector(
+                onTap: () => _opcionesDelInscrito(inscrito),
+                child: _buildStudentCard(inscrito),
+              ),
             ),
             const SizedBox(height: 12),
           ],
@@ -1809,6 +1829,33 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           ),
         ),
       ],
+    );
+  }
+
+  /// Lo que asoma detrás de la tarjeta al deslizarla para quitarla.
+  Widget _buildFondoQuitar() {
+    return Container(
+      alignment: AlignmentDirectional.centerEnd,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: _systemRed.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.person_remove_outlined, color: Colors.white),
+          SizedBox(width: 8),
+          Text(
+            'Quitar',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1848,6 +1895,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     }
 
     return _buildStudentRiskCard(
+      fotoUrl: inscrito.inscrito.fotoUrl,
       name: inscrito.nombre,
       id: inscrito.identificacion,
       faultsText: a.sesiones == 0 ? 'Sin clases aún' : _faltas(a.faltas),
@@ -1875,6 +1923,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   }
 
   Widget _buildStudentRiskCard({
+    required String? fotoUrl,
     required String name,
     required String id,
     required String faultsText,
@@ -1914,20 +1963,22 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               Expanded(
                 child: Row(
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: _surfaceControl,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.08),
+                    FotoDeChaira(
+                      url: fotoUrl,
+                      diametro: 44,
+                      enSuLugar: Container(
+                        decoration: BoxDecoration(
+                          color: _surfaceControl,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
                         ),
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        color: AppTheme.textSecondary,
-                        size: 24,
+                        child: const Icon(
+                          Icons.person,
+                          color: AppTheme.textSecondary,
+                          size: 24,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),

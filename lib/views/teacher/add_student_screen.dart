@@ -743,6 +743,7 @@ class _AddStudentScreenState extends State<AddStudentScreen> {
                                 '${AuthViewModel.dominioInstitucional}'
                           : null,
                       nombre: nombre,
+                      fotoUrl: liveResult.fotoUrl,
                     ),
                   )
                 : null,

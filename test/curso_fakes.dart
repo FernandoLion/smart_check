@@ -293,6 +293,13 @@ class FakeCursoService extends Fake implements CursoService {
   }
 
   @override
+  Future<void> quitarInscrito(String cursoId, Inscrito inscrito) async {
+    if (fallo != null) throw fallo!;
+    inscritosPorCurso[cursoId]?.remove(inscrito.clave);
+    _cambios.add(null);
+  }
+
+  @override
   Future<void> inscribir(String cursoId, List<Inscrito> nuevos) async {
     if (fallo != null) throw fallo!;
     final inscritos = inscritosPorCurso.putIfAbsent(cursoId, () => {});
@@ -305,6 +312,8 @@ class FakeCursoService extends Fake implements CursoService {
         nombre: n.nombre,
         uid: n.uid,
         inscritoEn: antes != null ? antes.inscritoEn : relojInscripcion(),
+        // Como el merge del servidor: sin foto nueva se queda la de antes.
+        fotoUrl: n.fotoUrl ?? antes?.fotoUrl,
       );
     }
     final curso = cursos[cursoId]!;

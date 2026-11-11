@@ -24,7 +24,9 @@ void main() {
   });
 
   Future<void> abrir(WidgetTester tester, Curso curso) async {
-    tester.view.physicalSize = const Size(1200, 2600);
+    // Ancho: la letra de las pruebas es más ancha que la del celular (el
+    // tamaño real lo revisa responsive_test, con Roboto).
+    tester.view.physicalSize = const Size(2000, 2600);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
     cursos.cursos[curso.id] = curso;
@@ -80,5 +82,58 @@ void main() {
 
     expect(find.byType(AttendanceRadarScreen), findsNothing);
     expect(find.textContaining('no tiene zona del aula'), findsOneWidget);
+  });
+
+  Future<void> irAEstudiantes(WidgetTester tester) async {
+    await tester.tap(find.text('Estudiantes'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('deslizar a la izquierda quita al estudiante, tras confirmar',
+      (tester) async {
+    await abrir(tester, cursoEnClase());
+    await irAEstudiantes(tester);
+
+    await tester.drag(find.text('ANA PÉREZ'), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('¿Quitar a ANA PÉREZ?'), findsOneWidget);
+
+    // El "Quitar" del diálogo, no el que asoma detrás de la tarjeta.
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Quitar'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(cursos.inscritosPorCurso['c1'], isEmpty);
+    expect(find.text('ANA PÉREZ'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('si cancela, la tarjeta vuelve y no se quita a nadie',
+      (tester) async {
+    await abrir(tester, cursoEnClase());
+    await irAEstudiantes(tester);
+
+    await tester.drag(find.text('ANA PÉREZ'), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(cursos.inscritosPorCurso['c1'], hasLength(1));
+    expect(find.text('ANA PÉREZ'), findsOneWidget);
+  });
+
+  testWidgets('archivado, deslizar no quita a nadie', (tester) async {
+    await abrir(tester, cursoEnClase(archivado: true));
+    await irAEstudiantes(tester);
+
+    await tester.drag(find.text('ANA PÉREZ'), const Offset(-600, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('¿Quitar a ANA PÉREZ?'), findsNothing);
+    expect(cursos.inscritosPorCurso['c1'], hasLength(1));
   });
 }

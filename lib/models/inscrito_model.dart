@@ -15,12 +15,18 @@ class Inscrito {
   /// null en los inscritos de antes de guardarla, a los que les cuenta todo.
   final DateTime? inscritoEn;
 
+  /// La foto del carné en Chairá, si se inscribió buscándolo por cédula. Es
+  /// la dirección, no la foto: la foto se baja una vez y queda en el celular
+  /// del docente (`FotosChaira`).
+  final String? fotoUrl;
+
   const Inscrito({
     this.cedula,
     this.email,
     required this.nombre,
     this.uid,
     this.inscritoEn,
+    this.fotoUrl,
   }) : assert(cedula != null || email != null);
 
   factory Inscrito.fromMap(Map<String, dynamic> map) => Inscrito(
@@ -29,13 +35,17 @@ class Inscrito {
         nombre: map['nombre'] as String? ?? '',
         uid: map['uid'] as String?,
         inscritoEn: (map['inscrito_en'] as Timestamp?)?.toDate(),
+        fotoUrl: map['foto_url'] as String?,
       );
 
+  /// Sin la foto si no se conoce: al volver a pegar la lista por CSV, que no
+  /// la trae, no se le borra la que ya tenía.
   Map<String, dynamic> toMap() => {
         'cedula': cedula,
         'email': email,
         'nombre': nombre,
         'uid': uid,
+        if (fotoUrl != null) 'foto_url': fotoUrl,
       };
 
   /// Si la clase que empezó en [franja] le cuenta: no si fue antes de
