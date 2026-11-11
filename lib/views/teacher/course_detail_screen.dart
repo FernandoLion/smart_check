@@ -941,7 +941,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           ),
           if (!dictada)
             IconButton(
-              onPressed: () => _quitarClaseExtra(clase),
+              // Archivado, gris: el aviso de arriba dice por qué.
+              onPressed: _curso.archivado
+                  ? null
+                  : () => _quitarClaseExtra(clase),
               icon: const Icon(Icons.delete_outline),
               color: AppTheme.textSecondary,
               tooltip: 'Borrar clase extra',
@@ -1291,7 +1294,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _abrirRadar,
+                  // Archivado, gris: el aviso de arriba dice por qué. Sin
+                  // zona o sin estudiantes sigue activo, y al tocarlo dice
+                  // qué falta: eso sí se arregla desde aquí.
+                  onPressed: _curso.archivado ? null : _abrirRadar,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryIndigo,
                     foregroundColor: Colors.white,
@@ -1325,7 +1331,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: _guardandoGeocerca ? null : _editarGeocerca,
+                  onPressed: _guardandoGeocerca || _curso.archivado
+                      ? null
+                      : _editarGeocerca,
                   style: OutlinedButton.styleFrom(
                     backgroundColor: _surfaceControl,
                     foregroundColor: Colors.white,
@@ -1337,16 +1345,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.pin_drop_outlined,
-                        color: _secondaryBlue,
+                        // Gris con el botón, si está archivado.
+                        color: _curso.archivado ? null : _secondaryBlue,
                         size: 17,
                       ),
-                      SizedBox(width: 6),
-                      Flexible(
+                      const SizedBox(width: 6),
+                      const Flexible(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(

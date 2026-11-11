@@ -52,14 +52,34 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
-  testWidgets('archivado: lo dice, y el radar no se abre', (tester) async {
+  /// El botón (de cualquier tipo) que tiene ese texto.
+  ButtonStyleButton boton(WidgetTester tester, String texto) =>
+      tester.widget<ButtonStyleButton>(
+        find.ancestor(
+          of: find.text(texto),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        ),
+      );
+
+  testWidgets('archivado: lo dice arriba, y radar y zona quedan en gris',
+      (tester) async {
     await abrir(tester, cursoEnClase(archivado: true));
 
     expect(find.textContaining('Curso archivado: solo lectura'), findsOneWidget);
-    await tocarIniciarRadar(tester);
+    expect(boton(tester, 'Iniciar Radar').onPressed, isNull);
+    expect(boton(tester, 'Editar zona del aula').onPressed, isNull);
 
+    // Tocarlo no hace nada: ni abre el radar ni saca un aviso.
+    await tocarIniciarRadar(tester);
     expect(find.byType(AttendanceRadarScreen), findsNothing);
-    expect(find.textContaining('está archivado'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
+  });
+
+  testWidgets('activo, radar y zona funcionan', (tester) async {
+    await abrir(tester, cursoEnClase());
+
+    expect(boton(tester, 'Iniciar Radar').onPressed, isNotNull);
+    expect(boton(tester, 'Editar zona del aula').onPressed, isNotNull);
   });
 
   testWidgets('archivado: en las opciones solo queda activar o eliminar',
