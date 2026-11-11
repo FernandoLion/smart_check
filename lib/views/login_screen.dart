@@ -8,7 +8,6 @@ import '../utils/app_theme.dart';
 import '../utils/usuario_input_formatter.dart';
 import 'recover_password_screen.dart';
 import 'smart_register_screen.dart';
-import 'student/puerta_celular_screen.dart';
 import 'student/student_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -703,15 +702,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _navegarComo(String role) async {
-    // Al portal del estudiante solo se entra desde su celular, o
-    // confirmando el rostro para pasarse a este.
-    if (role == 'Estudiante' && !await pasarPuertaDelCelular(context)) {
-      if (!mounted) return;
-      await context.read<AuthViewModel>().signOut();
-      return;
-    }
-    if (!mounted) return;
+  /// Se entra desde cualquier celular. Lo que sí está atado al celular
+  /// vinculado, y pide el rostro, es marcar asistencia.
+  void _navegarComo(String role) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Sesión Iniciada como $role'),

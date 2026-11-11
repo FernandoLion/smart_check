@@ -1174,7 +1174,7 @@ Future<bool> _aceptaRegistrarRostro(BuildContext context) async {
         style: TextStyle(color: Colors.white),
       ),
       content: const Text(
-        'Para que nadie pueda usar tu cuenta desde otro celular, vamos a '
+        'Para que nadie pueda marcar tu asistencia por ti, vamos a '
         'comparar tu cara con tu foto de Chairá.\n\n'
         'Si coinciden, guardaremos una huella numérica de tu rostro, cifrada '
         'y solo en este celular. No se guarda ninguna foto ni sale nada de '
