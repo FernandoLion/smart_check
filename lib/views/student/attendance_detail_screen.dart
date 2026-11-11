@@ -82,7 +82,21 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                 children: [
                   _buildCourseTitleSection(materia),
                   const SizedBox(height: 20),
-                  _buildTermometro(materia.asistencia),
+                  // El portal leyó la asistencia al abrirse, y el docente
+                  // pudo corregirla después (una falta justificada, una
+                  // marca a mano). Con el historial recién leído, el
+                  // termómetro dice lo mismo que el calendario de abajo.
+                  FutureBuilder<List<ClaseDelEstudiante>>(
+                    future: _historial,
+                    builder: (context, estado) => _buildTermometro(
+                      estado.hasData
+                          ? AsistenciaResumen.de(estado.data!)
+                              .conClasesDelSemestre(
+                                materia.asistencia.clasesDelSemestre,
+                              )
+                          : materia.asistencia,
+                    ),
+                  ),
                   const SizedBox(height: 22),
                   _buildCalendario(),
                 ],
@@ -299,8 +313,10 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
+                          // Las justificadas no se le cuentan: el mínimo es
+                          // sobre las demás.
                           'Mínimo para aprobar: ${AsistenciaResumen.minimo}%'
-                          '${conoce ? ' de ${r.clasesDelSemestre} clases' : ''}',
+                          '${conoce ? ' de ${r.clasesContables} clases' : ''}',
                           style: const TextStyle(
                             color: AppTheme.textSecondary,
                             fontSize: 12,
@@ -405,7 +421,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                 child: _buildContador(
                   punto: AppTheme.textSecondary,
                   valor: conoce
-                      ? '${r.sesiones}/${r.clasesDelSemestre}'
+                      ? '${r.sesiones}/${r.clasesContables}'
                       : '${r.sesiones}',
                   etiqueta: 'Dictadas',
                 ),

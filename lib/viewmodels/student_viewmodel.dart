@@ -106,13 +106,32 @@ class StudentViewModel extends ChangeNotifier {
     return (asistidas * 100 / sesiones).round();
   }
 
-  String get globalAttendanceStatus {
-    final porcentaje = globalAttendance;
-    if (porcentaje == null) return 'Sin clases aún';
-    if (porcentaje >= 90) return 'Al día';
-    if (porcentaje >= AsistenciaResumen.minimo) return 'Atención';
-    return 'En riesgo';
+  /// El peor semáforo entre las materias con clases. Cada materia se aprueba
+  /// o se pierde por separado, así que basta una en riesgo para que el portal
+  /// lo diga; y como sale del mismo semáforo de las tarjetas (que mira el
+  /// semestre completo, no solo el porcentaje de hoy), no contradice a
+  /// "En riesgo: N materias". null si aún no hay clases.
+  NivelAsistencia? get nivelGlobal {
+    final niveles = _subjects
+        .where((s) => s.sessionsTotal > 0)
+        .map((s) => s.status)
+        .toSet();
+    if (niveles.isEmpty) return null;
+    if (niveles.contains(NivelAsistencia.riesgo)) {
+      return NivelAsistencia.riesgo;
+    }
+    if (niveles.contains(NivelAsistencia.atencion)) {
+      return NivelAsistencia.atencion;
+    }
+    return NivelAsistencia.alDia;
   }
+
+  String get globalAttendanceStatus => switch (nivelGlobal) {
+        null => 'Sin clases aún',
+        NivelAsistencia.alDia => 'Al día',
+        NivelAsistencia.atencion => 'Atención',
+        NivelAsistencia.riesgo => 'En riesgo',
+      };
 
   int get materiasEnRiesgo =>
       _subjects.where((s) => s.status == NivelAsistencia.riesgo).length;

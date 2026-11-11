@@ -99,4 +99,28 @@ void main() {
     expect(find.textContaining('de $total clases'), findsOneWidget);
     expect(find.text('Por debajo del mínimo'), findsNothing);
   });
+
+  testWidgets(
+      'si el docente justificó después de abrir el portal, el termómetro '
+      'lo refleja', (tester) async {
+    // El portal aún cree que faltó el 20 (2 clases, 1 asistida); el docente
+    // ya le justificó esa falta.
+    servicio.asistenciasPorSesion['s2'] = [
+      Asistencia(
+        claveInscrito: '1117000000',
+        estado: EstadoAsistencia.justificada,
+        metodo: MetodoAsistencia.manual,
+        hora: DateTime(2026, 10, 20, 9),
+        registradoPor: 'uid-docente',
+      ),
+    ];
+    await abrir(tester);
+
+    // La justificada no se le cuenta: 1 de 1, y el semestre tiene una menos.
+    final contables = curso.clasesDelSemestre! - 1;
+    expect(find.text('100%'), findsOneWidget);
+    expect(find.text('1/$contables'), findsOneWidget);
+    expect(find.textContaining('de $contables clases'), findsOneWidget);
+    expect(find.text('50%'), findsNothing);
+  });
 }

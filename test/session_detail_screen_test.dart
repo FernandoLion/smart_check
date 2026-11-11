@@ -107,5 +107,7 @@ void main() {
     expect(guardada.metodo, MetodoAsistencia.manual);
     expect(find.text('Justificada'), findsOneWidget);
     expect(find.text('Quitar justificación'), findsOneWidget);
+    // Ya no es falla: sale de "Ausentes", igual que en el resumen.
+    expect(find.text('Ausentes (0)'), findsOneWidget);
   });
 }

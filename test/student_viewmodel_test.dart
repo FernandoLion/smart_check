@@ -79,7 +79,9 @@ void main() {
     expect(vm.subjects.map((s) => s.status),
         [NivelAsistencia.alDia, NivelAsistencia.riesgo]);
     expect(vm.globalAttendance, 80);
-    expect(vm.globalAttendanceStatus, 'Atención');
+    // Redes está en riesgo: el promedio (80 %) no lo tapa.
+    expect(vm.nivelGlobal, NivelAsistencia.riesgo);
+    expect(vm.globalAttendanceStatus, 'En riesgo');
     expect(vm.materiasEnRiesgo, 1);
   });
 

@@ -40,6 +40,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
   static const Color _systemAmber = Color(0xFFFF9F0A);
   static const Color _systemRed = Color(0xFFFF453A);
   static const Color _errorContainer = Color(0xFF93000A);
+  static const Color _azulJustificada = Color(0xFF0A84FF);
 
   late final AnimationController _sweepController;
   late final AnimationController _pulseController;
@@ -791,6 +792,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
       timeText: asistencia == null ? 'Sin registro' : _hora(asistencia.hora),
       initials: _iniciales(fila.inscrito.nombre),
       isPresent: fila.detectado,
+      justificada: asistencia?.justificada ?? false,
       absentIcon: fila.detectado ? null : Icons.wifi_tethering_off,
     );
   }
@@ -1267,19 +1269,29 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
                     decoration: BoxDecoration(
                       color: student.isPresent
                           ? _tertiaryGreen.withValues(alpha: 0.15)
+                          : student.justificada
+                          ? _azulJustificada.withValues(alpha: 0.15)
                           : _surfaceControl,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: student.isPresent
                             ? _tertiaryGreen.withValues(alpha: 0.3)
+                            : student.justificada
+                            ? _azulJustificada.withValues(alpha: 0.3)
                             : Colors.white.withValues(alpha: 0.08),
                       ),
                     ),
                     child: Text(
-                      student.isPresent ? 'Presente' : 'Ausente',
+                      student.isPresent
+                          ? 'Presente'
+                          : student.justificada
+                          ? 'Justificada'
+                          : 'Ausente',
                       style: TextStyle(
                         color: student.isPresent
                             ? _tertiaryGreen
+                            : student.justificada
+                            ? _azulJustificada
                             : AppTheme.textSecondary,
                         fontSize: 11,
                         fontWeight: student.isPresent
@@ -1495,6 +1507,9 @@ class _RadarStudentItem {
   final String timeText;
   final String initials;
   final bool isPresent;
+
+  /// El docente le justificó la falta: no es asistencia, pero tampoco falla.
+  final bool justificada;
   final IconData? absentIcon;
 
   const _RadarStudentItem({
@@ -1504,6 +1519,7 @@ class _RadarStudentItem {
     required this.timeText,
     required this.initials,
     required this.isPresent,
+    this.justificada = false,
     this.absentIcon,
   });
 }

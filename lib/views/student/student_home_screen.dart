@@ -26,12 +26,12 @@ class StudentHomeScreen extends StatelessWidget {
 
   /// El mismo semáforo de las tarjetas, para que el número grande no diga
   /// verde mientras el texto de al lado dice "En riesgo".
-  static Color _colorDeAsistencia(int? porcentaje) {
-    if (porcentaje == null) return AppTheme.textSecondary;
-    if (porcentaje >= 90) return _tertiaryGreen;
-    if (porcentaje >= AsistenciaResumen.minimo) return _systemAmber;
-    return _systemRed;
-  }
+  static Color _colorDeNivel(NivelAsistencia? nivel) => switch (nivel) {
+        null => AppTheme.textSecondary,
+        NivelAsistencia.alDia => _tertiaryGreen,
+        NivelAsistencia.atencion => _systemAmber,
+        NivelAsistencia.riesgo => _systemRed,
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -496,7 +496,7 @@ class StudentHomeScreen extends StatelessWidget {
                         ? '—'
                         : '${vm.globalAttendance}%',
                     style: TextStyle(
-                      color: _colorDeAsistencia(vm.globalAttendance),
+                      color: _colorDeNivel(vm.nivelGlobal),
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -856,13 +856,20 @@ class StudentHomeScreen extends StatelessWidget {
     return false;
   }
 
-  void _onSubjectTap(BuildContext context, StudentSubjectModel subject) {
-    Navigator.push(
+  Future<void> _onSubjectTap(
+    BuildContext context,
+    StudentSubjectModel subject,
+  ) async {
+    final estudiante = context.read<StudentViewModel>();
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => AttendanceDetailScreen(subject: subject),
       ),
     );
+    // El detalle leyó la asistencia de nuevo: que la tarjeta no se quede
+    // con la de antes (el docente pudo justificar o corregir).
+    await estudiante.refrescar();
   }
 
   void _onSettingsTap(BuildContext context) {

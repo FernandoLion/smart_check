@@ -134,7 +134,11 @@ void main() {
   });
 
   group('la hoja para programarla', () {
-    Future<ClaseExtra?> abrir(WidgetTester tester, Curso c) async {
+    Future<ClaseExtra?> abrir(
+      WidgetTester tester,
+      Curso c, {
+      DateTime? ahora,
+    }) async {
       tester.view.physicalSize = const Size(430, 1000);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -148,7 +152,8 @@ void main() {
                   elegida = await showModalBottomSheet<ClaseExtra>(
                     context: context,
                     isScrollControlled: true,
-                    builder: (_) => HojaClaseExtra(curso: c, ahora: hoy),
+                    builder: (_) =>
+                        HojaClaseExtra(curso: c, ahora: ahora ?? hoy),
                   );
                 },
                 child: const Text('abrir'),
@@ -172,6 +177,16 @@ void main() {
       expect(clase!.inicio, DateTime(2026, 11, 19, 11));
       expect(clase.fin, DateTime(2026, 11, 19, 13));
       expect(clase.aula, '201');
+    });
+
+    testWidgets('de noche ya no cabe hoy: propone mañana a las 08:00',
+        (tester) async {
+      final clase =
+          await abrir(tester, curso(), ahora: DateTime(2026, 11, 19, 23, 20));
+
+      expect(clase, isNotNull);
+      expect(clase!.inicio, DateTime(2026, 11, 20, 8));
+      expect(clase.fin, DateTime(2026, 11, 20, 10));
     });
 
     testWidgets('no deja programarla encima del horario de la clase',

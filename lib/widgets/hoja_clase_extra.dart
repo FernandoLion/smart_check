@@ -37,9 +37,14 @@ class _HojaClaseExtraState extends State<HojaClaseExtra> {
     'dic',
   ];
 
-  late DateTime _dia = _hoy;
+  /// Se propone empezar una hora después y a más tardar a las 20:00; pasadas
+  /// las 19:00 eso ya quedó atrás, así que se propone mañana a las 08:00
+  /// (si mañana aún es del semestre).
+  late final bool _proponerManana =
+      widget.ahora.hour + 1 > 20 && _dias.length > 1;
+  late DateTime _dia = _proponerManana ? _dias[1] : _hoy;
   late TimeOfDay _inicio = TimeOfDay(
-    hour: (widget.ahora.hour + 1).clamp(6, 20),
+    hour: _proponerManana ? 8 : (widget.ahora.hour + 1).clamp(6, 20),
     minute: 0,
   );
   late TimeOfDay _fin = TimeOfDay(hour: _inicio.hour + 2, minute: 0);

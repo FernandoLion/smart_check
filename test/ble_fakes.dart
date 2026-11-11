@@ -99,6 +99,16 @@ Curso cursoEnClase({
   int? dia,
 }) {
   final momento = ahora ?? DateTime.now();
+  // El bloque no puede cruzar la medianoche (un horario es de un solo día):
+  // cerca de las 12 de la noche se recorta a 00:00 o a 23:59, y así las
+  // pruebas que usan la hora real no fallan a las 11 de la noche.
+  final dia0 = DateTime(momento.year, momento.month, momento.day);
+  final desde = momento.subtract(empezoHace);
+  final hasta = momento.add(termina);
+  final inicio = desde.isBefore(dia0) ? '00:00' : hhmm(desde);
+  final fin = hasta.day != momento.day || hasta.isBefore(momento)
+      ? '23:59'
+      : hhmm(hasta);
   return Curso(
     id: id,
     codigo: 'SIS-402',
@@ -111,8 +121,8 @@ Curso cursoEnClase({
     horarios: [
       Horario(
         dia: dia ?? momento.weekday,
-        inicio: hhmm(momento.subtract(empezoHace)),
-        fin: hhmm(momento.add(termina)),
+        inicio: inicio,
+        fin: fin,
       ),
     ],
     geocerca: geocerca,

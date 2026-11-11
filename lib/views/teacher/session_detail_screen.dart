@@ -70,9 +70,12 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
           builder: (context, _) {
             final filas = widget.vm.detalleDeFranja(widget.franja);
             final presentes = filas.where((f) => f.presente).toList();
+            // Las justificadas no son falla: salen en "Todos", no en
+            // "Ausentes", igual que en el resumen de arriba.
+            bool ausente(FilaDeSesion f) => !f.presente && !f.justificada;
             final visibles = filas.where((f) {
               if (_selectedFilter == 1) return f.presente;
-              if (_selectedFilter == 2) return !f.presente;
+              if (_selectedFilter == 2) return ausente(f);
               return true;
             }).toList();
             return Column(
@@ -93,6 +96,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                       _buildFilterSegmentedControl(
                         filas.length,
                         presentes.length,
+                        filas.where(ausente).length,
                       ),
                       const SizedBox(height: 16),
                       _buildStudentsListSection(visibles),
@@ -585,7 +589,11 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
     );
   }
 
-  Widget _buildFilterSegmentedControl(int total, int presentes) {
+  Widget _buildFilterSegmentedControl(
+    int total,
+    int presentes,
+    int ausentes,
+  ) {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -596,7 +604,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
         children: [
           _buildSegmentTab(0, 'Todos ($total)'),
           _buildSegmentTab(1, 'Presentes ($presentes)'),
-          _buildSegmentTab(2, 'Ausentes (${total - presentes})'),
+          _buildSegmentTab(2, 'Ausentes ($ausentes)'),
         ],
       ),
     );
