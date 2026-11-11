@@ -21,7 +21,7 @@ const _nombresDeMes = [
   'Noviembre',
   'Diciembre',
 ];
-const _diasCortos = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const _diasCortos = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const _diasLargos = [
   'Lunes',
   'Martes',
@@ -52,36 +52,47 @@ DateTime ultimoMesDelCalendario(DateTime hoy, Semestre? semestre) {
   return siguiente.isAfter(ultimo) ? ultimo : siguiente;
 }
 
-/// Cómo se pinta un día: relleno si ya pasó algo, con contorno si no.
+/// Cómo se dibuja un día con algo que decir.
+enum EstiloDia {
+  /// Círculo relleno con sombra: ya pasó algo (asistió, faltó...).
+  relleno,
+
+  /// Solo el borde del círculo: algo que tocaba y no ocurrió (sin llamado).
+  aro,
+
+  /// Un punto bajo el número: algo que viene (próxima clase).
+  punto,
+}
+
+/// Cómo se pinta un día.
 class DiaPintado {
   final Color color;
-  final bool relleno;
-
-  /// Texto pequeño debajo del número, como el porcentaje del grupo.
-  final String? nota;
+  final EstiloDia estilo;
 
   /// Lo que lee el lector de pantalla.
   final String descripcion;
 
   const DiaPintado({
     required this.color,
-    required this.relleno,
     required this.descripcion,
-    this.nota,
+    this.estilo = EstiloDia.relleno,
   });
 }
 
 class ItemLeyenda {
   final Color color;
-  final bool relleno;
   final String texto;
+  final EstiloDia estilo;
 
-  const ItemLeyenda(this.color, this.texto, {this.relleno = true});
+  const ItemLeyenda(this.color, this.texto, {this.estilo = EstiloDia.relleno});
 }
 
-/// Un mes con sus días pintados, flechas para cambiar de mes, leyenda,
-/// resumen y el detalle del día que se toque. Qué significa cada color lo
-/// decide quien lo usa.
+/// Un mes con sus días pintados, con el estilo diseñado en Stitch: círculos
+/// de color con sombra, los días de los meses vecinos atenuados, "Hoy" con
+/// aro índigo, botones redondos para cambiar de mes, chip del periodo,
+/// leyenda y, al tocar un día, su detalle. Con [historial], un selector
+/// "Vista Mes | Historial Completo" alterna con esa lista. Qué significa
+/// cada color lo decide quien lo usa.
 class CalendarioMensual extends StatefulWidget {
   final DateTime hoy;
 
@@ -94,8 +105,11 @@ class CalendarioMensual extends StatefulWidget {
   final String Function(DateTime mes) resumenDe;
   final Widget Function(DateTime fecha) detalleDe;
 
-  /// Días cuadrados, con espacio para [DiaPintado.nota].
-  final bool cuadrado;
+  /// "2026-2", para el chip junto al mes.
+  final String? periodo;
+
+  /// La lista completa de clases, para la pestaña "Historial Completo".
+  final Widget? historial;
 
   const CalendarioMensual({
     super.key,
@@ -106,7 +120,8 @@ class CalendarioMensual extends StatefulWidget {
     required this.leyenda,
     required this.resumenDe,
     required this.detalleDe,
-    this.cuadrado = false,
+    this.periodo,
+    this.historial,
   });
 
   @override
@@ -114,8 +129,13 @@ class CalendarioMensual extends StatefulWidget {
 }
 
 class _CalendarioMensualState extends State<CalendarioMensual> {
+  static const _indigo = Color(0xFF5E5CE6);
+  static const _indigoClaro = Color(0xFFE2DFFF);
+  static const _borde = Color(0x14FFFFFF); // Blanco al 8 %.
+
   late DateTime _mes = _mesInicial;
   int? _seleccionado;
+  bool _verHistorial = false;
 
   DateTime get _mesInicial {
     final actual = DateTime(widget.hoy.year, widget.hoy.month);
@@ -132,93 +152,234 @@ class _CalendarioMensualState extends State<CalendarioMensual> {
 
   @override
   Widget build(BuildContext context) {
-    final dias = widget.diasDe(_mes);
-    final seleccionado = _seleccionado;
+    final historial = widget.historial;
+    final verHistorial = _verHistorial && historial != null;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
+        color: AppTheme.surfaceElevated.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _borde),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 32,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _encabezado(),
-          const SizedBox(height: 4),
-          _cuadricula(dias),
-          const SizedBox(height: 12),
-          _leyenda(),
-          const SizedBox(height: 10),
-          Text(
-            widget.resumenDe(_mes),
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-          ),
-          // El día pudo dejar de estar pintado si cambiaron los datos.
-          if (seleccionado != null && dias.containsKey(seleccionado)) ...[
-            const SizedBox(height: 10),
-            widget.detalleDe(DateTime(_mes.year, _mes.month, seleccionado)),
+          if (historial != null) ...[
+            _selector(),
+            const SizedBox(height: 16),
           ],
+          if (verHistorial) historial else ..._vistaMes(),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _vistaMes() {
+    final dias = widget.diasDe(_mes);
+    final seleccionado = _seleccionado;
+    return [
+      _encabezado(),
+      const SizedBox(height: 14),
+      _semana(),
+      const SizedBox(height: 8),
+      _cuadricula(dias),
+      const SizedBox(height: 12),
+      Container(height: 1, color: _borde),
+      const SizedBox(height: 12),
+      _leyenda(),
+      const SizedBox(height: 10),
+      Text(
+        widget.resumenDe(_mes),
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+      ),
+      // El día pudo dejar de estar pintado si cambiaron los datos.
+      if (seleccionado != null && dias.containsKey(seleccionado)) ...[
+        const SizedBox(height: 10),
+        widget.detalleDe(DateTime(_mes.year, _mes.month, seleccionado)),
+      ],
+    ];
+  }
+
+  /// "Vista Mes | Historial Completo", como un control segmentado de iOS.
+  Widget _selector() {
+    Widget segmento(String texto, bool historial) {
+      final activo = _verHistorial == historial;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: activo,
+          child: GestureDetector(
+            onTap: () => setState(() => _verHistorial = historial),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: activo
+                  ? BoxDecoration(
+                      color: AppTheme.surfaceElevated,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    )
+                  : null,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  texto,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: activo ? Colors.white : AppTheme.textSecondary,
+                    fontSize: 13,
+                    fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceControl,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _borde),
+      ),
+      child: Row(
+        children: [
+          segmento('Vista Mes', false),
+          segmento('Historial Completo', true),
         ],
       ),
     );
   }
 
   Widget _encabezado() {
+    final periodo = widget.periodo;
     return Row(
       children: [
-        IconButton(
-          onPressed: _hayAnterior ? () => _moverMes(-1) : null,
-          icon: const Icon(Icons.chevron_left),
-          color: Colors.white,
-          disabledColor: AppTheme.textTertiary,
-          tooltip: 'Mes anterior',
-        ),
         Expanded(
-          child: Text(
-            '${_nombresDeMes[_mes.month - 1]} ${_mes.year}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                '${_nombresDeMes[_mes.month - 1]} ${_mes.year}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (periodo != null && periodo.isNotEmpty)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _indigo.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Semestre $periodo',
+                    style: const TextStyle(
+                      color: _indigo,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
-        IconButton(
-          onPressed: _haySiguiente ? () => _moverMes(1) : null,
-          icon: const Icon(Icons.chevron_right),
-          color: Colors.white,
-          disabledColor: AppTheme.textTertiary,
-          tooltip: 'Mes siguiente',
+        _botonMes(
+          Icons.chevron_left,
+          'Mes anterior',
+          _hayAnterior ? () => _moverMes(-1) : null,
+        ),
+        const SizedBox(width: 4),
+        _botonMes(
+          Icons.chevron_right,
+          'Mes siguiente',
+          _haySiguiente ? () => _moverMes(1) : null,
         ),
       ],
+    );
+  }
+
+  Widget _botonMes(IconData icono, String ayuda, VoidCallback? alTocar) {
+    return IconButton(
+      onPressed: alTocar,
+      icon: Icon(icono),
+      tooltip: ayuda,
+      iconSize: 18,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      style: IconButton.styleFrom(
+        backgroundColor: AppTheme.surfaceControl,
+        disabledBackgroundColor: AppTheme.surfaceControl.withValues(alpha: 0.4),
+        foregroundColor: AppTheme.textSecondary,
+        disabledForegroundColor: AppTheme.textTertiary,
+        side: const BorderSide(color: _borde),
+      ),
+    );
+  }
+
+  /// L M M J V S D, con una línea debajo.
+  Widget _semana() {
+    return Container(
+      padding: const EdgeInsets.only(bottom: 8),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: _borde)),
+      ),
+      child: Row(
+        children: [
+          for (final d in _diasCortos)
+            Expanded(
+              child: Text(
+                d,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
   Widget _cuadricula(Map<int, DiaPintado> dias) {
     final hoy = widget.hoy;
     final diasDelMes = DateTime(_mes.year, _mes.month + 1, 0).day;
-    final huecos = DateTime(_mes.year, _mes.month).weekday - 1;
+    final diasDelAnterior = DateTime(_mes.year, _mes.month, 0).day;
+    final antes = DateTime(_mes.year, _mes.month).weekday - 1;
+    final despues = (7 - (antes + diasDelMes) % 7) % 7;
     return GridView.count(
       crossAxisCount: 7,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 4,
-      crossAxisSpacing: 4,
+      mainAxisSpacing: 6,
       children: [
-        for (final d in _diasCortos)
-          Center(
-            child: Text(
-              d,
-              style: const TextStyle(
-                color: AppTheme.textTertiary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        for (var i = 0; i < huecos; i++) const SizedBox.shrink(),
+        for (var i = antes; i > 0; i--) _diaVecino(diasDelAnterior - i + 1),
         for (var d = 1; d <= diasDelMes; d++)
           _dia(
             d,
@@ -226,70 +387,142 @@ class _CalendarioMensualState extends State<CalendarioMensual> {
             esHoy: hoy.year == _mes.year &&
                 hoy.month == _mes.month &&
                 hoy.day == d,
+            finDeSemana: DateTime(_mes.year, _mes.month, d).weekday >= 6,
           ),
+        for (var d = 1; d <= despues; d++) _diaVecino(d),
       ],
     );
   }
 
-  Widget _dia(int d, DiaPintado? dia, {required bool esHoy}) {
-    final relleno = dia?.relleno ?? false;
+  /// Un día del mes anterior o del siguiente, para completar la semana.
+  Widget _diaVecino(int d) {
+    return ExcludeSemantics(
+      child: Center(
+        child: Text(
+          '$d',
+          style: TextStyle(
+            color: AppTheme.textTertiary.withValues(alpha: 0.4),
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _dia(
+    int d,
+    DiaPintado? dia, {
+    required bool esHoy,
+    required bool finDeSemana,
+  }) {
     final seleccionado = _seleccionado == d;
+    final estilo = dia?.estilo;
+    final relleno = estilo == EstiloDia.relleno;
+
     final Color colorTexto;
     if (relleno) {
-      colorTexto = Colors.black;
-    } else if (dia != null) {
-      colorTexto = Color.lerp(dia.color, Colors.white, 0.5)!;
+      colorTexto = Colors.white;
+    } else if (estilo == EstiloDia.aro) {
+      colorTexto = Color.lerp(dia!.color, Colors.white, 0.35)!;
+    } else if (esHoy) {
+      colorTexto = _indigoClaro;
+    } else if (finDeSemana) {
+      colorTexto = AppTheme.textTertiary;
     } else {
       colorTexto = AppTheme.textSecondary;
     }
-    final borde = Border.all(
-      color: seleccionado
-          ? Colors.white
-          : esHoy
-              ? Colors.white.withValues(alpha: 0.7)
-              : dia != null && !relleno
-                  ? dia.color
-                  : Colors.transparent,
-      width: seleccionado ? 2.5 : 1.5,
-    );
+
+    BoxDecoration? decoracion;
+    if (relleno) {
+      decoracion = BoxDecoration(
+        shape: BoxShape.circle,
+        color: dia!.color,
+        border: seleccionado
+            ? Border.all(color: Colors.white, width: 2)
+            : esHoy
+                ? Border.all(color: _indigo, width: 2)
+                : null,
+        boxShadow: [
+          BoxShadow(
+            color: dia.color.withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      );
+    } else if (estilo == EstiloDia.aro) {
+      decoracion = BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: seleccionado ? Colors.white : dia!.color,
+          width: seleccionado ? 2 : 1.5,
+        ),
+      );
+    } else if (esHoy) {
+      decoracion = BoxDecoration(
+        shape: BoxShape.circle,
+        color: _indigo.withValues(alpha: 0.1),
+        border: Border.all(
+          color: seleccionado ? Colors.white : _indigo,
+          width: seleccionado ? 2 : 1,
+        ),
+      );
+    } else if (seleccionado) {
+      decoracion = BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+      );
+    }
+
+    final descripcion = [
+      if (esHoy) 'hoy',
+      if (dia != null) dia.descripcion,
+    ].join(', ');
     return Semantics(
+      key: ValueKey('dia-$d'),
       button: dia != null,
-      label: '$d${dia == null ? '' : ', ${dia.descripcion}'}',
+      label: descripcion.isEmpty ? '$d' : '$d, $descripcion',
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: dia == null
             ? null
             : () => setState(() => _seleccionado = seleccionado ? null : d),
-        child: Container(
-          decoration: BoxDecoration(
-            shape: widget.cuadrado ? BoxShape.rectangle : BoxShape.circle,
-            borderRadius: widget.cuadrado ? BorderRadius.circular(10) : null,
-            color: relleno ? dia!.color.withValues(alpha: 0.85) : null,
-            border: borde,
-          ),
-          padding: const EdgeInsets.all(4),
+        child: Center(
           child: FittedBox(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '$d',
-                  style: TextStyle(
-                    color: colorTexto,
-                    fontSize: 14,
-                    fontWeight:
-                        relleno || esHoy ? FontWeight.w700 : FontWeight.w400,
-                  ),
-                ),
-                if (dia?.nota != null)
-                  Text(
-                    dia!.nota!,
-                    style: TextStyle(
-                      color: colorTexto,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+            fit: BoxFit.scaleDown,
+            child: SizedBox.square(
+              dimension: 32,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    decoration: decoracion,
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$d',
+                      style: TextStyle(
+                        color: colorTexto,
+                        fontSize: 13,
+                        fontWeight: relleno || esHoy
+                            ? FontWeight.w700
+                            : FontWeight.w400,
+                      ),
                     ),
                   ),
-              ],
+                  if (estilo == EstiloDia.punto)
+                    Positioned(
+                      bottom: 2,
+                      child: Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: dia!.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -298,36 +531,55 @@ class _CalendarioMensualState extends State<CalendarioMensual> {
   }
 
   Widget _leyenda() {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 14,
-      runSpacing: 6,
-      children: [
-        for (final item in widget.leyenda)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: item.relleno ? item.color : null,
-                  border: item.relleno
-                      ? null
-                      : Border.all(color: item.color, width: 1.5),
-                ),
+    Widget item(Color color, String texto, EstiloDia? estilo) {
+      final BoxDecoration punto;
+      switch (estilo) {
+        case EstiloDia.relleno:
+          punto = BoxDecoration(color: color, shape: BoxShape.circle);
+        case EstiloDia.aro:
+          punto = BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 1.5),
+          );
+        case EstiloDia.punto:
+          punto = BoxDecoration(color: color, shape: BoxShape.circle);
+        case null: // Hoy.
+          punto = BoxDecoration(
+            shape: BoxShape.circle,
+            color: _indigo.withValues(alpha: 0.1),
+            border: Border.all(color: _indigo),
+          );
+      }
+      final tamano = estilo == EstiloDia.punto ? 5.0 : 10.0;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox.square(
+            dimension: 10,
+            child: Center(
+              child: Container(
+                width: tamano,
+                height: tamano,
+                decoration: punto,
               ),
-              const SizedBox(width: 5),
-              Text(
-                item.texto,
-                style: const TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-            ],
+            ),
           ),
+          const SizedBox(width: 6),
+          Text(
+            texto,
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          ),
+        ],
+      );
+    }
+
+    return Wrap(
+      alignment: WrapAlignment.spaceAround,
+      spacing: 14,
+      runSpacing: 8,
+      children: [
+        for (final i in widget.leyenda) item(i.color, i.texto, i.estilo),
+        item(_indigo, 'Hoy', null),
       ],
     );
   }
@@ -450,12 +702,20 @@ class CalendarioAsistencia extends StatelessWidget {
   final DateTime hoy;
   final Semestre? semestre;
 
+  /// "2026-2", para el chip junto al mes.
+  final String? periodo;
+
+  /// La lista de clases dictadas, para "Historial Completo".
+  final Widget? historial;
+
   const CalendarioAsistencia({
     super.key,
     required this.clases,
     required this.diasDeClase,
     required this.hoy,
     this.semestre,
+    this.periodo,
+    this.historial,
   });
 
   DateTime get _primerMes {
@@ -494,7 +754,7 @@ class CalendarioAsistencia extends StatelessWidget {
           d,
           DiaPintado(
             color: _color(e),
-            relleno: e != EstadoDia.proxima,
+            estilo: e == EstadoDia.proxima ? EstiloDia.punto : EstiloDia.relleno,
             descripcion: _texto(e),
           ),
         ),
@@ -572,12 +832,14 @@ class CalendarioAsistencia extends StatelessWidget {
       diasDe: _dias,
       resumenDe: _resumen,
       detalleDe: _detalle,
+      periodo: periodo,
+      historial: historial,
       leyenda: const [
-        ItemLeyenda(_verde, 'Asistió'),
-        ItemLeyenda(_ambar, 'Tarde o a medias'),
-        ItemLeyenda(_rojo, 'Faltó'),
+        ItemLeyenda(_verde, 'Presente'),
+        ItemLeyenda(_ambar, 'Tarde'),
+        ItemLeyenda(_rojo, 'Falla'),
         ItemLeyenda(_azul, 'Justificada'),
-        ItemLeyenda(_indigo, 'Próxima clase', relleno: false),
+        ItemLeyenda(_indigo, 'Próxima', estilo: EstiloDia.punto),
       ],
     );
   }

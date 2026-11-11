@@ -125,7 +125,7 @@ void main() {
     expect(find.text('Noviembre 2026'), findsOneWidget);
     expect(find.text('En noviembre: asistió a 1 de 1 clase.'), findsOneWidget);
 
-    await tester.tap(find.text('2'));
+    await tester.tap(find.byKey(const ValueKey('dia-2')));
     await tester.pump();
     expect(find.text('Lunes 2 de noviembre'), findsOneWidget);
     expect(

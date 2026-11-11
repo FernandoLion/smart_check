@@ -85,8 +85,6 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                   _buildTermometro(materia.asistencia),
                   const SizedBox(height: 22),
                   _buildCalendario(),
-                  const SizedBox(height: 22),
-                  _buildClasesDictadas(),
                 ],
               ),
             ),
@@ -517,6 +515,8 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
   }
 
   /// El mes a mes de la materia con los mismos datos de "Clases dictadas".
+  /// El calendario de la materia; "Historial Completo" muestra cada clase
+  /// dictada con lo que pasó, con los mismos datos.
   Widget _buildCalendario() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,13 +543,15 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
                 child: Center(child: CircularProgressIndicator()),
               );
             }
-            // Si falla, el aviso ya sale en "Clases dictadas"; el calendario
-            // se muestra igual con el horario.
+            // Si falla, el calendario se muestra igual con el horario y el
+            // aviso sale en el historial.
             return CalendarioAsistencia(
               clases: estado.data ?? const [],
               diasDeClase: widget.subject.diasDeClase,
               semestre: widget.subject.semestre,
+              periodo: widget.subject.periodo,
               hoy: DateTime.now(),
+              historial: _buildHistorial(estado),
             );
           },
         ),
@@ -557,55 +559,24 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
     );
   }
 
-  Widget _buildClasesDictadas() {
+  Widget _buildHistorial(AsyncSnapshot<List<ClaseDelEstudiante>> estado) {
+    if (estado.hasError) {
+      return _buildMensaje(
+        'No se pudo cargar tu historial. Revisa tu conexión y vuelve a abrir '
+        'la materia.',
+      );
+    }
+    final clases = estado.data ?? const [];
+    if (clases.isEmpty) {
+      return _buildMensaje('Todavía no termina ninguna clase de esta materia.');
+    }
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            'CLASES DICTADAS',
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.6,
-            ),
+        for (final clase in clases)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _buildClase(clase),
           ),
-        ),
-        const SizedBox(height: 10),
-        FutureBuilder<List<ClaseDelEstudiante>>(
-          future: _historial,
-          builder: (context, estado) {
-            if (estado.connectionState != ConnectionState.done) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-            if (estado.hasError) {
-              return _buildMensaje(
-                'No se pudo cargar tu historial. Revisa tu conexión y vuelve '
-                'a abrir la materia.',
-              );
-            }
-            final clases = estado.data ?? const [];
-            if (clases.isEmpty) {
-              return _buildMensaje(
-                'Todavía no termina ninguna clase de esta materia.',
-              );
-            }
-            return Column(
-              children: [
-                for (final clase in clases)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _buildClase(clase),
-                  ),
-              ],
-            );
-          },
-        ),
       ],
     );
   }

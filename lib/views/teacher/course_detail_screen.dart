@@ -745,9 +745,20 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           creadoEn: _curso.creadoEn,
           semestre: _curso.semestre,
           archivado: _curso.archivado,
+          periodo: _curso.periodo,
           alAbrirClase: _abrirSesion,
+          historial: _buildSesionesAnteriores(pasadas),
         ),
-        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  /// Las clases ya dictadas, de la más reciente a la más antigua: es el
+  /// "Historial Completo" del calendario.
+  Widget _buildSesionesAnteriores(List<SesionResumen> pasadas) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -777,8 +788,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         else
           Container(
             decoration: BoxDecoration(
-              color: _surfaceElevated,
-              borderRadius: BorderRadius.circular(18),
+              color: _surfaceControl.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             clipBehavior: Clip.antiAlias,

@@ -137,6 +137,12 @@ class CalendarioDelCurso extends StatelessWidget {
   final bool archivado;
   final void Function(SesionResumen) alAbrirClase;
 
+  /// "2026-2", para el chip junto al mes.
+  final String? periodo;
+
+  /// La lista de sesiones, para "Historial Completo".
+  final Widget? historial;
+
   const CalendarioDelCurso({
     super.key,
     required this.sesiones,
@@ -146,6 +152,8 @@ class CalendarioDelCurso extends StatelessWidget {
     this.creadoEn,
     this.semestre,
     this.archivado = false,
+    this.periodo,
+    this.historial,
   });
 
   List<DateTime> get _franjas =>
@@ -189,12 +197,10 @@ class CalendarioDelCurso extends StatelessWidget {
     final p = dia.porcentaje;
     return DiaPintado(
       color: _color(dia.estado),
-      relleno: dia.estado != EstadoClaseCurso.proxima &&
-          dia.estado != EstadoClaseCurso.sinLlamado,
-      nota: switch (dia.estado) {
-        EstadoClaseCurso.sinLlamado => '—',
-        EstadoClaseCurso.proxima => null,
-        _ => p == null ? null : '$p%',
+      estilo: switch (dia.estado) {
+        EstadoClaseCurso.sinLlamado => EstiloDia.aro,
+        EstadoClaseCurso.proxima => EstiloDia.punto,
+        _ => EstiloDia.relleno,
       },
       descripcion: switch (dia.estado) {
         EstadoClaseCurso.sinLlamado => 'sin llamado',
@@ -302,16 +308,17 @@ class CalendarioDelCurso extends StatelessWidget {
       hoy: ahora,
       primerMes: _primerMes,
       ultimoMes: _ultimoMes,
-      cuadrado: true,
       diasDe: (mes) => _dias(mes).map((d, e) => MapEntry(d, _pintar(e))),
       resumenDe: _resumen,
       detalleDe: _detalle,
+      periodo: periodo,
+      historial: historial,
       leyenda: const [
         ItemLeyenda(_verde, '90% o más'),
         ItemLeyenda(_ambar, '80 a 89%'),
         ItemLeyenda(_rojo, 'Menos de 80%'),
-        ItemLeyenda(_gris, 'Sin llamado', relleno: false),
-        ItemLeyenda(_indigo, 'Próxima clase', relleno: false),
+        ItemLeyenda(_gris, 'Sin llamado', estilo: EstiloDia.aro),
+        ItemLeyenda(_indigo, 'Próxima', estilo: EstiloDia.punto),
       ],
     );
   }

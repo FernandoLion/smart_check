@@ -63,14 +63,23 @@ void main() {
       (tester) async {
     await abrir(tester);
 
+    // Primero el mes, con la leyenda del diseño de Stitch.
+    expect(find.text('CALENDARIO DE ASISTENCIA'), findsOneWidget);
+    expect(find.text('Vista Mes'), findsOneWidget);
+    expect(find.text('Presente'), findsOneWidget);
+    expect(find.text('Falla'), findsOneWidget);
+    expect(find.text('Hoy'), findsOneWidget);
+    expect(find.text('Lunes 19 de octubre'), findsNothing);
+
+    // "Historial Completo" muestra cada clase dictada.
+    await tester.tap(find.text('Historial Completo'));
+    await tester.pumpAndSettle();
     expect(find.text('Lunes 19 de octubre'), findsOneWidget);
     expect(find.text('Radar BLE • 08:05'), findsOneWidget);
     expect(find.text('Martes 20 de octubre'), findsOneWidget);
     expect(find.text('Sin marca'), findsOneWidget);
-    // Uno en la lista y otro en la leyenda del calendario.
-    expect(find.text('Asistió'), findsNWidgets(2));
-    expect(find.text('Faltó'), findsNWidgets(2));
-    expect(find.text('CALENDARIO DE ASISTENCIA'), findsOneWidget);
+    expect(find.text('Asistió'), findsOneWidget);
+    expect(find.text('Faltó'), findsOneWidget);
     // Nada de la maqueta de antes.
     expect(find.textContaining('Aula 301'), findsNothing);
     expect(find.textContaining('Acuerdo 014'), findsNothing);

@@ -170,7 +170,9 @@ void main() {
     );
 
     expect(find.text('Noviembre 2026'), findsOneWidget);
-    expect(find.text('80%'), findsOneWidget);
+    // El porcentaje del grupo se ve al tocar el día.
+    expect(find.bySemanticsLabel(RegExp('^5, clase con 80 por ciento')),
+        findsOneWidget);
     // Lunes 9, jueves 12, lunes 16 y hoy, jueves 19.
     expect(
       find.text(
@@ -180,13 +182,13 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.text('80%'));
+    await tester.tap(find.byKey(const ValueKey('dia-5')));
     await tester.pump();
     expect(find.text('Jueves 5 de noviembre'), findsOneWidget);
     await tester.tap(find.text('Clase de las 06:00: 8 de 10 (80%)'));
     expect(abierta?.asistieron, 8);
 
-    await tester.tap(find.text('9'));
+    await tester.tap(find.byKey(const ValueKey('dia-9')));
     await tester.pump();
     expect(
       find.text('Tocaba clase de 06:00 a 09:00 y no se abrió el radar.'),

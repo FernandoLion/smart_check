@@ -23,6 +23,9 @@ class StudentSubjectModel {
   /// Las fechas del semestre, si se conocen.
   final Semestre? semestre;
 
+  /// El periodo del curso ("2026-2").
+  final String periodo;
+
   const StudentSubjectModel({
     required this.cursoId,
     required this.code,
@@ -34,6 +37,7 @@ class StudentSubjectModel {
     this.asistencia = const AsistenciaResumen(),
     this.diasDeClase = const [],
     this.semestre,
+    this.periodo = '',
   });
 
   factory StudentSubjectModel.desdeCurso(
@@ -51,6 +55,7 @@ class StudentSubjectModel {
       asistencia: asistencia.conClasesDelSemestre(curso.clasesDelSemestre),
       diasDeClase: curso.horarios.map((h) => h.dia).toSet().toList(),
       semestre: curso.semestre,
+      periodo: curso.periodo,
     );
   }
 
