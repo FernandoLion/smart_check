@@ -8,6 +8,7 @@ import '../models/verificacion_result_model.dart';
 import '../services/auth_service.dart';
 import '../services/chaira_service.dart';
 import '../services/dispositivo_service.dart';
+import '../services/fotos_chaira.dart';
 import '../services/perfil_service.dart';
 import '../utils/usuario_input_formatter.dart' as formatter;
 
@@ -25,10 +26,18 @@ class AuthViewModel extends ChangeNotifier {
     ChairaService? chairaService,
     PerfilService? perfilService,
     DispositivoService? dispositivos,
+    FotosChaira? fotos,
   }) : _authService = authService ?? AuthService(),
        _chairaService = chairaService ?? ChairaService(),
        _perfilService = perfilService ?? PerfilService(),
-       _dispositivos = dispositivos ?? DispositivoService();
+       _dispositivos = dispositivos ?? DispositivoService(),
+       _fotosInyectadas = fotos;
+
+  final FotosChaira? _fotosInyectadas;
+
+  /// La foto de perfil se baja de Chairá una vez y queda en el celular.
+  late final FotosChaira _fotos = _fotosInyectadas ??
+      FotosChaira(_chairaService.descargarFoto);
 
   bool _isLoading = false;
   bool _isVerifyingChaira = false;
@@ -347,6 +356,10 @@ class AuthViewModel extends ChangeNotifier {
   /// 5. Cerrar sesión
   Future<void> signOut() async {
     await _authService.signOut();
+    // Las fotos de Chairá guardadas en el celular son datos personales: se
+    // van con la sesión.
+    await _fotos.olvidarTodo();
+    await FotosChaira.olvidarTodas();
     _perfil = null;
     _fotoPerfil = null;
     _verificacionResult = null;
@@ -377,7 +390,8 @@ class AuthViewModel extends ChangeNotifier {
     Duration(seconds: 10),
   ];
 
-  /// La foto no se guarda en la base de datos: se descarga de Chairá.
+  /// La foto no se guarda en la base de datos: se descarga de Chairá la
+  /// primera vez y después se lee del celular ([FotosChaira]).
   Future<void> _cargarFotoPerfil() async {
     final perfil = _perfil;
     if (perfil?.fotoUrl == null) return;
@@ -385,7 +399,7 @@ class AuthViewModel extends ChangeNotifier {
       await Future<void>.delayed(espera);
       // Cerró sesión o entró con otra cuenta mientras tanto.
       if (!identical(_perfil, perfil)) return;
-      final bytes = await _chairaService.descargarFoto(perfil!.fotoUrl!);
+      final bytes = await _fotos.foto(perfil!.fotoUrl!);
       if (bytes != null && identical(_perfil, perfil)) {
         _fotoPerfil = bytes;
         notifyListeners();

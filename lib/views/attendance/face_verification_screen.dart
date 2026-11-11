@@ -10,7 +10,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/curso_model.dart';
-import '../../services/chaira_service.dart';
+import '../../services/fotos_chaira.dart';
 import '../../services/identidad_facial_service.dart';
 import '../../services/rostro_service.dart';
 import '../../utils/app_theme.dart';
@@ -152,7 +152,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
         final enMemoria = auth.usuarioActual?.imagenBytes;
         if (enMemoria != null) return enMemoria;
         final url = perfil?.fotoUrl;
-        return url == null ? null : ChairaService().descargarFoto(url);
+        return url == null ? null : FotosChaira.compartida.foto(url);
       },
     );
   }
