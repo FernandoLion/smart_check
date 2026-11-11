@@ -56,6 +56,32 @@ void main() {
       expect(octubre[26], isNull);
     });
 
+    test('la falta justificada se pinta aparte y no cuenta', () {
+      final estados = estadosDelMes(
+        mes: DateTime(2026, 11),
+        clases: [
+          ClaseDelEstudiante(
+            DateTime(2026, 11, 2, 6),
+            marca(DateTime(2026, 11, 2, 7), estado: EstadoAsistencia.justificada),
+          ),
+          // Asistió a una y la otra se la justificaron: el día cuenta como
+          // asistido.
+          ClaseDelEstudiante(
+            DateTime(2026, 11, 3, 6),
+            marca(DateTime(2026, 11, 3, 6, 5)),
+          ),
+          ClaseDelEstudiante(
+            DateTime(2026, 11, 3, 10),
+            marca(DateTime(2026, 11, 3, 11), estado: EstadoAsistencia.justificada),
+          ),
+        ],
+        diasDeClase: const [],
+        hoy: hoy,
+      );
+      expect(estados[2], EstadoDia.justificada);
+      expect(estados[3], EstadoDia.asistio);
+    });
+
     test('dos clases el mismo día: asistió a una y faltó a otra', () {
       final estados = estadosDelMes(
         mes: DateTime(2026, 11),

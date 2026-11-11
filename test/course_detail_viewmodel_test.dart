@@ -340,7 +340,7 @@ void main() {
       final error = await vm.corregirAsistencia(
         franja20,
         ana.inscrito,
-        presente: true,
+        estado: EstadoAsistencia.presente,
         docenteUid: 'uid-docente',
       );
 
@@ -370,7 +370,7 @@ void main() {
       await vm.corregirAsistencia(
         franja20,
         ana,
-        presente: false,
+        estado: EstadoAsistencia.ausente,
         docenteUid: 'uid-docente',
       );
 
@@ -380,6 +380,38 @@ void main() {
         expect(marca.metodo, MetodoAsistencia.manual);
       }
       expect(vm.sesionesPasadas.single.asistieron, 0);
+    });
+
+    test('justificar la falta la saca del porcentaje de la clase y del suyo',
+        () async {
+      servicio.sesionesPorCurso['c1'] = [llamado('s1', 20, 2)];
+
+      vm.vigilar('c1');
+      await pumpEventQueue();
+      final inscritosAntes = vm.sesionesPasadas.single.inscritos;
+      final ana = vm.detalleDeFranja(franja20)
+          .firstWhere((f) => f.inscrito.clave == 'ana')
+          .inscrito;
+      final error = await vm.corregirAsistencia(
+        franja20,
+        ana,
+        estado: EstadoAsistencia.justificada,
+        docenteUid: 'uid-docente',
+      );
+
+      expect(error, isNull);
+      final fila = vm.detalleDeFranja(franja20)
+          .firstWhere((f) => f.inscrito.clave == 'ana');
+      expect(fila.justificada, isTrue);
+      expect(fila.presente, isFalse);
+      // La clase deja de contarla entre los que debían venir.
+      expect(vm.sesionesPasadas.single.inscritos, inscritosAntes - 1);
+      final suya =
+          vm.inscritos.firstWhere((i) => i.inscrito.clave == 'ana').asistencia;
+      expect(suya.justificadas, 1);
+      expect(suya.sesiones, 0);
+      expect(suya.faltas, 0);
+      expect(vm.asistenciaEnCsv(), contains(';J;'));
     });
 
     test('si no se puede guardar, lo dice y no cambia nada', () async {
@@ -392,7 +424,7 @@ void main() {
       final error = await vm.corregirAsistencia(
         franja20,
         ana,
-        presente: true,
+        estado: EstadoAsistencia.presente,
         docenteUid: 'uid-docente',
       );
 

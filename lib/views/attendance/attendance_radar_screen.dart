@@ -806,6 +806,7 @@ class _AttendanceRadarScreenState extends State<AttendanceRadarScreen>
       return _isRadarActive ? 'Buscando baliza BLE...' : 'Sin detectar';
     }
     if (asistencia.metodo == MetodoAsistencia.manual) {
+      if (asistencia.justificada) return 'Falta justificada';
       return asistencia.estado == EstadoAsistencia.ausente
           ? 'Marcado ausente a mano'
           : 'Marcado a mano por ti';

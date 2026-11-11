@@ -343,11 +343,15 @@ class RadarViewModel extends ChangeNotifier {
   }
 
   /// Marca a mano a quien el radar no oyó.
-  Future<bool> marcarManual(Inscrito inscrito, {bool presente = true}) async {
+  /// [estado]: presente, ausente o justificada (no vino, con excusa).
+  Future<bool> marcarManual(
+    Inscrito inscrito, {
+    String estado = EstadoAsistencia.presente,
+  }) async {
     return _registrar(
       inscrito.clave,
       MetodoAsistencia.manual,
-      forzarEstado: presente ? null : EstadoAsistencia.ausente,
+      forzarEstado: estado == EstadoAsistencia.presente ? null : estado,
     );
   }
 

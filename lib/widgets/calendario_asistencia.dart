@@ -379,6 +379,9 @@ enum EstadoDia {
   /// Faltó a todas las clases de ese día.
   falto,
 
+  /// El docente le justificó la falta (todas las clases de ese día).
+  justificada,
+
   /// Hoy o más adelante le toca clase según el horario.
   proxima,
 }
@@ -418,9 +421,13 @@ Map<int, EstadoDia> estadosDelMes({
 
 EstadoDia _estadoDe(List<ClaseDelEstudiante> clases) {
   final asistidas = clases.where((c) => c.asistio).length;
+  final justificadas = clases.where((c) => c.justificada).length;
+  // Las justificadas no cuentan: se juzga sobre las demás.
+  final contables = clases.length - justificadas;
+  if (contables == 0) return EstadoDia.justificada;
   if (asistidas == 0) return EstadoDia.falto;
   final tarde = clases.any((c) => c.marca?.estado == EstadoAsistencia.tarde);
-  return asistidas < clases.length || tarde
+  return asistidas < contables || tarde
       ? EstadoDia.parcial
       : EstadoDia.asistio;
 }
@@ -432,6 +439,7 @@ class CalendarioAsistencia extends StatelessWidget {
   static const _verde = Color(0xFF30D158);
   static const _ambar = Color(0xFFFF9F0A);
   static const _rojo = Color(0xFFFF453A);
+  static const _azul = Color(0xFF0A84FF);
   static const _indigo = Color(0xFF5E5CE6);
 
   final List<ClaseDelEstudiante> clases;
@@ -461,6 +469,7 @@ class CalendarioAsistencia extends StatelessWidget {
         EstadoDia.asistio => _verde,
         EstadoDia.parcial => _ambar,
         EstadoDia.falto => _rojo,
+        EstadoDia.justificada => _azul,
         EstadoDia.proxima => _indigo,
       };
 
@@ -468,6 +477,7 @@ class CalendarioAsistencia extends StatelessWidget {
         EstadoDia.asistio => 'asistió',
         EstadoDia.parcial => 'tarde o a medias',
         EstadoDia.falto => 'faltó',
+        EstadoDia.justificada => 'falta justificada',
         EstadoDia.proxima => 'próxima clase',
       };
 
@@ -491,8 +501,12 @@ class CalendarioAsistencia extends StatelessWidget {
       );
 
   String _resumen(DateTime mes) {
+    // Las justificadas no se cuentan.
     final delMes = clases.where(
-      (c) => c.franja.year == mes.year && c.franja.month == mes.month,
+      (c) =>
+          c.franja.year == mes.year &&
+          c.franja.month == mes.month &&
+          !c.justificada,
     );
     final asistio = delMes.where((c) => c.asistio).length;
     final falto = delMes.length - asistio;
@@ -538,6 +552,7 @@ class CalendarioAsistencia extends StatelessWidget {
   static String _lineaDeClase(ClaseDelEstudiante c) {
     final clase = 'Clase de las ${horaCorta(c.franja)}';
     final marca = c.marca;
+    if (c.justificada) return '$clase: falta justificada, no se cuenta';
     if (!c.asistio) {
       return marca == null
           ? '$clase: faltó (sin marca)'
@@ -561,6 +576,7 @@ class CalendarioAsistencia extends StatelessWidget {
         ItemLeyenda(_verde, 'Asistió'),
         ItemLeyenda(_ambar, 'Tarde o a medias'),
         ItemLeyenda(_rojo, 'Faltó'),
+        ItemLeyenda(_azul, 'Justificada'),
         ItemLeyenda(_indigo, 'Próxima clase', relleno: false),
       ],
     );

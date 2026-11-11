@@ -472,6 +472,24 @@ class CursoService {
     return orden.last;
   }
 
+  /// La marca que cuenta de cada inscrito en una clase, juntando las de
+  /// todos sus [llamados] ([marcas] va por id de llamado).
+  static Map<String, Asistencia> marcasDeLaClase(
+    Iterable<Sesion> llamados,
+    Map<String, List<Asistencia>> marcas,
+  ) {
+    final porClave = <String, List<Asistencia>>{};
+    for (final s in llamados) {
+      for (final a in marcas[s.id] ?? const <Asistencia>[]) {
+        (porClave[a.claveInscrito] ??= []).add(a);
+      }
+    }
+    return {
+      for (final MapEntry(key: clave, value: suyas) in porClave.entries)
+        clave: marcaQueCuenta(suyas)!,
+    };
+  }
+
   /// Agrupa por franja de clase los llamados que ya terminaron. Está fuera de
   /// la consulta para poder probarlo: es la cuenta que decide el porcentaje
   /// de asistencia del estudiante.
@@ -539,13 +557,12 @@ class CursoService {
     var sesiones = 0;
     var asistidas = 0;
     for (final MapEntry(key: franja, value: llamados) in franjas.entries) {
-      final vinieron = {
-        for (final s in llamados)
-          for (final a in marcas[s.id] ?? const <Asistencia>[])
-            if (a.cuentaComoAsistio) a.claveInscrito,
-      };
+      final deLaClase = marcasDeLaClase(llamados, marcas);
       for (final i in inscritos) {
-        final vino = vinieron.contains(i.clave);
+        final marca = deLaClase[i.clave];
+        // Una falta justificada no cuenta para nadie.
+        if (marca?.justificada ?? false) continue;
+        final vino = marca?.cuentaComoAsistio ?? false;
         if (vino) asistidas++;
         if (vino || i.debiaVenir(franja)) sesiones++;
       }

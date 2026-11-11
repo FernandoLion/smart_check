@@ -30,6 +30,7 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
   static const Color _tertiaryGreen = Color(0xFF47E266); // tertiary
   static const Color _systemAmber = Color(0xFFFF9F0A);
   static const Color _systemRed = Color(0xFFFF453A);
+  static const Color _azulJustificada = Color(0xFF0A84FF);
 
   static const _dias = [
     'Lunes',
@@ -629,10 +630,17 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
   Widget _buildClase(ClaseDelEstudiante clase) {
     final marca = clase.marca;
     final asistio = clase.asistio;
+    final justificada = clase.justificada;
     final porRadar = asistio && marca!.metodo == MetodoAsistencia.ble;
-    final color = asistio ? _tertiaryGreen : _systemRed;
+    final color = asistio
+        ? _tertiaryGreen
+        : justificada
+            ? _azulJustificada
+            : _systemRed;
     final String detalle;
-    if (!asistio) {
+    if (justificada) {
+      detalle = 'Falta justificada por el docente: no se cuenta';
+    } else if (!asistio) {
       detalle = marca == null ? 'Sin marca' : 'Marcado ausente por el docente';
     } else {
       final hora = _hora(marca!.hora);
@@ -655,7 +663,11 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              asistio ? Icons.check : Icons.close,
+              asistio
+                  ? Icons.check
+                  : justificada
+                      ? Icons.assignment_turned_in_outlined
+                      : Icons.close,
               color: color,
               size: 20,
             ),
@@ -690,7 +702,11 @@ class _AttendanceDetailScreenState extends State<AttendanceDetailScreen> {
           ),
           const SizedBox(width: 8),
           Text(
-            asistio ? 'Asistió' : 'Faltó',
+            asistio
+                ? 'Asistió'
+                : justificada
+                    ? 'Justificada'
+                    : 'Faltó',
             style: TextStyle(
               color: color,
               fontSize: 13,

@@ -52,6 +52,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
   static const Color _systemAmber = Color(0xFFFF9F0A);
   static const Color _systemRed = Color(0xFFFF453A);
   static const Color _errorContainer = Color(0xFF93000A);
+  static const Color _azulJustificada = Color(0xFF0A84FF);
 
   int _selectedFilter = 0; // 0: Todos, 1: Presentes, 2: Ausentes
 
@@ -81,7 +82,11 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
                     children: [
-                      _buildHeroSummaryCard(filas.length, presentes),
+                      // Las faltas justificadas no cuentan en el porcentaje.
+                      _buildHeroSummaryCard(
+                        filas.where((f) => !f.justificada).length,
+                        presentes,
+                      ),
                       const SizedBox(height: 16),
                       _buildComoSeMarco(presentes),
                       const SizedBox(height: 16),
@@ -683,7 +688,13 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
     final Color textoInsignia;
     final IconData? iconoInsignia;
     final String insignia;
-    if (!fila.presente) {
+    if (fila.justificada) {
+      punto = _azulJustificada;
+      fondoInsignia = _azulJustificada.withValues(alpha: 0.2);
+      textoInsignia = _azulJustificada;
+      iconoInsignia = Icons.assignment_turned_in_outlined;
+      insignia = 'Justificada';
+    } else if (!fila.presente) {
       punto = _systemRed;
       fondoInsignia = _errorContainer.withValues(alpha: 0.35);
       textoInsignia = _systemRed;
@@ -813,9 +824,14 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                   height: 12,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              else
+              else ...[
                 GestureDetector(
-                  onTap: () => _corregir(fila),
+                  onTap: () => _corregir(
+                    fila,
+                    fila.presente
+                        ? EstadoAsistencia.ausente
+                        : EstadoAsistencia.presente,
+                  ),
                   // A quien quedó presente también se le puede corregir: la
                   // acción se ve, no se esconde detrás de la hora.
                   child: Text(
@@ -829,6 +845,28 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                     ),
                   ),
                 ),
+                // A quien no vino se le puede justificar la falta (la excusa
+                // suele llegar después), y quitarle la justificación.
+                if (!fila.presente) ...[
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: () => _corregir(
+                      fila,
+                      fila.justificada
+                          ? EstadoAsistencia.ausente
+                          : EstadoAsistencia.justificada,
+                    ),
+                    child: Text(
+                      fila.justificada ? 'Quitar justificación' : 'Justificar',
+                      style: const TextStyle(
+                        color: _azulJustificada,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ],
           ),
         ],
@@ -836,11 +874,11 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
     );
   }
 
-  /// Cambia a mano el estado de [fila]. Dejar ausente a alguien que el radar
-  /// detectó se confirma antes, porque deshace una marca que sí ocurrió.
-  Future<void> _corregir(FilaDeSesion fila) async {
-    final presente = !fila.presente;
-    if (!presente) {
+  /// Cambia a mano el estado de [fila] a [estado]. Dejar ausente a alguien
+  /// que quedó presente se confirma antes, porque deshace una marca que sí
+  /// ocurrió.
+  Future<void> _corregir(FilaDeSesion fila, String estado) async {
+    if (fila.presente && estado == EstadoAsistencia.ausente) {
       final confirma = await showDialog<bool>(
         context: context,
         builder: (dialogo) => AlertDialog(
@@ -875,7 +913,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
     final error = await widget.vm.corregirAsistencia(
       widget.franja,
       fila.inscrito,
-      presente: presente,
+      estado: estado,
       docenteUid: widget.curso.docenteUid,
     );
     if (!mounted) return;
@@ -884,9 +922,13 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
       SnackBar(
         content: Text(
           error ??
-              (presente
-                  ? '${fila.inscrito.nombre} quedó presente.'
-                  : '${fila.inscrito.nombre} quedó ausente.'),
+              switch (estado) {
+                EstadoAsistencia.presente =>
+                  '${fila.inscrito.nombre} quedó presente.',
+                EstadoAsistencia.justificada =>
+                  'A ${fila.inscrito.nombre} se le justificó la falta.',
+                _ => '${fila.inscrito.nombre} quedó ausente.',
+              },
         ),
         duration: const Duration(seconds: 2),
       ),

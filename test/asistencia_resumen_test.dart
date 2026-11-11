@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/asistencia_resumen.dart';
+import 'package:smart_check/models/sesion_model.dart';
 
 void main() {
   test('sin sesiones terminadas no hay porcentaje que juzgar', () {
@@ -23,6 +24,46 @@ void main() {
         NivelAsistencia.atencion);
     expect(const AsistenciaResumen(sesiones: 10, asistidas: 7).nivel,
         NivelAsistencia.riesgo);
+  });
+
+  group('faltas justificadas', () {
+    Asistencia marca(String estado) => Asistencia(
+          claveInscrito: '1117000000',
+          estado: estado,
+          metodo: MetodoAsistencia.manual,
+          hora: DateTime(2026, 10, 1, 8),
+          registradoPor: 'uid',
+        );
+
+    test('no cuentan como asistencia ni como falla', () {
+      final justificada = marca(EstadoAsistencia.justificada);
+      expect(justificada.cuentaComoAsistio, isFalse);
+      expect(justificada.justificada, isTrue);
+
+      final r = AsistenciaResumen.de([
+        ClaseDelEstudiante(DateTime(2026, 10, 1), marca(EstadoAsistencia.presente)),
+        ClaseDelEstudiante(DateTime(2026, 10, 2), justificada),
+        ClaseDelEstudiante(DateTime(2026, 10, 3), null),
+      ]);
+      // Se cuentan 2 clases (la justificada no): asistió a 1, faltó a 1.
+      expect(r.sesiones, 2);
+      expect(r.asistidas, 1);
+      expect(r.faltas, 1);
+      expect(r.justificadas, 1);
+      expect(r.porcentaje, 50);
+    });
+
+    test('tampoco cuentan en el total del semestre', () {
+      const r = AsistenciaResumen(
+        sesiones: 5,
+        asistidas: 5,
+        justificadas: 2,
+        clasesDelSemestre: 32,
+      );
+      expect(r.clasesContables, 30);
+      expect(r.faltasPermitidas, 6);
+      expect(r.conClasesDelSemestre(32).justificadas, 2);
+    });
   });
 
   group('con las clases del semestre', () {

@@ -32,6 +32,9 @@ class FilaDeSesion {
   const FilaDeSesion(this.inscrito, this.marca);
 
   bool get presente => marca?.cuentaComoAsistio ?? false;
+
+  /// El docente le justificó la falta en esta clase.
+  bool get justificada => marca?.justificada ?? false;
 }
 
 /// Una sesión con cuántos inscritos asistieron.
@@ -105,8 +108,8 @@ class CourseDetailViewModel extends ChangeNotifier {
 
   /// La asistencia del curso en CSV (separado por punto y coma, como lo abre
   /// Excel en español): un estudiante por fila, una columna por clase
-  /// cerrada con A (asistió), F (faltó) o — (aún no estaba inscrito), y al
-  /// final el total y el porcentaje.
+  /// cerrada con A (asistió), F (faltó), J (falta justificada) o — (aún no
+  /// estaba inscrito), y al final el total y el porcentaje.
   String asistenciaEnCsv() {
     String dos(int n) => n.toString().padLeft(2, '0');
     String celda(String v) =>
@@ -120,6 +123,13 @@ class CourseDetailViewModel extends ChangeNotifier {
         f: {
           for (final fila in detalleDeFranja(f))
             if (fila.presente) fila.inscrito.clave,
+        },
+    };
+    final justificados = {
+      for (final f in franjas)
+        f: {
+          for (final fila in detalleDeFranja(f))
+            if (fila.justificada) fila.inscrito.clave,
         },
     };
     final porNombre = [...inscritos]
@@ -139,7 +149,9 @@ class CourseDetailViewModel extends ChangeNotifier {
           for (final f in franjas)
             presentes[f]!.contains(i.inscrito.clave)
                 ? 'A'
-                : i.inscrito.debiaVenir(f)
+                : justificados[f]!.contains(i.inscrito.clave)
+                    ? 'J'
+                    : i.inscrito.debiaVenir(f)
                     ? 'F'
                     : '—',
           '${i.asistencia.asistidas}/${i.asistencia.sesiones}',
@@ -155,27 +167,22 @@ class CourseDetailViewModel extends ChangeNotifier {
     final filas = CursoService.franjasTerminadas(_sesiones, _ahora())
         .entries
         .map((franja) {
-      final vinieron = _asistieronEnLaFranja(franja.value);
-      return SesionResumen(
-        franja.value.first,
-        vinieron.length,
-        _inscritos
-            .where(
-              (i) => vinieron.contains(i.clave) || i.debiaVenir(franja.key),
-            )
-            .length,
-      );
+      final marcas = CursoService.marcasDeLaClase(franja.value, _asistencias);
+      var vinieron = 0;
+      var esperados = 0;
+      for (final i in _inscritos) {
+        final marca = marcas[i.clave];
+        // Una falta justificada no cuenta en el porcentaje de la clase.
+        if (marca?.justificada ?? false) continue;
+        final vino = marca?.cuentaComoAsistio ?? false;
+        if (vino) vinieron++;
+        if (vino || i.debiaVenir(franja.key)) esperados++;
+      }
+      return SesionResumen(franja.value.first, vinieron, esperados);
     }).toList();
     filas.sort((a, b) => b.sesion.franja.compareTo(a.sesion.franja));
     return filas;
   }
-
-  /// Quiénes quedaron marcados en alguno de los llamados de una franja.
-  Set<String> _asistieronEnLaFranja(List<Sesion> sesiones) => {
-        for (final sesion in sesiones)
-          for (final a in _asistencias[sesion.id] ?? const <Asistencia>[])
-            if (a.cuentaComoAsistio) a.claveInscrito,
-      };
 
   /// Quién vino a la clase de [franja] y cómo quedó marcado: los presentes
   /// primero, por hora de llegada, y luego los ausentes por nombre.
@@ -209,42 +216,45 @@ class CourseDetailViewModel extends ChangeNotifier {
   int llamadosDeFranja(DateTime franja) =>
       CursoService.franjasTerminadas(_sesiones, _ahora())[franja]?.length ?? 0;
 
-  /// Corrige a mano la asistencia de [inscrito] en la clase de [franja].
+  /// Corrige a mano la asistencia de [inscrito] en la clase de [franja]:
+  /// presente, ausente o con la falta justificada ([estado]).
   ///
   /// Para darlo por presente basta una marca en el primer llamado de la
-  /// franja. Para darlo por ausente hay que corregir cada llamado donde
-  /// quedó presente, porque con uno solo ya contaría como asistido. Las
-  /// reglas aceptan correcciones manuales también después de cerrado el
-  /// llamado. Devuelve el error para mostrarlo, o null si se guardó.
+  /// franja. Para darlo por ausente o justificado hay que corregir cada
+  /// llamado donde quedó presente, porque con uno solo ya contaría como
+  /// asistido (y si no tenía marca, en el primero). Las reglas aceptan
+  /// correcciones manuales también después de cerrado el llamado. Devuelve
+  /// el error para mostrarlo, o null si se guardó.
   Future<String?> corregirAsistencia(
     DateTime franja,
     Inscrito inscrito, {
-    required bool presente,
+    required String estado,
     required String docenteUid,
   }) async {
+    final presente = estado == EstadoAsistencia.presente;
     final cursoId = _cursoId;
     final sesiones =
         CursoService.franjasTerminadas(_sesiones, _ahora())[franja];
     if (cursoId == null || sesiones == null || sesiones.isEmpty) {
       return 'Esa clase ya no está en la lista.';
     }
-    final aCorregir = presente
-        ? [sesiones.reduce((a, b) => a.inicio.isBefore(b.inicio) ? a : b)]
-        : [
-            for (final s in sesiones)
-              if ((_asistencias[s.id] ?? const <Asistencia>[]).any(
-                (a) => a.claveInscrito == inscrito.clave && a.cuentaComoAsistio,
-              ))
-                s,
-          ];
+    final primero =
+        sesiones.reduce((a, b) => a.inicio.isBefore(b.inicio) ? a : b);
+    final dondeAsistio = [
+      for (final s in sesiones)
+        if ((_asistencias[s.id] ?? const <Asistencia>[]).any(
+          (a) => a.claveInscrito == inscrito.clave && a.cuentaComoAsistio,
+        ))
+          s,
+    ];
+    final aCorregir =
+        presente || dondeAsistio.isEmpty ? [primero] : dondeAsistio;
     final nuevas = Map<String, List<Asistencia>>.from(_asistencias);
     try {
       for (final sesion in aCorregir) {
         final marca = Asistencia(
           claveInscrito: inscrito.clave,
-          estado: presente
-              ? EstadoAsistencia.presente
-              : EstadoAsistencia.ausente,
+          estado: estado,
           metodo: MetodoAsistencia.manual,
           hora: _ahora(),
           registradoPor: docenteUid,
@@ -272,15 +282,21 @@ class CourseDetailViewModel extends ChangeNotifier {
   /// Los inscritos con su asistencia, los de mayor riesgo primero.
   List<InscritoAsistencia> get inscritos {
     final franjas = CursoService.franjasTerminadas(_sesiones, _ahora());
-    final vinieronPor = {
-      for (final f in franjas.entries) f.key: _asistieronEnLaFranja(f.value),
+    final marcasPor = {
+      for (final f in franjas.entries)
+        f.key: CursoService.marcasDeLaClase(f.value, _asistencias),
     };
     final lista = _inscritos.map((i) {
       var sesiones = 0;
       var asistidas = 0;
-      for (final MapEntry(key: franja, value: vinieron)
-          in vinieronPor.entries) {
-        final vino = vinieron.contains(i.clave);
+      var justificadas = 0;
+      for (final MapEntry(key: franja, value: marcas) in marcasPor.entries) {
+        final marca = marcas[i.clave];
+        if (marca?.justificada ?? false) {
+          justificadas++;
+          continue;
+        }
+        final vino = marca?.cuentaComoAsistio ?? false;
         if (vino) asistidas++;
         if (vino || i.debiaVenir(franja)) sesiones++;
       }
@@ -289,6 +305,7 @@ class CourseDetailViewModel extends ChangeNotifier {
         AsistenciaResumen(
           sesiones: sesiones,
           asistidas: asistidas,
+          justificadas: justificadas,
           clasesDelSemestre: clasesDelSemestre,
         ),
       );

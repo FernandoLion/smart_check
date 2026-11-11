@@ -92,4 +92,20 @@ void main() {
     expect(find.text('Presentes (2)'), findsOneWidget);
     expect(find.text('Marcar presente'), findsNothing);
   });
+
+  testWidgets('a quien no vino se le puede justificar la falta',
+      (tester) async {
+    await abrir(tester);
+
+    await tester.ensureVisible(find.text('Justificar'));
+    await tester.tap(find.text('Justificar'));
+    await tester.pumpAndSettle();
+
+    final guardada = servicio.asistenciasPorSesion['s1']!
+        .firstWhere((a) => a.claveInscrito == 'ana');
+    expect(guardada.estado, EstadoAsistencia.justificada);
+    expect(guardada.metodo, MetodoAsistencia.manual);
+    expect(find.text('Justificada'), findsOneWidget);
+    expect(find.text('Quitar justificación'), findsOneWidget);
+  });
 }

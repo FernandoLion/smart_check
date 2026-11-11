@@ -100,6 +100,10 @@ class EstadoAsistencia {
   static const presente = 'presente';
   static const tarde = 'tarde';
   static const ausente = 'ausente';
+
+  /// No vino, con excusa: la marca el docente a mano. Esa clase no se le
+  /// cuenta al estudiante (ni falla ni asistencia).
+  static const justificada = 'justificada';
 }
 
 /// Cómo se registró la asistencia.
@@ -144,5 +148,9 @@ class Asistencia {
         'registrado_por': registradoPor,
       };
 
-  bool get cuentaComoAsistio => estado != EstadoAsistencia.ausente;
+  bool get cuentaComoAsistio =>
+      estado == EstadoAsistencia.presente || estado == EstadoAsistencia.tarde;
+
+  /// Falta justificada por el docente: no cuenta como falla.
+  bool get justificada => estado == EstadoAsistencia.justificada;
 }

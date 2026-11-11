@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/inscrito_model.dart';
+import '../../models/sesion_model.dart';
 import '../../utils/app_theme.dart';
 import '../../viewmodels/radar_viewmodel.dart';
 
@@ -30,6 +31,7 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
   static const Color _tertiaryGreen = Color(0xFF47E266); // tertiary
   static const Color _systemAmber = Color(0xFFFF9F0A);
   static const Color _systemRed = Color(0xFFFF453A);
+  static const Color _azulJustificada = Color(0xFF0A84FF);
 
   /// Los que el BLE no oyó, congelados al entrar para que la lista no se
   /// mueva mientras el docente los pasa uno por uno.
@@ -85,15 +87,17 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
   double _dragOffsetX = 0.0;
   bool _isAnimatingOut = false;
 
-  void _triggerCardSwipe({required bool isPresent}) {
+  /// Marca la tarjeta de arriba con [estado] (presente, ausente o
+  /// justificada) y pasa a la siguiente.
+  void _triggerCardSwipe({required String estado}) {
     if (_isAnimatingOut || _students.isEmpty) return;
 
     final inscrito = _pendientes[_currentIndex];
     setState(() {
       _isAnimatingOut = true;
-      _dragOffsetX = isPresent ? 420.0 : -420.0;
+      _dragOffsetX = estado == EstadoAsistencia.presente ? 420.0 : -420.0;
     });
-    _registrar(inscrito, isPresent);
+    _registrar(inscrito, estado);
 
     Future.delayed(const Duration(milliseconds: 260), () {
       if (!mounted) return;
@@ -121,8 +125,8 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
     });
   }
 
-  Future<void> _registrar(Inscrito inscrito, bool presente) async {
-    final ok = await widget.radar.marcarManual(inscrito, presente: presente);
+  Future<void> _registrar(Inscrito inscrito, String estado) async {
+    final ok = await widget.radar.marcarManual(inscrito, estado: estado);
     if (!mounted || ok) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -496,9 +500,9 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
           onHorizontalDragEnd: (details) {
             if (_isAnimatingOut) return;
             if (_dragOffsetX > 95) {
-              _triggerCardSwipe(isPresent: true);
+              _triggerCardSwipe(estado: EstadoAsistencia.presente);
             } else if (_dragOffsetX < -95) {
-              _triggerCardSwipe(isPresent: false);
+              _triggerCardSwipe(estado: EstadoAsistencia.ausente);
             } else {
               setState(() => _dragOffsetX = 0.0);
             }
@@ -1087,6 +1091,17 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
               ),
               SizedBox(width: 4),
               Icon(Icons.arrow_forward, color: AppTheme.textTertiary, size: 13),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  '•',
+                  style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+                ),
+              ),
+              Text(
+                'Botón azul: Justificada',
+                style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -1120,7 +1135,8 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
 
                 // Botón 2: AUSENTE (Coral Red Soft Glow)
                 GestureDetector(
-                  onTap: () => _triggerCardSwipe(isPresent: false),
+                  onTap: () =>
+                      _triggerCardSwipe(estado: EstadoAsistencia.ausente),
                   child: Container(
                     width: 64,
                     height: 64,
@@ -1139,9 +1155,35 @@ class _ManualRollcallScreenState extends State<ManualRollcallScreen> {
                   ),
                 ),
 
-                // Botón 3: PRESENTE (Neon Green Soft Glow)
+                // Botón 3: JUSTIFICADA. No vino, pero con excusa: esa clase
+                // no se le cuenta.
+                Semantics(
+                  button: true,
+                  label: 'Falta justificada',
+                  child: GestureDetector(
+                    onTap: () =>
+                        _triggerCardSwipe(estado: EstadoAsistencia.justificada),
+                    child: Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: _azulJustificada.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _azulJustificada, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.assignment_turned_in_outlined,
+                        color: _azulJustificada,
+                        size: 26,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Botón 4: PRESENTE (Neon Green Soft Glow)
                 GestureDetector(
-                  onTap: () => _triggerCardSwipe(isPresent: true),
+                  onTap: () =>
+                      _triggerCardSwipe(estado: EstadoAsistencia.presente),
                   child: Container(
                     width: 64,
                     height: 64,

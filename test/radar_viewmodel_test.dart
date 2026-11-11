@@ -398,7 +398,7 @@ void main() {
       await vm.iniciar(cursoEnClase(), 'uid-docente');
       final carlos = cursos.inscritosPorCurso['c1']!['ca.munoz@udla.edu.co']!;
 
-      expect(await vm.marcarManual(carlos, presente: false), isTrue);
+      expect(await vm.marcarManual(carlos, estado: EstadoAsistencia.ausente), isTrue);
 
       final fila = vm.lista.firstWhere((i) => i.inscrito.clave == carlos.clave);
       expect(fila.asistencia!.estado, EstadoAsistencia.ausente);
@@ -416,7 +416,7 @@ void main() {
       final carlos = cursos.inscritosPorCurso['c1']!['ca.munoz@udla.edu.co']!;
       ble.oir('1117000000');
       await pumpEventQueue();
-      await vm.marcarManual(carlos, presente: false);
+      await vm.marcarManual(carlos, estado: EstadoAsistencia.ausente);
 
       final filas = vm.actaEnCsv().split('\n');
       expect(filas.first, 'Estudiante;Identificación;Estado;Cómo se marcó;Hora');

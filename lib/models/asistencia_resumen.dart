@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'sesion_model.dart';
 
 /// Semáforo de asistencia, igual en el portal del estudiante y en el panel
@@ -10,8 +12,13 @@ class AsistenciaResumen {
   /// Asistencia mínima para no reprobar la materia.
   static const minimo = 80;
 
+  /// Las clases que se le cuentan: las ya dictadas, sin las justificadas.
   final int sesiones;
   final int asistidas;
+
+  /// Faltas justificadas por el docente. No están en [sesiones]: esas clases
+  /// no se le cuentan, ni como falla ni como asistencia.
+  final int justificadas;
 
   /// Las clases que tendrá el curso en todo el semestre, según su horario y
   /// el calendario académico. Null si no se sabe. De aquí sale el límite de
@@ -21,24 +28,35 @@ class AsistenciaResumen {
   const AsistenciaResumen({
     this.sesiones = 0,
     this.asistidas = 0,
+    this.justificadas = 0,
     this.clasesDelSemestre,
   });
 
   AsistenciaResumen conClasesDelSemestre(int? total) => AsistenciaResumen(
         sesiones: sesiones,
         asistidas: asistidas,
+        justificadas: justificadas,
         clasesDelSemestre: total,
       );
 
+  /// Las clases del semestre que se le cuentan: las justificadas no. Null
+  /// si no se conoce el semestre.
+  int? get clasesContables {
+    final total = clasesDelSemestre;
+    return total == null ? null : max(0, total - justificadas);
+  }
+
   /// Si se sabe cuántas clases tiene el semestre. Sin eso no hay un límite
   /// de fallas que mostrar.
-  bool get conoceElSemestre => (clasesDelSemestre ?? 0) > 0;
+  bool get conoceElSemestre => (clasesContables ?? 0) > 0;
 
-  /// El resumen de las clases que ya terminaron, una por franja.
+  /// El resumen de las clases que ya terminaron, una por franja. Las
+  /// justificadas se apartan: no cuentan ni a favor ni en contra.
   factory AsistenciaResumen.de(List<ClaseDelEstudiante> clases) =>
       AsistenciaResumen(
-        sesiones: clases.length,
+        sesiones: clases.where((c) => !c.justificada).length,
         asistidas: clases.where((c) => c.asistio).length,
+        justificadas: clases.where((c) => c.justificada).length,
       );
 
   /// null mientras ninguna sesión haya terminado: aún no hay nada que juzgar.
@@ -50,7 +68,7 @@ class AsistenciaResumen {
   /// fallas, y no por faltar a una de las dos primeras clases.
   NivelAsistencia get nivel {
     if (!conoceElSemestre) return nivelDe(porcentaje);
-    final total = clasesDelSemestre!;
+    final total = clasesContables!;
     return nivelDe(((total - faltas) * 100 / total).floor());
   }
 
@@ -67,7 +85,7 @@ class AsistenciaResumen {
   /// conoce, sobre las dictadas: es solo una cota, y las pantallas no la
   /// muestran (ver [conoceElSemestre]).
   int get faltasPermitidas =>
-      ((clasesDelSemestre ?? sesiones) * (100 - minimo) / 100).floor();
+      ((clasesContables ?? sesiones) * (100 - minimo) / 100).floor();
 
   /// Las que todavía puede darse sin bajar del mínimo.
   int get faltasDisponibles {
@@ -88,4 +106,7 @@ class ClaseDelEstudiante {
   const ClaseDelEstudiante(this.franja, this.marca);
 
   bool get asistio => marca?.cuentaComoAsistio ?? false;
+
+  /// El docente le justificó la falta: esta clase no se le cuenta.
+  bool get justificada => marca?.justificada ?? false;
 }
