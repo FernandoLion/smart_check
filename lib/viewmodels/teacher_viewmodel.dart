@@ -33,9 +33,10 @@ class TeacherViewModel extends ChangeNotifier {
   String? get error => _error;
 
   /// Empieza a escuchar los cursos de [docenteUid]. Llamarlo otra vez con el
-  /// mismo uid no hace nada; con otro, cambia de docente.
+  /// mismo uid no hace nada, salvo que la escucha haya fallado: entonces lo
+  /// intenta de nuevo. Con otro uid, cambia de docente.
   void vigilarCursos(String docenteUid) {
-    if (_docenteUid == docenteUid) return;
+    if (_docenteUid == docenteUid && _error == null) return;
     _suscripcion?.cancel();
     _docenteUid = docenteUid;
     _cursos = const [];
@@ -57,6 +58,20 @@ class TeacherViewModel extends ChangeNotifier {
     );
     // Se notifica después del build en curso, desde donde se suele llamar.
     scheduleMicrotask(notifyListeners);
+  }
+
+  /// Deja de escuchar y olvida al docente. Va antes de cerrar sesión, por lo
+  /// mismo que en el portal del estudiante: una escucha abierta sin usuario
+  /// termina en "permiso denegado".
+  void dejarDeVigilar() {
+    _suscripcion?.cancel();
+    _suscripcion = null;
+    _docenteUid = null;
+    _cursos = const [];
+    _promedios.clear();
+    _error = null;
+    _cargando = false;
+    notifyListeners();
   }
 
   /// Crea el curso e inscribe a [inscritos]. Devuelve el id del curso, o null

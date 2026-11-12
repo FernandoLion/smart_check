@@ -109,4 +109,36 @@ void main() {
     await pumpEventQueue();
     expect(vm.cursos.single.nombre, 'Arquitectura');
   });
+
+  group('al cerrar sesión y volver a entrar', () {
+    test('un error viejo no se queda: con el mismo uid lo reintenta',
+        () async {
+      servicio.cursos['a'] = cursoDe('uid-1', 'Arquitectura');
+      servicio.falloAlLeerCursos =
+          CursoException('No se pudo leer tus cursos: permiso denegado');
+      vm.vigilarCursos('uid-1');
+      await pumpEventQueue();
+      expect(vm.error, isNotNull);
+
+      servicio.falloAlLeerCursos = null;
+      vm.vigilarCursos('uid-1');
+      await pumpEventQueue();
+
+      expect(vm.error, isNull);
+      expect(vm.cursos.single.nombre, 'Arquitectura');
+    });
+
+    test('dejar de vigilar olvida los cursos', () async {
+      servicio.cursos['a'] = cursoDe('uid-1', 'Arquitectura');
+      vm.vigilarCursos('uid-1');
+      await pumpEventQueue();
+
+      vm.dejarDeVigilar();
+      expect(vm.cursos, isEmpty);
+
+      vm.vigilarCursos('uid-1');
+      await pumpEventQueue();
+      expect(vm.cursos.single.nombre, 'Arquitectura');
+    });
+  });
 }

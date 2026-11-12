@@ -213,4 +213,39 @@ void main() {
     // Las materias se siguen viendo aunque falle el conteo de asistencia.
     expect(vm.subjects.single.name, 'Arquitectura');
   });
+
+  group('al cerrar sesión y volver a entrar', () {
+    test('un error viejo no se queda: con las mismas claves lo reintenta',
+        () async {
+      servicio.cursos['a'] = cursoCon('Arquitectura', ['1117000000']);
+      servicio.falloAlLeerCursos =
+          CursoException('No se pudo leer tus cursos: permiso denegado');
+      vm.vigilarCursos(cedula: '1117000000');
+      await pumpEventQueue();
+      expect(vm.error, isNotNull);
+
+      servicio.falloAlLeerCursos = null;
+      vm.vigilarCursos(cedula: '1117000000');
+      await pumpEventQueue();
+
+      expect(vm.error, isNull);
+      expect(vm.subjects.single.name, 'Arquitectura');
+    });
+
+    test('dejar de vigilar olvida los cursos y el error', () async {
+      servicio.cursos['a'] = cursoCon('Arquitectura', ['1117000000']);
+      vm.vigilarCursos(cedula: '1117000000');
+      await pumpEventQueue();
+      expect(vm.subjects, hasLength(1));
+
+      vm.dejarDeVigilar();
+
+      expect(vm.subjects, isEmpty);
+      expect(vm.error, isNull);
+      // Al volver a entrar, escucha otra vez aunque sean las mismas claves.
+      vm.vigilarCursos(cedula: '1117000000');
+      await pumpEventQueue();
+      expect(vm.subjects.single.name, 'Arquitectura');
+    });
+  });
 }

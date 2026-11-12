@@ -8,6 +8,7 @@ import '../../models/student_subject_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../services/identidad_facial_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/cerrar_sesion.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/face_verification_viewmodel.dart';
 import '../../viewmodels/student_viewmodel.dart';
@@ -116,8 +117,7 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
   }
 
   Future<void> _handleLogout() async {
-    final authVM = context.read<AuthViewModel>();
-    await authVM.signOut();
+    await cerrarSesion(context);
 
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(

@@ -27,11 +27,16 @@ class FakeCursoService extends Fake implements CursoService {
   /// Asistencia ya calculada por curso, como la devolvería Firestore.
   final resumenes = <String, AsistenciaResumen>{};
   CursoException? fallo;
+
+  /// Si se pone, las escuchas de cursos fallan, como cuando Firestore niega
+  /// el permiso a una escucha que quedó abierta sin usuario.
+  CursoException? falloAlLeerCursos;
   final _cambios = StreamController<void>.broadcast();
   var _siguienteId = 1;
 
   @override
   Stream<List<Curso>> cursosDelDocente(String docenteUid) async* {
+    if (falloAlLeerCursos != null) throw falloAlLeerCursos!;
     yield _delDocente(docenteUid);
     await for (final _ in _cambios.stream) {
       yield _delDocente(docenteUid);
@@ -59,6 +64,7 @@ class FakeCursoService extends Fake implements CursoService {
       yield const [];
       return;
     }
+    if (falloAlLeerCursos != null) throw falloAlLeerCursos!;
     yield _inscritoEn(claves);
     await for (final _ in _cambios.stream) {
       yield _inscritoEn(claves);

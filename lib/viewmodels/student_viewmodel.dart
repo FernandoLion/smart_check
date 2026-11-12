@@ -139,13 +139,14 @@ class StudentViewModel extends ChangeNotifier {
       _subjects.where((s) => s.status == NivelAsistencia.riesgo).length;
 
   /// Empieza a escuchar los cursos donde el estudiante está inscrito por
-  /// [cedula] o por [email]. Volver a llamarlo con los mismos no hace nada.
+  /// [cedula] o por [email]. Volver a llamarlo con los mismos no hace nada,
+  /// salvo que la escucha haya fallado: entonces lo intenta de nuevo.
   void vigilarCursos({String? cedula, String? email}) {
     final claves = [
       if (cedula != null && cedula.isNotEmpty) cedula,
       if (email != null && email.isNotEmpty) email.toLowerCase(),
     ];
-    if (_mismasClaves(claves)) return;
+    if (_mismasClaves(claves) && _error == null) return;
     _suscripcion?.cancel();
     _olvidarLlamados();
     _claves = claves;
@@ -271,6 +272,24 @@ class StudentViewModel extends ChangeNotifier {
       _programarExpiracion();
       notifyListeners();
     });
+  }
+
+  /// Deja de escuchar y olvida al estudiante. Va antes de cerrar sesión: si
+  /// la escucha siguiera abierta, Firestore se la negaría al quedarse sin
+  /// usuario, y ese "permiso denegado" seguiría a la vista al volver a entrar
+  /// con la misma cuenta.
+  void dejarDeVigilar() {
+    _suscripcion?.cancel();
+    _suscripcion = null;
+    _olvidarLlamados();
+    _claves = const [];
+    _cursos = const [];
+    _subjects = const [];
+    _marcaVigente = null;
+    _marcaDelLlamado = null;
+    _error = null;
+    _cargando = false;
+    notifyListeners();
   }
 
   void _olvidarLlamados() {

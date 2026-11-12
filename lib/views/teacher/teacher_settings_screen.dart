@@ -7,6 +7,7 @@ import '../../models/inscrito_model.dart';
 import '../../models/sesion_model.dart';
 import '../../models/verificacion_result_model.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/cerrar_sesion.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../viewmodels/teacher_viewmodel.dart';
 import '../login_screen.dart';
@@ -108,8 +109,7 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
   }
 
   Future<void> _handleLogout() async {
-    final authVM = context.read<AuthViewModel>();
-    await authVM.signOut();
+    await cerrarSesion(context);
 
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
