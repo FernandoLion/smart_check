@@ -6,6 +6,7 @@ import '../models/usuario_perfil_model.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
 import '../utils/usuario_input_formatter.dart';
+import '../widgets/smartcheck_logo.dart';
 import 'recover_password_screen.dart';
 import 'smart_register_screen.dart';
 import 'student/student_home_screen.dart';
@@ -118,65 +119,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildHeaderBranding() {
     return Column(
       children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceElevated,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.25),
-                    blurRadius: 30,
-                    spreadRadius: 0,
-                  ),
-                ],
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppTheme.primary.withValues(alpha: 0.3),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-                child: const Icon(
-                  Icons.security,
-                  size: 40,
-                  color: AppTheme.primary,
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: -4,
-              right: -4,
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: const BoxDecoration(
-                  color: AppTheme.success,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
-                ),
-                child: const Icon(
-                  Icons.verified_user,
-                  size: 14,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
+        const SmartCheckLogo(size: 96),
         const SizedBox(height: 16),
-        Text(
-          'SmartCheck',
+        SmartCheckNombre(
           style: Theme.of(context).textTheme.headlineLarge
               ?.copyWith(fontWeight: FontWeight.bold, letterSpacing: -0.5),
         ),

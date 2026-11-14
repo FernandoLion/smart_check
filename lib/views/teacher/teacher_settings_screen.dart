@@ -13,6 +13,7 @@ import '../../viewmodels/teacher_viewmodel.dart';
 import '../login_screen.dart';
 import '../../widgets/ajustes_compartidos.dart';
 import '../../widgets/botones_accesibles.dart';
+import '../../widgets/smartcheck_logo.dart';
 import 'import_csv_screen.dart';
 
 class TeacherSettingsScreen extends StatefulWidget {
@@ -553,7 +554,9 @@ class _TeacherSettingsScreenState extends State<TeacherSettingsScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
+        const SmartCheckLogo(size: 36),
+        const SizedBox(height: 8),
         const Text(
           'Versión 1.0.0 • SmartCheck UDLA',
           style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),

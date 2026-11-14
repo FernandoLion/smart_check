@@ -7,6 +7,7 @@ import 'teacher_settings_screen.dart';
 import 'course_detail_screen.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/botones_accesibles.dart';
+import '../../widgets/smartcheck_logo.dart';
 import '../../widgets/texto_sin_cortes.dart';
 import '../../models/curso_model.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -326,10 +327,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.shield, color: _primaryLight, size: 20),
+              SmartCheckLogo(size: 26),
               SizedBox(width: 8),
-              Text(
-                'SmartCheck',
+              SmartCheckNombre(
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,

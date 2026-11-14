@@ -18,6 +18,7 @@ import 'attendance_detail_screen.dart';
 import 'biometric_validation_screen.dart';
 import '../../widgets/ajustes_compartidos.dart';
 import '../../widgets/botones_accesibles.dart';
+import '../../widgets/smartcheck_logo.dart';
 import '../../widgets/texto_sin_cortes.dart';
 
 class StudentSettingsScreen extends StatefulWidget {
@@ -1106,7 +1107,9 @@ class _StudentSettingsScreenState extends State<StudentSettingsScreen>
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
+        const SmartCheckLogo(size: 36),
+        const SizedBox(height: 8),
         const Text(
           'Versión 1.0.0 • SmartCheck UDLA Estudiantes',
           textAlign: TextAlign.center,

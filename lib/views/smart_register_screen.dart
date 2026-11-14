@@ -7,6 +7,7 @@ import '../services/identidad_facial_service.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
 import '../utils/usuario_input_formatter.dart';
+import '../widgets/smartcheck_logo.dart';
 import 'attendance/face_verification_screen.dart';
 import 'login_screen.dart';
 
@@ -305,41 +306,9 @@ class _SmartRegisterScreenState extends State<SmartRegisterScreen> {
   Widget _buildHeader() {
     return Column(
       children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceElevated,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [
-                      AppTheme.primary.withValues(alpha: 0.3),
-                      AppTheme.success.withValues(alpha: 0.2),
-                    ],
-                  ),
-                ),
-              ),
-              const Icon(
-                Icons.verified_user,
-                color: AppTheme.primary,
-                size: 24,
-              ),
-            ],
-          ),
-        ),
+        const SmartCheckLogo(size: 56),
         const SizedBox(height: 8),
-        Text(
-          'SmartCheck',
+        SmartCheckNombre(
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),

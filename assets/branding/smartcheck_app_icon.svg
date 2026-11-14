@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>SmartCheck</title>
+  <!-- Fondo a sangre: Android recorta la forma (círculo, squircle...). El símbolo
+       ocupa ~58% del ancho para quedar dentro de la zona segura (66%). -->
+  <rect width="1024" height="1024" fill="#131315"/>
+  <g transform="translate(512 512) scale(1.25) translate(-256 -256)">
+    <g fill="none" stroke="#5E5CE6" stroke-width="24">
+      <circle cx="256" cy="256" r="226" stroke-opacity="0.32"/>
+      <circle cx="256" cy="256" r="168" stroke-opacity="0.62"/>
+    </g>
+    <circle cx="256" cy="256" r="110" fill="#5E5CE6"/>
+    <path d="M200 258 L240 298 L314 218" fill="none" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

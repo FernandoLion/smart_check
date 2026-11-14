@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" width="1280" height="400">
+  <title>SmartCheck</title>
+  <!-- Para fondos claros. El nombre usa la fuente del sistema; para imprenta
+       conviene pasar el texto a curvas. -->
+  <g transform="translate(21 21) scale(0.7)">
+    <g fill="none" stroke="#5E5CE6" stroke-width="24">
+      <circle cx="256" cy="256" r="226" stroke-opacity="0.32"/>
+      <circle cx="256" cy="256" r="168" stroke-opacity="0.62"/>
+    </g>
+    <circle cx="256" cy="256" r="110" fill="#5E5CE6"/>
+    <path d="M200 258 L240 298 L314 218" fill="none" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="420" y="252" font-family="Inter, 'SF Pro Display', 'Segoe UI', Roboto, Arial, sans-serif" font-size="150" font-weight="700" letter-spacing="-3"><tspan fill="#131315">Smart</tspan><tspan fill="#5E5CE6">Check</tspan></text>
+</svg>
