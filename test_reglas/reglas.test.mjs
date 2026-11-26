@@ -32,9 +32,12 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 
 /** Cuándo ató cada estudiante su celular (lo repite su firma). */
@@ -410,6 +413,93 @@ describe('curso archivado (solo lectura)', () => {
     await updateDoc(curso(comoDocente()), { archivado: false });
     await assertSucceeds(
       setDoc(doc(comoDocente(), 'cursos/c1/sesiones/nuevo'), llamadoNuevo()),
+    );
+  });
+});
+
+describe('inscrito con su correo pero con otra cédula', () => {
+  // Carla tiene la cédula 333 en su perfil, pero el docente la inscribió con
+  // 999 (una lista con el documento mal) y con su correo, que sí es el suyo.
+  const CELULAR_CARLA = 'celular-carla-03';
+  const comoCarla = () =>
+    entorno
+      .authenticatedContext('carla', { email: 'carla@udla.edu.co' })
+      .firestore();
+
+  beforeEach(async () => {
+    await entorno.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'usuarios/carla'), {
+        roles: ['estudiante'],
+        cedula: '333',
+        dispositivo_id: CELULAR_CARLA,
+        dispositivo_desde: VINCULADO,
+      });
+      await setDoc(doc(db, 'cursos/c1/inscritos/999'), {
+        cedula: '999',
+        email: 'carla@udla.edu.co',
+        nombre: 'CARLA',
+      });
+      await updateDoc(doc(db, 'cursos/c1'), {
+        claves_inscritos: ['111', '222', '999', 'carla@udla.edu.co'],
+      });
+    });
+  });
+
+  const firmaDeCarla = () => ({
+    creado_en: serverTimestamp(),
+    dispositivo: CELULAR_CARLA,
+    vinculado_en: VINCULADO,
+    biometria: 'biometrica',
+  });
+
+  test('se encuentra buscándose por su correo', async () => {
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(comoCarla(), 'cursos/c1/inscritos'),
+          where('email', '==', 'carla@udla.edu.co'),
+        ),
+      ),
+    );
+  });
+
+  test('firma con la clave con la que la inscribieron', async () => {
+    await assertSucceeds(
+      setDoc(
+        doc(comoCarla(), 'cursos/c1/sesiones/s1/presencias/999'),
+        firmaDeCarla(),
+      ),
+    );
+  });
+
+  test('con esa firma, el radar la registra y ella ve su asistencia', async () => {
+    await setDoc(
+      doc(comoCarla(), 'cursos/c1/sesiones/s1/presencias/999'),
+      firmaDeCarla(),
+    );
+    await assertSucceeds(
+      setDoc(
+        doc(comoDocente(), 'cursos/c1/sesiones/s1/asistencias/999'),
+        asistencia('ble'),
+      ),
+    );
+    await assertSucceeds(
+      getDoc(doc(comoCarla(), 'cursos/c1/sesiones/s1/asistencias/999')),
+    );
+  });
+
+  test('otro estudiante no firma por ella', async () => {
+    await assertFails(
+      setDoc(doc(comoAna(), 'cursos/c1/sesiones/s1/presencias/999'), {
+        ...firmaDeAna(),
+      }),
+    );
+  });
+
+  test('ni lee la asistencia de ella', async () => {
+    await assertFails(
+      getDoc(doc(comoAna(), 'cursos/c1/sesiones/s1/asistencias/999')),
     );
   });
 });

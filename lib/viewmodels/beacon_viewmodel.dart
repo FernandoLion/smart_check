@@ -103,9 +103,19 @@ class BeaconViewModel extends ChangeNotifier {
             'mismo. Espera a que inicie el radar.';
         return false;
       }
+      // Con qué clave está inscrito aquí: la suya o, si el docente lo
+      // inscribió con su correo pero con otra cédula, la de ese inscrito. Con
+      // esa firma y se anuncia, que es con la que el radar lo registra.
+      final todas = await _cursos.clavesEnElCurso(
+        abierto.$1.id,
+        claves ?? [clave],
+      );
+      final suya = todas.firstWhere(
+        abierto.$1.clavesInscritos.contains,
+        orElse: () => clave,
+      );
       // Si ya tiene marca en esta clase (de este llamado o de uno anterior
       // del mismo bloque), no se vuelve a emitir.
-      final todas = claves ?? [clave];
       final previa = await _cursos.miMarcaEnLaFranja(
         abierto.$1.id,
         abierto.$2.franja,
@@ -149,7 +159,7 @@ class BeaconViewModel extends ChangeNotifier {
         abierto.$1.id,
         abierto.$2.id,
         Presencia(
-          claveInscrito: clave,
+          claveInscrito: suya,
           dispositivo: esteCelular!,
           vinculadoEn: vinculadoEn,
           distanciaAula: aula?.distancia,
@@ -161,7 +171,7 @@ class BeaconViewModel extends ChangeNotifier {
 
       _curso = abierto.$1;
       _sesion = abierto.$2;
-      await _ble.anunciar(clave);
+      await _ble.anunciar(suya);
       _anunciando = true;
       _ventana = Timer(abierto.$2.restante(DateTime.now()), _alVencerLaVentana);
       _vigilarElLlamado(abierto.$1.id, abierto.$2.id);

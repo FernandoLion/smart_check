@@ -75,6 +75,19 @@ service cloud.firestore {
         return autenticado() && curso().claves_inscritos.hasAny(misClaves());
       }
 
+      // Si [clave] es este estudiante en el curso: su cédula o su correo, o
+      // un inscrito con su correo aunque el docente le pusiera otra cédula
+      // (una lista con el documento mal). El correo es el de la sesión de
+      // Firebase, que nadie puede cambiarse.
+      function soyElInscrito(clave) {
+        return autenticado()
+          && (clave in misClaves()
+            || (request.auth.token.get('email', '') != ''
+              && exists(/databases/$(database)/documents/cursos/$(cursoId)/inscritos/$(clave))
+              && get(/databases/$(database)/documents/cursos/$(cursoId)/inscritos/$(clave)).data.get('email', '').lower()
+                   == request.auth.token.email.lower()));
+      }
+
       // Un curso archivado es de solo lectura: se puede ver, volver a
       // activar o eliminar, y nada más.
       function activo() {
@@ -105,7 +118,13 @@ service cloud.firestore {
         && resource.data.docente_uid == request.auth.uid;
 
       match /inscritos/{clave} {
-        allow read: if soySuDocente() || clave in misClaves();
+        // También buscándose por su correo, que es como el estudiante averigua
+        // con qué cédula lo inscribieron.
+        allow read: if soySuDocente()
+          || clave in misClaves()
+          || (autenticado()
+            && request.auth.token.get('email', '') != ''
+            && resource.data.get('email', '') == request.auth.token.email.lower());
         allow create, update: if soySuDocente() && activo();
         // Borrar sí, aunque esté archivado: así se elimina el curso entero.
         // Quitar a uno solo también cambia el curso, y eso ya no se deja.
@@ -147,7 +166,7 @@ service cloud.firestore {
         // sesión abierta y dentro de su franja (hora del servidor); a mano,
         // también después, para corregir. Con el curso archivado, ninguna.
         match /asistencias/{clave} {
-          allow read: if soySuDocente() || clave in misClaves();
+          allow read: if soySuDocente() || soyElInscrito(clave);
           allow create, update: if soySuDocente()
             && activo()
             && clave in curso().claves_inscritos
@@ -170,10 +189,10 @@ service cloud.firestore {
         // de su lado; la geocerca y la huella las comprueba su celular, y de
         // esas no hay prueba posible sin un backend propio.
         match /presencias/{clave} {
-          allow read: if soySuDocente() || clave in misClaves();
+          allow read: if soySuDocente() || soyElInscrito(clave);
           allow create: if autenticado()
             && activo()
-            && clave in misClaves()
+            && soyElInscrito(clave)
             && clave in curso().claves_inscritos
             && sesion().abierta
             && request.time >= sesion().inicio

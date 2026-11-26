@@ -89,10 +89,11 @@ class FakeCursoService extends Fake implements CursoService {
   @override
   Future<List<ClaseDelEstudiante>> historialAsistencia(
     String cursoId,
-    List<String> claves, {
+    List<String> mias, {
     DateTime? ahora,
   }) async {
     if (fallo != null) throw fallo!;
+    final claves = await clavesEnElCurso(cursoId, mias);
     final porFranja = CursoService.franjasTerminadas(
       sesionesPorCurso[cursoId] ?? const [],
       ahora ?? DateTime.now(),
@@ -232,9 +233,10 @@ class FakeCursoService extends Fake implements CursoService {
   Future<Asistencia?> miMarcaEnLaFranja(
     String cursoId,
     DateTime franja,
-    List<String> claves,
+    List<String> mias,
   ) async {
     if (fallo != null) throw fallo!;
+    final claves = await clavesEnElCurso(cursoId, mias);
     return CursoService.marcaQueCuenta([
       for (final s in sesionesPorCurso[cursoId] ?? const <Sesion>[])
         if (s.franja == franja)
@@ -247,8 +249,9 @@ class FakeCursoService extends Fake implements CursoService {
   Stream<Asistencia?> miAsistencia(
     String cursoId,
     String sesionId,
-    List<String> claves,
+    List<String> mias,
   ) async* {
+    final claves = await clavesEnElCurso(cursoId, mias);
     Asistencia? mia() => (asistenciasPorSesion[sesionId] ?? const [])
         .where((a) => claves.contains(a.claveInscrito))
         .firstOrNull;
@@ -296,6 +299,20 @@ class FakeCursoService extends Fake implements CursoService {
     inscritosPorCurso.remove(cursoId);
     cursos.remove(cursoId);
     _cambios.add(null);
+  }
+
+  @override
+  Future<List<String>> clavesEnElCurso(
+    String cursoId,
+    List<String> mias,
+  ) async {
+    final correo = mias.firstWhere((c) => c.contains('@'), orElse: () => '');
+    final otras = (inscritosPorCurso[cursoId] ?? const {})
+        .entries
+        .where((e) => correo.isNotEmpty && e.value.email?.toLowerCase() == correo)
+        .map((e) => e.key)
+        .where((k) => !mias.contains(k));
+    return [...otras, ...mias];
   }
 
   @override

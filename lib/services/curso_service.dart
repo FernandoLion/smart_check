@@ -38,6 +38,9 @@ class CursoException implements Exception {
 class CursoService {
   static const _timeout = Duration(seconds: 15);
 
+  /// [clavesEnElCurso] ya resueltas, por curso y claves del estudiante.
+  final _clavesPorCurso = <String, List<String>>{};
+
   // Se resuelve al usarse (Firebase puede no estar inicializado en los tests).
   CollectionReference<Map<String, dynamic>> get _cursos =>
       FirebaseFirestore.instance.collection('cursos');
@@ -352,8 +355,9 @@ class CursoService {
   Future<Asistencia?> miMarcaEnLaFranja(
     String cursoId,
     DateTime franja,
-    List<String> claves,
+    List<String> mias,
   ) async {
+    final claves = await clavesEnElCurso(cursoId, mias);
     final llamados =
         (await sesiones(cursoId).first).where((s) => s.franja == franja);
     try {
@@ -371,6 +375,15 @@ class CursoService {
   /// La asistencia del estudiante en un llamado, en vivo: aparece en cuanto
   /// el radar del docente lo registra. null mientras no tenga.
   Stream<Asistencia?> miAsistencia(
+    String cursoId,
+    String sesionId,
+    List<String> mias,
+  ) =>
+      Stream.fromFuture(clavesEnElCurso(cursoId, mias)).asyncExpand(
+        (claves) => _miAsistencia(cursoId, sesionId, claves),
+      );
+
+  Stream<Asistencia?> _miAsistencia(
     String cursoId,
     String sesionId,
     List<String> claves,
@@ -451,12 +464,13 @@ class CursoService {
   /// con la marca que decide si el estudiante de [claves] asistió.
   Future<List<ClaseDelEstudiante>> historialAsistencia(
     String cursoId,
-    List<String> claves, {
+    List<String> mias, {
     DateTime? ahora,
   }) async {
-    if (claves.isEmpty) return const [];
+    if (mias.isEmpty) return const [];
     final momento = ahora ?? DateTime.now();
     try {
+      final claves = await clavesEnElCurso(cursoId, mias);
       final inscripcion = await _inscripcionDe(cursoId, claves);
       final docs = await _sesiones(cursoId).get().timeout(_timeout);
       final porFranja = franjasTerminadas(
@@ -485,6 +499,36 @@ class CursoService {
         ..sort((a, b) => b.franja.compareTo(a.franja));
     } catch (e) {
       throw CursoException(_mensaje(e, 'leer tu asistencia'));
+    }
+  }
+
+  /// Con qué claves aparece el estudiante en [cursoId]: las suyas ([mias]:
+  /// cédula y correo) y, si el docente lo inscribió con su correo pero con
+  /// otra cédula (una lista con el documento mal), la de ese inscrito, que va
+  /// primero porque es el id de su asistencia en el curso.
+  ///
+  /// Si no se puede averiguar, quedan las suyas: es lo de siempre.
+  Future<List<String>> clavesEnElCurso(
+    String cursoId,
+    List<String> mias,
+  ) async {
+    final correo = mias.firstWhere((c) => c.contains('@'), orElse: () => '');
+    if (correo.isEmpty) return mias;
+    final llave = '$cursoId|${mias.join(',')}';
+    final guardadas = _clavesPorCurso[llave];
+    if (guardadas != null) return guardadas;
+    try {
+      final inscritos = await _inscritos(cursoId)
+          .where('email', isEqualTo: correo.toLowerCase())
+          .limit(1)
+          .get()
+          .timeout(_timeout);
+      final otras = inscritos.docs
+          .map((d) => d.id)
+          .where((id) => !mias.contains(id));
+      return _clavesPorCurso[llave] = [...otras, ...mias];
+    } catch (_) {
+      return mias;
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_check/models/curso_model.dart';
+import 'package:smart_check/models/inscrito_model.dart';
 import 'package:smart_check/models/sesion_model.dart';
 import 'package:smart_check/services/curso_service.dart';
 import 'package:smart_check/services/ubicacion_service.dart';
@@ -364,5 +365,37 @@ void main() {
 
     expect(ble.anunciando, isNull);
     expect(vm.error, contains('firmar tu asistencia'));
+  });
+
+  test('inscrito con su correo pero con otra cédula: firma y se anuncia '
+      'con la clave del inscrito', () async {
+    const correo = 'an.perez@udla.edu.co';
+    cursos.inscritosPorCurso['c1'] = {
+      '1999999999': const Inscrito(
+        cedula: '1999999999',
+        email: correo,
+        nombre: 'ANA PÉREZ',
+      ),
+    };
+    final curso = Curso.fromMap('c1', {
+      ...cursoEnClase(geocerca: aula).toMap(),
+      'claves_inscritos': ['1999999999', correo],
+    });
+    cursos.sesionesPorCurso['c1'] = [llamadoAbierto()];
+
+    final ok = await vm.marcar(
+      [curso],
+      '1117000000',
+      claves: ['1117000000', correo],
+      dispositivoVinculado: celularDePrueba,
+      vinculadoEn: atado,
+    );
+
+    expect(ok, isTrue);
+    expect(
+      cursos.presenciasPorSesion['llamado-1']!.single.claveInscrito,
+      '1999999999',
+    );
+    expect(ble.anunciando, '1999999999');
   });
 }
