@@ -100,13 +100,16 @@ class FakeCursoService extends Fake implements CursoService {
     );
     final clases = [
       for (final franja in porFranja.entries)
-        ClaseDelEstudiante(
-          franja.key,
-          CursoService.marcaQueCuenta([
-            for (final s in franja.value)
-              ...?asistenciasPorSesion[s.id]
-                  ?.where((a) => claves.contains(a.claveInscrito)),
-          ]),
+        (
+          cierre: CursoService.cierreDeLaClase(franja.value),
+          clase: ClaseDelEstudiante(
+            franja.key,
+            CursoService.marcaQueCuenta([
+              for (final s in franja.value)
+                ...?asistenciasPorSesion[s.id]
+                    ?.where((a) => claves.contains(a.claveInscrito)),
+            ]),
+          ),
         ),
     ];
     // Como el servicio real: las clases de antes de inscribirlo no cuentan,
@@ -115,9 +118,11 @@ class FakeCursoService extends Fake implements CursoService {
         .values
         .where((i) => i.claves.any(claves.contains))
         .firstOrNull;
-    return clases
-        .where((c) => inscrito == null || inscrito.debiaVenir(c.franja) || c.asistio)
-        .toList()
+    return [
+      for (final (:cierre, :clase) in clases)
+        if (inscrito == null || inscrito.debiaVenir(cierre) || clase.asistio)
+          clase,
+    ]
       ..sort((a, b) => b.franja.compareTo(a.franja));
   }
 

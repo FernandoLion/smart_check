@@ -115,9 +115,8 @@ class CourseDetailViewModel extends ChangeNotifier {
     String celda(String v) =>
         v.contains(RegExp('[;"\n]')) ? '"${v.replaceAll('"', '""')}"' : v;
 
-    final franjas = CursoService.franjasTerminadas(_sesiones, _ahora()).keys
-        .toList()
-      ..sort();
+    final terminadas = CursoService.franjasTerminadas(_sesiones, _ahora());
+    final franjas = terminadas.keys.toList()..sort();
     final presentes = {
       for (final f in franjas)
         f: {
@@ -151,7 +150,9 @@ class CourseDetailViewModel extends ChangeNotifier {
                 ? 'A'
                 : justificados[f]!.contains(i.inscrito.clave)
                     ? 'J'
-                    : i.inscrito.debiaVenir(f)
+                    : i.inscrito.debiaVenir(
+                        CursoService.cierreDeLaClase(terminadas[f]!),
+                      )
                     ? 'F'
                     : '—',
           '${i.asistencia.asistidas}/${i.asistencia.sesiones}',
@@ -168,6 +169,7 @@ class CourseDetailViewModel extends ChangeNotifier {
         .entries
         .map((franja) {
       final marcas = CursoService.marcasDeLaClase(franja.value, _asistencias);
+      final cierre = CursoService.cierreDeLaClase(franja.value);
       var vinieron = 0;
       var esperados = 0;
       for (final i in _inscritos) {
@@ -176,7 +178,7 @@ class CourseDetailViewModel extends ChangeNotifier {
         if (marca?.justificada ?? false) continue;
         final vino = marca?.cuentaComoAsistio ?? false;
         if (vino) vinieron++;
-        if (vino || i.debiaVenir(franja.key)) esperados++;
+        if (vino || i.debiaVenir(cierre)) esperados++;
       }
       return SesionResumen(franja.value.first, vinieron, esperados);
     }).toList();
@@ -189,6 +191,8 @@ class CourseDetailViewModel extends ChangeNotifier {
   List<FilaDeSesion> detalleDeFranja(DateTime franja) {
     final sesiones = CursoService.franjasTerminadas(_sesiones, _ahora())[franja] ??
         const <Sesion>[];
+    if (sesiones.isEmpty) return const [];
+    final cierre = CursoService.cierreDeLaClase(sesiones);
     final marcas = [
       for (final s in sesiones) ...?_asistencias[s.id],
     ];
@@ -202,7 +206,7 @@ class CourseDetailViewModel extends ChangeNotifier {
         ),
     ]..removeWhere(
         // Quien aún no estaba inscrito no aparece, salvo que tenga marca.
-        (f) => f.marca == null && !f.inscrito.debiaVenir(franja),
+        (f) => f.marca == null && !f.inscrito.debiaVenir(cierre),
       );
     filas.sort((a, b) {
       if (a.presente != b.presente) return a.presente ? -1 : 1;
@@ -282,15 +286,18 @@ class CourseDetailViewModel extends ChangeNotifier {
   /// Los inscritos con su asistencia, los de mayor riesgo primero.
   List<InscritoAsistencia> get inscritos {
     final franjas = CursoService.franjasTerminadas(_sesiones, _ahora());
-    final marcasPor = {
-      for (final f in franjas.entries)
-        f.key: CursoService.marcasDeLaClase(f.value, _asistencias),
-    };
+    final clases = [
+      for (final f in franjas.values)
+        (
+          cierre: CursoService.cierreDeLaClase(f),
+          marcas: CursoService.marcasDeLaClase(f, _asistencias),
+        ),
+    ];
     final lista = _inscritos.map((i) {
       var sesiones = 0;
       var asistidas = 0;
       var justificadas = 0;
-      for (final MapEntry(key: franja, value: marcas) in marcasPor.entries) {
+      for (final (:cierre, :marcas) in clases) {
         final marca = marcas[i.clave];
         if (marca?.justificada ?? false) {
           justificadas++;
@@ -298,7 +305,7 @@ class CourseDetailViewModel extends ChangeNotifier {
         }
         final vino = marca?.cuentaComoAsistio ?? false;
         if (vino) asistidas++;
-        if (vino || i.debiaVenir(franja)) sesiones++;
+        if (vino || i.debiaVenir(cierre)) sesiones++;
       }
       return InscritoAsistencia(
         i,

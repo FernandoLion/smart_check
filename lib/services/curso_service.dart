@@ -482,19 +482,20 @@ class CursoService {
           final marcas = await Future.wait(
             franja.value.map((s) => _marcaDe(cursoId, s.id, claves)),
           );
-          return ClaseDelEstudiante(
+          final clase = ClaseDelEstudiante(
             franja.key,
             marcaQueCuenta(marcas.whereType<Asistencia>()),
           );
+          // Las que ya habían terminado al inscribirlo no cuentan, salvo que
+          // haya venido.
+          final cuenta = inscripcion == null ||
+              !cierreDeLaClase(franja.value).isBefore(inscripcion) ||
+              clase.asistio;
+          return cuenta ? clase : null;
         }),
       );
       return clases
-          .where(
-            (c) =>
-                inscripcion == null ||
-                !c.franja.isBefore(inscripcion) ||
-                c.asistio,
-          )
+          .whereType<ClaseDelEstudiante>()
           .toList()
         ..sort((a, b) => b.franja.compareTo(a.franja));
     } catch (e) {
@@ -573,6 +574,11 @@ class CursoService {
     };
   }
 
+  /// Cuándo se cerró la clase de [llamados]: el fin del último. Es contra
+  /// lo que se compara la fecha de inscripción ([Inscrito.debiaVenir]).
+  static DateTime cierreDeLaClase(Iterable<Sesion> llamados) =>
+      llamados.map((s) => s.fin).reduce((a, b) => a.isAfter(b) ? a : b);
+
   /// Agrupa por franja de clase los llamados que ya terminaron. Está fuera de
   /// la consulta para poder probarlo: es la cuenta que decide el porcentaje
   /// de asistencia del estudiante.
@@ -639,15 +645,16 @@ class CursoService {
   ) {
     var sesiones = 0;
     var asistidas = 0;
-    for (final MapEntry(key: franja, value: llamados) in franjas.entries) {
+    for (final llamados in franjas.values) {
       final deLaClase = marcasDeLaClase(llamados, marcas);
+      final cierre = cierreDeLaClase(llamados);
       for (final i in inscritos) {
         final marca = deLaClase[i.clave];
         // Una falta justificada no cuenta para nadie.
         if (marca?.justificada ?? false) continue;
         final vino = marca?.cuentaComoAsistio ?? false;
         if (vino) asistidas++;
-        if (vino || i.debiaVenir(franja)) sesiones++;
+        if (vino || i.debiaVenir(cierre)) sesiones++;
       }
     }
     return AsistenciaResumen(sesiones: sesiones, asistidas: asistidas);

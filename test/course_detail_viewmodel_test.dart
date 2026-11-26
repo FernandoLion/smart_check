@@ -168,6 +168,55 @@ void main() {
     expect(resumen.porcentaje, vm.promedio.porcentaje);
   });
 
+  test('inscritos a mitad del bloque, antes del radar, cuentan en esa clase',
+      () async {
+    // El bloque empieza a las 8 y el docente inscribe la lista a las 8:20;
+    // el llamado es de 8:30 a 8:40. Los tres debían venir: 1 de 3, no 1 de 1.
+    servicio.inscritosPorCurso['c1'] = {
+      for (final c in ['ana', 'carlos', 'pedro'])
+        c: Inscrito(
+          cedula: c,
+          nombre: c.toUpperCase(),
+          inscritoEn: DateTime(2026, 10, 20, 8, 20),
+        ),
+    };
+    servicio.sesionesPorCurso['c1'] = [llamado('s1', 20, 30)];
+    servicio.asistenciasPorSesion['s1'] = [presente('ana')];
+
+    vm.vigilar('c1');
+    await pumpEventQueue();
+
+    final filas = vm.detalleDeFranja(DateTime(2026, 10, 20, 8));
+    expect(filas, hasLength(3));
+    expect(filas.where((f) => f.presente), hasLength(1));
+    expect(vm.sesionesPasadas.single.inscritos, 3);
+    expect(vm.sesionesPasadas.single.porcentaje, 33);
+    final carlos =
+        vm.inscritos.firstWhere((i) => i.inscrito.clave == 'carlos');
+    expect(carlos.asistencia.sesiones, 1);
+    expect(carlos.asistencia.asistidas, 0);
+  });
+
+  test('inscrito después de cerrar el llamado, esa clase no le cuenta',
+      () async {
+    servicio.inscritosPorCurso['c1']!['pedro'] = Inscrito(
+      cedula: 'pedro',
+      nombre: 'PEDRO TARDE',
+      inscritoEn: DateTime(2026, 10, 20, 8, 45),
+    );
+    servicio.sesionesPorCurso['c1'] = [llamado('s1', 20, 30)];
+    servicio.asistenciasPorSesion['s1'] = [presente('ana')];
+
+    vm.vigilar('c1');
+    await pumpEventQueue();
+
+    expect(
+      vm.detalleDeFranja(DateTime(2026, 10, 20, 8)).map((f) => f.inscrito.clave),
+      isNot(contains('pedro')),
+    );
+    expect(vm.sesionesPasadas.single.inscritos, 2);
+  });
+
   test('si vino a una clase de antes de inscribirlo, le cuenta a favor',
       () async {
     servicio.inscritosPorCurso['c1']!['pedro'] = Inscrito(

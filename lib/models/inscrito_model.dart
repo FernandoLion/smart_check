@@ -48,11 +48,13 @@ class Inscrito {
         if (fotoUrl != null) 'foto_url': fotoUrl,
       };
 
-  /// Si la clase que empezó en [franja] le cuenta: no si fue antes de
-  /// inscribirlo. Quien vino igual a una clase anterior la tiene a favor;
-  /// eso lo decide quien suma, que sabe si vino.
-  bool debiaVenir(DateTime franja) =>
-      inscritoEn == null || !franja.isBefore(inscritoEn!);
+  /// Si la clase cuyo llamado se cerró en [cierre] le cuenta: no si ya había
+  /// terminado cuando lo inscribieron. Se mira el llamado y no el inicio de
+  /// la franja: el docente que inscribe la lista a mitad del bloque y abre
+  /// el radar después espera a todos. Quien vino igual a una clase anterior
+  /// la tiene a favor; eso lo decide quien suma, que sabe si vino.
+  bool debiaVenir(DateTime cierre) =>
+      inscritoEn == null || !cierre.isBefore(inscritoEn!);
 
   /// Id del documento: la cédula si se conoce, si no el correo.
   String get clave => cedula ?? email!.toLowerCase();
