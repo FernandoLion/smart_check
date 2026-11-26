@@ -20,6 +20,7 @@ import 'package:smart_check/viewmodels/auth_viewmodel.dart';
 import 'package:smart_check/viewmodels/student_viewmodel.dart';
 import 'package:smart_check/viewmodels/teacher_viewmodel.dart';
 import 'package:smart_check/views/login_screen.dart';
+import 'package:smart_check/views/permisos_screen.dart';
 import 'package:smart_check/views/smart_register_screen.dart';
 import 'package:smart_check/views/student/student_home_screen.dart';
 import 'package:smart_check/views/teacher/teacher_home_screen.dart';
@@ -42,6 +43,9 @@ ChairaService _chairaFalso() => ChairaService(
     );
 
 void main() {
+  // Sin Bluetooth ni GPS que consultar: los permisos están.
+  setUp(() => revisarPermisos = () async => true);
+
   testWidgets('SmartCheck app renders login screen', (
     WidgetTester tester,
   ) async {
@@ -199,6 +203,19 @@ void main() {
       expect(find.byType(StudentHomeScreen), findsOneWidget);
       // Sin perfil docente no se ofrece cambiar de panel.
       expect(find.text('Docente'), findsNothing);
+    });
+
+    testWidgets('si falta un permiso, primero la pantalla que los pide', (
+      tester,
+    ) async {
+      revisarPermisos = () async => false;
+      final restaurar = ignorarDesbordes();
+      await iniciarSesion(tester, [Rol.estudiante]);
+      restaurar();
+
+      expect(find.byType(PermisosScreen), findsOneWidget);
+      expect(find.byType(StudentHomeScreen), findsNothing);
+      expect(find.text('Permisos para la asistencia'), findsOneWidget);
     });
 
     testWidgets('desde otro celular entra igual, sin pedir el rostro', (

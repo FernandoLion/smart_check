@@ -30,6 +30,46 @@ enum EstadoPermiso {
   revisando,
 }
 
+/// Si el celular ya tiene todo lo que la asistencia necesita: Bluetooth
+/// encendido, permiso de dispositivos cercanos y ubicación precisa
+/// encendida. Lo que no exista en el celular no cuenta como faltante.
+Future<bool> permisosListos() async {
+  final estados = await Future.wait([
+    _PermisosDelCelularState._estadoBluetooth(),
+    _PermisosDelCelularState._estadoCercanos(),
+    _PermisosDelCelularState._estadoUbicacion(),
+  ]);
+  return estados.every(
+    (e) => e == EstadoPermiso.listo || e == EstadoPermiso.noDisponible,
+  );
+}
+
+/// Pide de una vez lo que falte, uno tras otro, con los diálogos del
+/// sistema. Lo que ya se negó para siempre no vuelve a salir: eso queda en
+/// los ajustes del sistema.
+Future<void> pedirPermisos() async {
+  try {
+    await FlutterBlePeripheral().requestPermission();
+  } catch (_) {}
+  try {
+    final permiso = await Geolocator.checkPermission();
+    if (permiso == LocationPermission.denied) {
+      await Geolocator.requestPermission();
+    }
+  } catch (_) {}
+  try {
+    if (await FlutterBluePlus.isSupported &&
+        FlutterBluePlus.adapterStateNow != BluetoothAdapterState.on) {
+      await FlutterBluePlus.turnOn();
+    }
+  } catch (_) {}
+  try {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      await Geolocator.openLocationSettings();
+    }
+  } catch (_) {}
+}
+
 /// Los permisos y radios que la asistencia necesita, leídos del celular cada
 /// vez que se muestra la pantalla o se vuelve a ella desde los ajustes del
 /// sistema. Tocar uno que falte lo pide, o abre los ajustes del sistema.

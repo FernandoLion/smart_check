@@ -25,6 +25,7 @@ import 'package:smart_check/views/attendance/ble_beacon_screen.dart';
 import 'package:smart_check/views/attendance/face_verification_screen.dart';
 import 'package:smart_check/views/attendance/manual_rollcall_screen.dart';
 import 'package:smart_check/views/login_screen.dart';
+import 'package:smart_check/views/permisos_screen.dart';
 import 'package:smart_check/views/recover_password_screen.dart';
 import 'package:smart_check/views/smart_register_screen.dart';
 import 'package:smart_check/views/student/attendance_detail_screen.dart';
@@ -203,6 +204,10 @@ ThemeData _conRoboto(ThemeData tema) {
 /// Cada pantalla de la app, con lo que necesita para abrirse.
 final Map<String, Future<Widget> Function(_Mundo)> _vistas = {
   'Inicio de sesión': (_) async => const LoginScreen(),
+  'Permisos': (_) async => PermisosScreen(
+        esEstudiante: true,
+        siguiente: (_) => const SizedBox(),
+      ),
   'Registro': (_) async => const SmartRegisterScreen(),
   'Recuperar contraseña': (_) async => const RecoverPasswordScreen(),
   'Portal del estudiante': (_) async => const StudentHomeScreen(),

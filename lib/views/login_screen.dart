@@ -7,6 +7,7 @@ import '../viewmodels/auth_viewmodel.dart';
 import '../utils/app_theme.dart';
 import '../utils/usuario_input_formatter.dart';
 import '../widgets/smartcheck_logo.dart';
+import 'permisos_screen.dart';
 import 'recover_password_screen.dart';
 import 'smart_register_screen.dart';
 import 'student/student_home_screen.dart';
@@ -659,14 +660,25 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: AppTheme.success,
       ),
     );
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => role == 'Estudiante'
-            ? const StudentHomeScreen()
-            : const TeacherHomeScreen(),
-      ),
-    );
+    Widget inicio(BuildContext _) => role == 'Estudiante'
+        ? const StudentHomeScreen()
+        : const TeacherHomeScreen();
+    // Si falta algún permiso, primero la pantalla que los pide: así no
+    // salen los diálogos del sistema en plena clase.
+    revisarPermisos().then((listos) {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: listos
+              ? inicio
+              : (_) => PermisosScreen(
+                    esEstudiante: role == 'Estudiante',
+                    siguiente: inicio,
+                  ),
+        ),
+      );
+    });
   }
 }
 
