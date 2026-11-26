@@ -79,6 +79,12 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
   /// Si este celular está emitiendo ahora mismo.
   bool get _emitiendo => _vm.anunciando && !_isStopped;
 
+  /// No llegó a emitir: la pantalla dice por qué, en vez de un "Señal
+  /// apagada" que no explica nada.
+  bool get _noSePudo =>
+      _isStopped && !_vm.anunciando && !_vm.registradoPorElDocente &&
+      _vm.error != null;
+
   /// Lo que queda de ventana para marcar.
   int get _totalSeconds => _vm.restante.inSeconds;
 
@@ -674,6 +680,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
               child: Text(
                 _vm.registradoPorElDocente
                     ? 'Asistencia registrada'
+                    : _noSePudo
+                    ? 'No se pudo marcar'
                     : _isStopped
                     ? 'Señal apagada'
                     : 'Enviando señal de asistencia...',
@@ -694,6 +702,8 @@ class _BleBeaconScreenState extends State<BleBeaconScreen>
           child: Text(
             _vm.registradoPorElDocente
                 ? 'El radar del docente ya te registró en esta clase.'
+                : _noSePudo
+                ? _vm.error!
                 : _isStopped
                 ? 'Ya no se emite. Si no apareciste en el radar del '
                       'docente, pídele que te marque a mano.'
